@@ -161,12 +161,12 @@ function BookClubContent() {
       {/* 입력 / 수정 윈도우 */}
       <div className="w-full max-w-sm bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 mb-4 shadow-xl">
         <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-          <span>{editingId ? "EDITING_BOOK.exe" : "2026 BOOKS.exe"}</span>
+          <span>{editingId ? "EDITING_BOOK.exe" : "2026 활자먹음이.exe"}</span>
           <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
         </div>
 
         <div className="text-center py-1 text-xs italic font-bold text-[#1f4e5b]">
-          {editingId ? "기존 독서 기록 수정 중..." : "Let's read some books!"}
+          {editingId ? "기존 독서 기록 수정 중..." : "구매비덕질을 타파하자!"}
         </div>
 
         <form onSubmit={handleSubmit} className="p-2 space-y-2.5 bg-[#d4d8dc] border border-[#808080]">
