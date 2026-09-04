@@ -731,7 +731,7 @@ function BookClubContent() {
               </button>
             </form>
 
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
+            <div className="space-y-2">
               {sortedGoals.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
                   등록된 목표가 없습니다. 위에서 목표를 먼저 세워보세요!
