@@ -319,7 +319,7 @@ function BookClubContent() {
                   disabled={loading}
                   className="flex-1 py-1.5 bg-[#c3c7cb] text-xs font-bold border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-b-[#ffffff] active:border-r-[#ffffff]"
                 >
-                  {loading ? "처리 중..." : editingId ? "수정 완료" : "OK"}
+                  {loading ? "처리 중..." : editingId ? "수정 완료" : "입력 완료"}
                 </button>
                 {editingId && (
                   <button
