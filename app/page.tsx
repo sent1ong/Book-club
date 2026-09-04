@@ -245,7 +245,6 @@ function BookClubContent() {
     const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
     if (!inputPw) return;
 
-    // Supabase에서 해당 댓글 비밀번호 검증
     const { data: targetComment, error: findError } = await supabase
       .from("book_comments")
       .select("password")
@@ -363,13 +362,14 @@ function BookClubContent() {
     return (sum / validScores.length).toFixed(1);
   };
 
+  // 목표 달성률 높은 순서 정렬
   const sortedGoals = [...goals].sort((a, b) => {
     const rateA = (getReadCount(a.user_name) / a.target_count) * 100;
     const rateB = (getReadCount(b.user_name) / b.target_count) * 100;
     return rateB - rateA;
   });
 
-  // 최근 댓글 최신순 상위 5개만 추출
+  // 최근 댓글 5개
   const recentComments = comments.slice(0, 5);
 
   return (
@@ -385,7 +385,7 @@ function BookClubContent() {
         {/* 왼쪽 영역: 기록창 & 서재 목록 창 */}
         <div className="space-y-4">
           
-          {/* 입력 창 */}
+          {/* 독서 기록 입력 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
               <span>{editingId ? "EDITING_BOOK.exe" : "2026 활자먹음이.exe"}</span>
@@ -508,7 +508,7 @@ function BookClubContent() {
               <button onClick={() => { fetchReviews(); fetchComments(); }} className="text-[10px] underline">새로고침</button>
             </div>
 
-            {/* 상단 닉네임 탭 & 정렬 */}
+            {/* 상단 컨트롤러: 닉네임 탭 & 정렬 옵션 */}
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
               <div className="flex gap-1 overflow-x-auto">
                 {userList.map((user) => (
@@ -540,7 +540,7 @@ function BookClubContent() {
               </div>
             </div>
 
-            {/* 책 카드 목록 */}
+            {/* 책 목록 리스트 */}
             <div className="mt-2 space-y-2 max-h-96 overflow-y-auto pr-0.5">
               {displayedReviews.length === 0 ? (
                 <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
@@ -568,7 +568,7 @@ function BookClubContent() {
                         </p>
                       )}
 
-                      {/* 책 하단 조작 버튼: 댓글 토글 & 수정/삭제 */}
+                      {/* 댓글 토글 및 수정/삭제 */}
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-100 text-[11px]">
                         <button
                           onClick={() => setOpenCommentBookId(isOpen ? null : book.id)}
@@ -593,40 +593,41 @@ function BookClubContent() {
                         </div>
                       </div>
 
-                      {/* 댓글 토글 영역 */}
+                      {/* 댓글 토글 펼침 영역 */}
                       {isOpen && (
                         <div className="mt-2 pt-2 border-t border-dashed border-gray-300 bg-[#f4f6f7] p-2">
-                          {/* 기존 댓글 목록 */}
                           <div className="space-y-1.5 mb-2">
                             {bookComments.length === 0 ? (
-                              <div className="text-[10px] text-gray-400 text-center py-1">첫 번째 댓글을 남겨보세요!</div>
+                              <div className="text-xs text-gray-400 text-center py-1">첫 번째 댓글을 남겨보세요!</div>
                             ) : (
                               bookComments.map((c) => (
-                                <div key={c.id} className="bg-white p-1.5 border border-gray-200 text-[11px]">
-                                  <div className="flex justify-between items-center text-gray-500 text-[10px] mb-0.5">
+                                <div key={c.id} className="bg-white p-2 border border-gray-200 text-xs">
+                                  {/* 댓글 작성자 & 수정/삭제 폰트 크기 개선 */}
+                                  <div className="flex justify-between items-center text-gray-500 text-xs mb-1">
                                     <span className="font-bold text-gray-800">{c.user_name}</span>
                                     <div className="flex gap-1.5">
                                       <button
                                         onClick={() => handleEditComment(c.id, c.content)}
-                                        className="text-blue-500 hover:underline"
+                                        className="text-blue-600 hover:underline font-bold"
                                       >
                                         수정
                                       </button>
                                       <button
                                         onClick={() => handleDeleteComment(c.id)}
-                                        className="text-red-400 hover:underline"
+                                        className="text-red-500 hover:underline font-bold"
                                       >
                                         삭제
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="text-gray-700 break-all">{c.content}</div>
+                                  {/* 댓글 본문 폰트 크기 개선 */}
+                                  <div className="text-gray-800 break-all text-xs leading-relaxed">{c.content}</div>
                                 </div>
                               ))
                             )}
                           </div>
 
-                          {/* 댓글 작성 폼 */}
+                          {/* 댓글 등록 입력창 */}
                           <form onSubmit={(e) => handleCommentSubmit(e, book.id)} className="space-y-1">
                             <div className="grid grid-cols-2 gap-1">
                               <input
@@ -635,7 +636,7 @@ function BookClubContent() {
                                 placeholder="닉네임"
                                 value={commentForm.user_name}
                                 onChange={(e) => setCommentForm({ ...commentForm, user_name: e.target.value })}
-                                className="p-1 text-[11px] bg-white border border-gray-400 outline-none"
+                                className="p-1 text-xs bg-white border border-gray-400 outline-none"
                               />
                               <input
                                 type="password"
@@ -644,7 +645,7 @@ function BookClubContent() {
                                 placeholder="숫자 4자리"
                                 value={commentForm.password}
                                 onChange={(e) => setCommentForm({ ...commentForm, password: e.target.value })}
-                                className="p-1 text-[11px] bg-white border border-gray-400 outline-none"
+                                className="p-1 text-xs bg-white border border-gray-400 outline-none"
                               />
                             </div>
                             <div className="flex gap-1">
@@ -654,11 +655,11 @@ function BookClubContent() {
                                 placeholder="댓글을 입력하세요..."
                                 value={commentForm.content}
                                 onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-                                className="flex-1 p-1 text-[11px] bg-white border border-gray-400 outline-none"
+                                className="flex-1 p-1 text-xs bg-white border border-gray-400 outline-none"
                               />
                               <button
                                 type="submit"
-                                className="px-2.5 py-1 bg-[#c3c7cb] text-[11px] font-bold border border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                className="px-2.5 py-1 bg-[#c3c7cb] text-xs font-bold border border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
                               >
                                 등록
                               </button>
@@ -677,7 +678,7 @@ function BookClubContent() {
         {/* 오른쪽 영역: 목표 현황판 & 최근 댓글 5개 창 */}
         <div className="space-y-4">
           
-          {/* 목표 현황판 */}
+          {/* 목표 현황판 (스크롤바 없이 카드 수만큼 자연스럽게 늘어남) */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
               <span>🎯 GOALS_TRACKER.exe</span>
@@ -731,6 +732,7 @@ function BookClubContent() {
               </button>
             </form>
 
+            {/* 스크롤 제한 제거: 카드 개수만큼 시원하게 아래로 확장 */}
             <div className="space-y-2">
               {sortedGoals.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
@@ -795,13 +797,15 @@ function BookClubContent() {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
                     <div key={c.id} className="bg-white p-2 border border-gray-400 text-xs">
-                      <div className="flex justify-between items-baseline mb-0.5 text-[10px] text-gray-500">
+                      {/* 최근 댓글 닉네임 & 책 제목 폰트 크기 개선 */}
+                      <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
                         <span className="font-bold text-gray-800">{c.user_name}</span>
                         <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
                           📖 {targetBook ? targetBook.title : "삭제된 책"}
                         </span>
                       </div>
-                      <p className="text-gray-700 bg-gray-50 p-1 rounded border border-gray-200 text-[11px] break-all">
+                      {/* 최근 댓글 본문 폰트 크기 개선 */}
+                      <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
                         {c.content}
                       </p>
                     </div>
