@@ -36,6 +36,7 @@ function BookClubContent() {
   const [goals, setGoals] = useState<UserGoal[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("전체");
+  const [sortOrder, setSortOrder] = useState<string>("최신순");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   // 독서 기록 입력 폼
@@ -87,9 +88,41 @@ function BookClubContent() {
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
-  const displayedReviews = selectedUser === "전체" 
+  // 별점 점수 매핑 (정렬용)
+  const scoreMap: Record<string, number> = {
+    "★": 1,
+    "★★": 2,
+    "★★★": 3,
+    "★★★★": 4,
+    "★★★★★": 5,
+    "중도하차": 0,
+  };
+
+  // 1. 유저 필터링
+  const filteredReviews = selectedUser === "전체" 
     ? reviews 
     : reviews.filter((r) => r.user_name === selectedUser);
+
+  // 2. 정렬 로직 적용
+  const displayedReviews = [...filteredReviews].sort((a, b) => {
+    if (sortOrder === "최신순") {
+      return b.id - a.id;
+    }
+    if (sortOrder === "오래된순") {
+      return a.id - b.id;
+    }
+    if (sortOrder === "높은 평점순") {
+      const scoreA = scoreMap[a.rating] ?? 0;
+      const scoreB = scoreMap[b.rating] ?? 0;
+      return scoreB - scoreA || b.id - a.id;
+    }
+    if (sortOrder === "낮은 평점순") {
+      const scoreA = scoreMap[a.rating] ?? 0;
+      const scoreB = scoreMap[b.rating] ?? 0;
+      return scoreA - scoreB || b.id - a.id;
+    }
+    return 0;
+  });
 
   // 책 등록/수정
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,6 +237,19 @@ function BookClubContent() {
     return reviews.filter((r) => r.user_name === name).length;
   };
 
+  // 닉네임별 평균 별점 계산 (중도하차 제외)
+  const getAverageRating = (name: string) => {
+    const userReviews = reviews.filter((r) => r.user_name === name);
+    const validScores = userReviews
+      .map((r) => scoreMap[r.rating])
+      .filter((score): score is number => score !== undefined && score > 0);
+
+    if (validScores.length === 0) return null;
+
+    const sum = validScores.reduce((acc, cur) => acc + cur, 0);
+    return (sum / validScores.length).toFixed(1);
+  };
+
   return (
     <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
       <div className="w-full max-w-4xl mb-2 text-right">
@@ -212,13 +258,12 @@ function BookClubContent() {
         </span>
       </div>
 
-      {/* 데스크톱: 2열 레이아웃, 모바일: 1열 레이아웃 */}
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         
-        {/* 왼쪽 영역: 기록하기 창 & 서재 목록 창 */}
+        {/* 왼쪽 영역: 독서 기록창 & 서재 목록 창 */}
         <div className="space-y-4">
           
-          {/* 독서 기록 입력 창 */}
+          {/* 입력 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
               <span>{editingId ? "EDITING_BOOK.exe" : "2026 활자먹음이.exe"}</span>
@@ -341,21 +386,37 @@ function BookClubContent() {
               <button onClick={fetchReviews} className="text-[10px] underline">새로고침</button>
             </div>
 
-            {/* 닉네임 탭 */}
-            <div className="flex gap-1 overflow-x-auto py-1.5 px-0.5 border-b border-gray-400">
-              {userList.map((user) => (
-                <button
-                  key={user}
-                  onClick={() => setSelectedUser(user)}
-                  className={`px-2 py-0.5 text-[11px] whitespace-nowrap font-bold border ${
-                    selectedUser === user
-                      ? "bg-[#1f4e5b] text-white border-black"
-                      : "bg-[#d4d8dc] text-gray-800 border-white hover:bg-gray-300"
-                  }`}
+            {/* 상단 컨트롤러: 닉네임 탭 & 정렬 옵션 */}
+            <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
+              <div className="flex gap-1 overflow-x-auto">
+                {userList.map((user) => (
+                  <button
+                    key={user}
+                    onClick={() => setSelectedUser(user)}
+                    className={`px-2 py-0.5 text-[11px] whitespace-nowrap font-bold border ${
+                      selectedUser === user
+                        ? "bg-[#1f4e5b] text-white border-black"
+                        : "bg-[#d4d8dc] text-gray-800 border-white hover:bg-gray-300"
+                    }`}
+                  >
+                    {user}
+                  </button>
+                ))}
+              </div>
+
+              {/* 정렬 드롭다운 */}
+              <div className="flex items-center gap-1 ml-auto">
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="bg-white text-[11px] font-bold p-0.5 border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none cursor-pointer"
                 >
-                  {user}
-                </button>
-              ))}
+                  <option value="최신순">최신순</option>
+                  <option value="오래된순">오래된순</option>
+                  <option value="높은 평점순">높은 평점순</option>
+                  <option value="낮은 평점순">낮은 평점순</option>
+                </select>
+              </div>
             </div>
 
             {/* 카드 리스트 */}
@@ -366,23 +427,23 @@ function BookClubContent() {
                 </div>
               ) : (
                 displayedReviews.map((book) => (
-                  <div key={book.id} className="bg-white p-2 border border-gray-400 text-xs">
-                    <div className="flex justify-between items-start gap-1">
-                      <span className="font-bold text-[#1f4e5b] text-[13px]">{book.title}</span>
-                      <span className="text-amber-600 font-bold text-[12px] whitespace-nowrap">{book.rating}</span>
+                  <div key={book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
+                    <div className="flex justify-between items-start gap-1 mb-1">
+                      <span className="font-bold text-[#1f4e5b] text-sm">{book.title}</span>
+                      <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider">{book.rating}</span>
                     </div>
                     
-                    <div className="text-gray-500 text-[12px] mb-1">
-                      {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-700">{book.user_name}</span>
+                    <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
+                      {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                     </div>
 
                     {book.review && (
-                      <p className="text-gray-700 bg-gray-50 p-1.5 rounded border border-gray-200 mt-1 break-all">
+                      <p className="text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal">
                         {book.review}
                       </p>
                     )}
 
-                    <div className="flex justify-end gap-2 mt-2 pt-1 border-t border-gray-100 text-[10px]">
+                    <div className="flex justify-end gap-2 mt-2 pt-1 border-t border-gray-100 text-[11px]">
                       <button
                         onClick={() => handleEdit(book)}
                         className="text-blue-600 hover:underline font-bold"
@@ -404,14 +465,13 @@ function BookClubContent() {
           </div>
         </div>
 
-        {/* 오른쪽 영역: 새로 추가된 목표 현황판 (GOALS.exe) */}
+        {/* 오른쪽 영역: 목표 현황판 */}
         <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
           <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
             <span>🎯 GOALS_TRACKER.exe</span>
             <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
           </div>
 
-          {/* 목표 설정 폼 */}
           <form onSubmit={handleGoalSubmit} className="p-2 space-y-2 bg-[#d4d8dc] border border-[#808080] mb-3 text-xs">
             <div className="font-bold text-[#1f4e5b] text-[11px] border-b border-gray-400 pb-1">
               내 독서 목표 설정/수정
@@ -469,17 +529,24 @@ function BookClubContent() {
               goals.map((g) => {
                 const readCount = getReadCount(g.user_name);
                 const percent = Math.min(100, Math.round((readCount / g.target_count) * 100));
+                const avgRating = getAverageRating(g.user_name);
 
                 return (
                   <div key={g.id} className="bg-white p-2.5 border border-gray-400 text-xs">
                     <div className="flex justify-between items-baseline mb-1">
-                      <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
+                        {avgRating && (
+                          <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
+                            ★ {avgRating}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-bold text-xs text-gray-700">
                         {readCount} / {g.target_count}권 ({percent}%)
                       </span>
                     </div>
 
-                    {/* 레트로 스타일 게이지 바 */}
                     <div className="w-full bg-[#808080] p-[2px] border border-t-[#404040] border-l-[#404040] border-b-[#ffffff] border-r-[#ffffff] mb-1.5">
                       <div
                         className="bg-[#1f4e5b] h-3 transition-all duration-300"
@@ -488,7 +555,7 @@ function BookClubContent() {
                     </div>
 
                     {g.message && (
-                      <div className="text-[11px] text-gray-600 bg-gray-50 p-1 border border-gray-200">
+                      <div className="text-[11px] text-gray-600 bg-gray-50 p-1.5 border border-gray-200">
                         💬 "{g.message}"
                       </div>
                     )}
