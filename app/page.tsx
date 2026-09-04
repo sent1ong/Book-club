@@ -225,7 +225,7 @@ function BookClubContent() {
               <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
             </div>
 
-            <div className="text-center py-1 text-xs italic font-bold text-[#1f4e5b]">
+            <div className="text-center py-1 text-xs font-bold text-[#1f4e5b]">
               {editingId ? "기존 독서 기록 수정 중..." : "구매비덕질을 타파하자!"}
             </div>
 
