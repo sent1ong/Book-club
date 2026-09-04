@@ -488,7 +488,7 @@ function BookClubContent() {
                     </div>
 
                     {g.message && (
-                      <div className="text-[11px] text-gray-600 italic bg-gray-50 p-1 border border-gray-200">
+                      <div className="text-[11px] text-gray-600 bg-gray-50 p-1 border border-gray-200">
                         💬 "{g.message}"
                       </div>
                     )}
