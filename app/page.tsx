@@ -369,10 +369,10 @@ function BookClubContent() {
                   <div key={book.id} className="bg-white p-2 border border-gray-400 text-xs">
                     <div className="flex justify-between items-start gap-1">
                       <span className="font-bold text-[#1f4e5b] text-[13px]">{book.title}</span>
-                      <span className="text-amber-600 font-bold text-[11px] whitespace-nowrap">{book.rating}</span>
+                      <span className="text-amber-600 font-bold text-[12px] whitespace-nowrap">{book.rating}</span>
                     </div>
                     
-                    <div className="text-gray-500 text-[10px] mb-1">
+                    <div className="text-gray-500 text-[12px] mb-1">
                       {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-700">{book.user_name}</span>
                     </div>
 
