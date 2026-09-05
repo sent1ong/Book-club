@@ -122,12 +122,18 @@ function BookClubContent() {
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
+  // 0.5점 단위 별점 점수 매핑
   const scoreMap: Record<string, number> = {
-    "★": 1,
-    "★★": 2,
-    "★★★": 3,
-    "★★★★": 4,
-    "★★★★★": 5,
+    "★★★★★": 5.0,
+    "★★★★☆": 4.5,
+    "★★★★": 4.0,
+    "★★★☆": 3.5,
+    "★★★": 3.0,
+    "★★☆": 2.5,
+    "★★": 2.0,
+    "★☆": 1.5,
+    "★": 1.0,
+    "☆": 0.5,
     "중도하차": 0,
   };
 
@@ -215,7 +221,6 @@ function BookClubContent() {
     }
   };
 
-  // 댓글 등록
   const handleCommentSubmit = async (e: React.FormEvent, bookId: number) => {
     e.preventDefault();
     if (!commentForm.user_name.trim()) return alert("작성자를 입력해주세요!");
@@ -240,7 +245,6 @@ function BookClubContent() {
     }
   };
 
-  // 댓글 삭제 (비밀번호 확인)
   const handleDeleteComment = async (commentId: number) => {
     const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
     if (!inputPw) return;
@@ -268,7 +272,6 @@ function BookClubContent() {
     }
   };
 
-  // 댓글 수정 (비밀번호 확인)
   const handleEditComment = async (commentId: number, oldContent: string) => {
     const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
     if (!inputPw) return;
@@ -350,6 +353,7 @@ function BookClubContent() {
     return reviews.filter((r) => r.user_name === name).length;
   };
 
+  // 0.5점 단위까지 정확하게 반영하는 평균 계산
   const getAverageRating = (name: string) => {
     const userReviews = reviews.filter((r) => r.user_name === name);
     const validScores = userReviews
@@ -362,14 +366,12 @@ function BookClubContent() {
     return (sum / validScores.length).toFixed(1);
   };
 
-  // 목표 달성률 높은 순서 정렬
   const sortedGoals = [...goals].sort((a, b) => {
     const rateA = (getReadCount(a.user_name) / a.target_count) * 100;
     const rateB = (getReadCount(b.user_name) / b.target_count) * 100;
     return rateB - rateA;
   });
 
-  // 최근 댓글 5개
   const recentComments = comments.slice(0, 5);
 
   return (
@@ -459,12 +461,17 @@ function BookClubContent() {
                     onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                     className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white"
                   >
-                    <option>★★★★★</option>
-                    <option>★★★★</option>
-                    <option>★★★</option>
-                    <option>★★</option>
-                    <option>★</option>
-                    <option>중도하차</option>
+                    <option value="★★★★★">★★★★★ (5.0)</option>
+                    <option value="★★★★☆">★★★★☆ (4.5)</option>
+                    <option value="★★★★">★★★★ (4.0)</option>
+                    <option value="★★★☆">★★★☆ (3.5)</option>
+                    <option value="★★★">★★★ (3.0)</option>
+                    <option value="★★☆">★★☆ (2.5)</option>
+                    <option value="★★">★★ (2.0)</option>
+                    <option value="★☆">★☆ (1.5)</option>
+                    <option value="★">★ (1.0)</option>
+                    <option value="☆">☆ (0.5)</option>
+                    <option value="중도하차">중도하차</option>
                   </select>
                 </div>
               </div>
@@ -568,7 +575,6 @@ function BookClubContent() {
                         </p>
                       )}
 
-                      {/* 댓글 토글 및 수정/삭제 */}
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-100 text-[11px]">
                         <button
                           onClick={() => setOpenCommentBookId(isOpen ? null : book.id)}
@@ -593,7 +599,6 @@ function BookClubContent() {
                         </div>
                       </div>
 
-                      {/* 댓글 토글 펼침 영역 */}
                       {isOpen && (
                         <div className="mt-2 pt-2 border-t border-dashed border-gray-300 bg-[#f4f6f7] p-2">
                           <div className="space-y-1.5 mb-2">
@@ -602,7 +607,6 @@ function BookClubContent() {
                             ) : (
                               bookComments.map((c) => (
                                 <div key={c.id} className="bg-white p-2 border border-gray-200 text-xs">
-                                  {/* 댓글 작성자 & 수정/삭제 폰트 크기 개선 */}
                                   <div className="flex justify-between items-center text-gray-500 text-xs mb-1">
                                     <span className="font-bold text-gray-800">{c.user_name}</span>
                                     <div className="flex gap-1.5">
@@ -620,14 +624,12 @@ function BookClubContent() {
                                       </button>
                                     </div>
                                   </div>
-                                  {/* 댓글 본문 폰트 크기 개선 */}
                                   <div className="text-gray-800 break-all text-xs leading-relaxed">{c.content}</div>
                                 </div>
                               ))
                             )}
                           </div>
 
-                          {/* 댓글 등록 입력창 */}
                           <form onSubmit={(e) => handleCommentSubmit(e, book.id)} className="space-y-1">
                             <div className="grid grid-cols-2 gap-1">
                               <input
@@ -678,7 +680,7 @@ function BookClubContent() {
         {/* 오른쪽 영역: 목표 현황판 & 최근 댓글 5개 창 */}
         <div className="space-y-4">
           
-          {/* 목표 현황판 (스크롤바 없이 카드 수만큼 자연스럽게 늘어남) */}
+          {/* 목표 현황판 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
               <span>🎯 GOALS_TRACKER.exe</span>
@@ -732,7 +734,6 @@ function BookClubContent() {
               </button>
             </form>
 
-            {/* 스크롤 제한 제거: 카드 개수만큼 시원하게 아래로 확장 */}
             <div className="space-y-2">
               {sortedGoals.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
@@ -797,14 +798,12 @@ function BookClubContent() {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
                     <div key={c.id} className="bg-white p-2 border border-gray-400 text-xs">
-                      {/* 최근 댓글 닉네임 & 책 제목 폰트 크기 개선 */}
                       <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
                         <span className="font-bold text-gray-800">{c.user_name}</span>
                         <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
                           📖 {targetBook ? targetBook.title : "삭제된 책"}
                         </span>
                       </div>
-                      {/* 최근 댓글 본문 폰트 크기 개선 */}
                       <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
                         {c.content}
                       </p>
