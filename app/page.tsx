@@ -353,7 +353,6 @@ function BookClubContent() {
     return reviews.filter((r) => r.user_name === name).length;
   };
 
-  // 0.5점 단위까지 정확하게 반영하는 평균 계산
   const getAverageRating = (name: string) => {
     const userReviews = reviews.filter((r) => r.user_name === name);
     const validScores = userReviews
@@ -384,7 +383,7 @@ function BookClubContent() {
 
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         
-        {/* 왼쪽 영역: 기록창 & 서재 목록 창 */}
+        {/* 왼쪽 영역: 독서 기록창 & 서재 목록 창 */}
         <div className="space-y-4">
           
           {/* 독서 기록 입력 창 */}
@@ -446,6 +445,7 @@ function BookClubContent() {
                     <option>시</option>
                     <option>만화</option>
                     <option>웹툰</option>
+                    <option>오디오드라마</option>
                     <option>수필</option>
                     <option>사회/과학</option>
                     <option>철학</option>
