@@ -371,8 +371,6 @@ function BookClubContent() {
     return rateB - rateA;
   });
 
-  const recentComments = comments.slice(0, 5);
-
   return (
     <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
       <div className="w-full max-w-4xl mb-2 text-right">
@@ -677,7 +675,7 @@ function BookClubContent() {
           </div>
         </div>
 
-        {/* 오른쪽 영역: 목표 현황판 & 최근 댓글 5개 창 */}
+        {/* 오른쪽 영역: 목표 현황판 & 전체 댓글 창 */}
         <div className="space-y-4">
           
           {/* 목표 현황판 */}
@@ -781,20 +779,20 @@ function BookClubContent() {
             </div>
           </div>
 
-          {/* 최근 댓글 5개 창 */}
+          {/* 전체 댓글 창 (스크롤 박스 적용) */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-              <span>💬 RECENT_COMMENTS.exe</span>
+              <span>💬 COMMENTS.exe</span>
               <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
             </div>
 
-            <div className="space-y-1.5">
-              {recentComments.length === 0 ? (
+            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-0.5">
+              {comments.length === 0 ? (
                 <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
                   아직 작성된 댓글이 없습니다.
                 </div>
               ) : (
-                recentComments.map((c) => {
+                comments.map((c) => {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
                     <div key={c.id} className="bg-white p-2 border border-gray-400 text-xs">
