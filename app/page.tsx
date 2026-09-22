@@ -105,7 +105,7 @@ function BookClubContent() {
       .from("book_comments")
       .select("*")
       .eq("group_name", groupName)
-      .order("id", { ascending: false });
+      .order("id", { ascending: true });
 
     if (!error && data) {
       setComments(data);
@@ -792,7 +792,7 @@ function BookClubContent() {
                   아직 작성된 댓글이 없습니다.
                 </div>
               ) : (
-                comments.map((c) => {
+                [...comments].reverse().map((c) => {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
                     <div key={c.id} className="bg-white p-2 border border-gray-400 text-xs">
