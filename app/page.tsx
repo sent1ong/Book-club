@@ -53,7 +53,7 @@ function BookClubContent() {
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState([]);
   const [showStats, setShowStats] = useState(false);
-  const [revealedComments, setRevealedComments] = useState>({});
+  const [revealedComments, setRevealedComments] = useState({} as { [key: number]: boolean });
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
