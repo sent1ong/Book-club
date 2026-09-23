@@ -159,7 +159,7 @@ function BookClubContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title) return alert("책 제목을 입력해주세요!");
+    if (!formData.title) return alert("제목을 입력해주세요!");
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
     setLoading(true);
@@ -409,14 +409,14 @@ function BookClubContent() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">TITLE (책 제목)</label>
+                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">TITLE (제목)</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  placeholder="책 제목 입력"
+                  placeholder="제목 입력"
                 />
               </div>
 
@@ -687,7 +687,7 @@ function BookClubContent() {
 
             <form onSubmit={handleGoalSubmit} className="p-2 space-y-2 bg-[#d4d8dc] border border-[#808080] mb-3 text-xs">
               <div className="font-bold text-[#1f4e5b] text-[11px] border-b border-gray-400 pb-1">
-                내 독서 목표 설정/수정
+                내 목표 설정/수정
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -799,7 +799,14 @@ function BookClubContent() {
                       <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
                         <span className="font-bold text-gray-800">{c.user_name}</span>
                         <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
-                          📖 {targetBook ? targetBook.title : "삭제된 책"}
+                          {targetBook?.genre === "웹툰"
+                          ? "📱 "
+                          : targetBook?.genre === "만화"
+                          ? "💭 "
+                          : targetBook?.genre === "오디오드라마"
+                          ? "🎧 "
+                          : "📖 "}
+{targetBook ? targetBook.title : "삭제된 책"}
                         </span>
                       </div>
                       <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
