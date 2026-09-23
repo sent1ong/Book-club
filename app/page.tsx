@@ -758,12 +758,12 @@ function BookClubContent() {
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
                           {actualPercent >= 100 && (
-                          <span className="text-[10px] bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
+                          <span className="text-xs bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
                               🏆 달성
                           </span>
                           )}
                           {avgRating && (
-                            <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
+                            <span className="text-xs text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
                               ★ {avgRating}
                             </span>
                           )}
