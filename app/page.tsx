@@ -49,6 +49,7 @@ function BookClubContent() {
   const [selectedUser, setSelectedUser] = useState<string>("전체");
   const [sortOrder, setSortOrder] = useState<string>("최신순");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -137,9 +138,15 @@ function BookClubContent() {
     "중도하차": 0,
   };
 
-  const filteredReviews = selectedUser === "전체" 
-    ? reviews 
-    : reviews.filter((r) => r.user_name === selectedUser);
+    const filteredReviews = reviews.filter((r) => {
+    const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+    !searchQuery ||
+    r.title?.toLowerCase().includes(q) ||
+    r.author?.toLowerCase().includes(q);
+    return matchesUser && matchesSearch;
+    });
 
   const displayedReviews = [...filteredReviews].sort((a, b) => {
     if (sortOrder === "최신순") return b.id - a.id;
@@ -513,6 +520,16 @@ function BookClubContent() {
               <button onClick={() => { fetchReviews(); fetchComments(); }} className="text-[10px] underline">새로고침</button>
             </div>
 
+        <div className="mb-2">
+            <input
+            type="text"
+            placeholder="🔍 제목 또는 작가 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
+            />
+        </div>
+              
             {/* 상단 컨트롤러: 닉네임 탭 & 정렬 옵션 */}
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
               <div className="flex gap-1 overflow-x-auto">
