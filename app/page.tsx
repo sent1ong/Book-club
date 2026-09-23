@@ -261,7 +261,7 @@ const [commentForm, setCommentForm] = useState<{
         group_name: groupName,
         user_name: commentForm.user_name.trim(),
         password: commentForm.password,
-        content: commentForm.content.trim(),
+        content: commentForm.is_spoiler ? "[스포일러] " + commentForm.content.trim() : commentForm.content.trim(),
       },
     ]);
 
