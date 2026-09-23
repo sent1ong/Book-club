@@ -1,4 +1,4 @@
-                "use client";
+                  "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -56,6 +56,8 @@ function BookClubContent() {
   const [revealedComments, setRevealedComments] = useState({} as { [key: number]: boolean });
   const [selectedGenre, setSelectedGenre] = useState("전체");
   const [sortBy, setSortBy] = useState("최신순"); // "최신순", "별점높은순", "별점낮은순"
+  const [reactions, setReactions] = useState({} as { [bookId: number]: { [emoji: string]: number } });
+  
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -77,6 +79,19 @@ const [commentForm, setCommentForm] = useState<{
     rating: "★★★★★",
   });
 
+    // 댓글 이모
+    const handleReactionClick = (bookId: number, emoji: string) => {
+      setReactions((prev) => {
+        const currentBookReactions = prev[bookId] || {};
+        const currentCount = currentBookReactions[emoji] || 0;
+        return Object.assign({}, prev, {
+          [bookId]: Object.assign({}, currentBookReactions, {
+            [emoji]: currentCount + 1,
+          }),
+        });
+      });
+    };
+  
   // 목표 설정 입력 폼
   const [goalForm, setGoalForm] = useState({
     user_name: "",
@@ -677,6 +692,30 @@ const [commentForm, setCommentForm] = useState<{
                       <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
                         {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                       </div>
+
+                      {
+      React.createElement(
+        "div",
+        { className: "flex flex-wrap items-center gap-1.5 my-2 pt-2 border-t border-dashed border-gray-200" },
+        ["❤️", "📌", "😭", "😡", "👏"].map(function(emoji) {
+          const count = (reactions[book.id] && reactions[book.id][emoji]) || 0;
+          return React.createElement(
+            "button",
+            {
+              key: emoji,
+              type: "button",
+              onClick: function(e) {
+                e.stopPropagation();
+                handleReactionClick(book.id, emoji);
+              },
+              className: "inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-full transition-colors select-none"
+            },
+            React.createElement("span", null, emoji),
+            count > 0 ? React.createElement("span", { className: "text-[11px] font-bold text-gray-700" }, count) : null
+          );
+        })
+      )
+    }
 
                 {book.review && (
                   book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
