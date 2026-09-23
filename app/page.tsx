@@ -741,6 +741,18 @@ function BookClubContent() {
                                 className="p-1 text-xs bg-white border border-gray-400 outline-none"
                               />
                             </div>
+                                  {React.createElement(
+                                "label",
+                                { className: "flex items-center gap-1 mb-1 text-xs text-gray-700 select-none cursor-pointer" },
+                                React.createElement("input", {
+                                type: "checkbox",
+                                checked: commentForm.is_spoiler || false,
+                                onChange: function(e) {
+                                setCommentForm({ ...commentForm, is_spoiler: e.target.checked });
+                                }
+                                }),
+                                React.createElement("span", null, "⚠️ 스포일러 포함")
+                                )}
                             <div className="flex gap-1">
                               <input
                                 type="text"
