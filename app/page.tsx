@@ -54,6 +54,8 @@ function BookClubContent() {
   const [revealedSpoilers, setRevealedSpoilers] = useState([]);
   const [showStats, setShowStats] = useState(false);
   const [revealedComments, setRevealedComments] = useState({} as { [key: number]: boolean });
+  const [selectedGenre, setSelectedGenre] = useState("전체");
+  const [sortBy, setSortBy] = useState("최신순"); // "최신순", "별점높은순", "별점낮은순"
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -143,6 +145,19 @@ const [commentForm, setCommentForm] = useState<{
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
+  const getRatingCount = (r: string) => (r ? (r.match(/★/g) || []).length : 0);
+
+  const filteredReviews = reviews
+    .filter((book) => {
+      if (selectedGenre === "전체") return true;
+      return book.genre === selectedGenre;
+    })
+    .sort((a, b) => {
+      if (sortBy === "별점높은순") return getRatingCount(b.rating) - getRatingCount(a.rating);
+      if (sortBy === "별점낮은순") return getRatingCount(a.rating) - getRatingCount(b.rating);
+      return (b.id || 0) - (a.id || 0);
+    });
+
   // 0.5점 단위 별점 점수 매핑
   const scoreMap: Record<string, number> = {
     "★★★★★": 5.0,
@@ -160,12 +175,13 @@ const [commentForm, setCommentForm] = useState<{
 
     const filteredReviews = reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
+    const matchesGenre = selectedGenre === "전체" || r.genre === selectedGenre;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
     !searchQuery ||
     r.title?.toLowerCase().includes(q) ||
     r.author?.toLowerCase().includes(q);
-    return matchesUser && matchesSearch;
+    return matchesUser && matchesGenre && matchesSearch;
     });
 
   const displayedReviews = [...filteredReviews].sort((a, b) => {
@@ -588,6 +604,30 @@ const [commentForm, setCommentForm] = useState<{
             className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
             />
         </div>
+
+            {
+      React.createElement(
+        "div",
+        { className: "flex flex-wrap gap-1 mb-2" },
+        ["전체", "소설", "만화", "웹툰", "오디오드라마"].map(function(genre) {
+          const isSelected = selectedGenre === genre;
+          return React.createElement(
+            "button",
+            {
+              key: genre,
+              type: "button",
+              onClick: function() { setSelectedGenre(genre); },
+              className: "px-2 py-0.5 text-xs border rounded transition-colors " +
+                (isSelected
+                  ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100")
+            },
+            genre
+          );
+        })
+      )
+    }
+            
               
             {/* 상단 컨트롤러: 닉네임 탭 & 정렬 옵션 */}
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
