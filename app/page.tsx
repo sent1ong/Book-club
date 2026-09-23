@@ -571,7 +571,7 @@ function BookClubContent() {
                       fetchReviews();
                       fetchComments();
                     },
-                    className: "text-[10px] underline"
+                    className: "text-xs underline"
                   },
                   "새로고침"
                 )
@@ -950,13 +950,13 @@ React.createElement(
 React.createElement(
 "div",
 null,
-React.createElement("div", { className: "text-gray-500 text-[10px]" }, "총 등록 도서"),
+React.createElement("div", { className: "text-gray-600 text-xs font-bold" }, "총 등록 작품"),
 React.createElement("div", { className: "text-base font-bold text-blue-900" }, totalBooks + "권")
 ),
 React.createElement(
 "div",
 null,
-React.createElement("div", { className: "text-gray-500 text-[10px]" }, "평균 별점"),
+React.createElement("div", { className: "text-gray-600 text-xs font-bold" }, "평균 별점"),
 React.createElement("div", { className: "text-base font-bold text-amber-600" }, "★ " + avgRating + " / 5.0")
 )
 ),
@@ -983,16 +983,16 @@ React.createElement("span", { className: "font-bold text-gray-600" }, count + "�
 React.createElement(
 "div",
 null,
-React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 도서"),
+React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 작"),
 topRatedBooks.length > 0
 ? React.createElement(
 "ul",
 { className: "list-disc list-inside space-y-0.5 text-gray-700" },
 topRatedBooks.map(function(b, idx) {
-return React.createElement("li", { key: idx, className: "truncate" }, b.title + " (" + (b.user_name || "익명") + ")");
+return React.createElement("li", { key: idx, className: "truncate" }, b.title + (b.genre ? " (" + b.genre + ")" : "") + " by. " + (b.user_name || "익명"));
 })
 )
-: React.createElement("div", { className: "text-gray-400 italic" }, "아직 만점 도서가 없습니다.")
+: React.createElement("div", { className: "text-gray-400 italic" }, "아직 만점 작품이 없습니다.")
 )
 ),
 React.createElement(
