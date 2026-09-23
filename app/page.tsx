@@ -50,6 +50,8 @@ function BookClubContent() {
   const [sortOrder, setSortOrder] = useState<string>("최신순");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSpoiler, setIsSpoiler] = useState(false);
+  const [revealedSpoilers, setRevealedSpoilers] = useState([]);
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -490,6 +492,15 @@ function BookClubContent() {
                   className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none resize-none"
                   placeholder="감상이나 리뷰를 적어주세요"
                 />
+                  <label className="flex items-center gap-1.5 mt-1 cursor-pointer text-[11px] text-gray-700 select-none">
+                    <input
+                    type="checkbox"
+                    checked={isSpoiler}
+                    onChange={(e) => setIsSpoiler(e.target.checked)}
+                    className="accent-amber-600"
+                      />
+                <span> ⚠️ 스포일러 포함 </span>
+            </label>
               </div>
 
               <div className="flex gap-1 pt-1">
