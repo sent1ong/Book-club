@@ -574,7 +574,7 @@ function BookClubContent() {
                   const isOpen = openCommentBookId === book.id;
 
                   return (
-                    <div key={book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
+                    <div key={book.id} id={'review-' + book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
                       <div className="flex justify-between items-start gap-1 mb-1">
                         <span className="font-bold text-[#1f4e5b] text-sm">
                           {book.genre === "웹툰"
@@ -825,7 +825,7 @@ function BookClubContent() {
                 [...comments].reverse().map((c) => {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
-                    <div key={c.id} className="bg-white p-2 border border-gray-400 text-xs">
+                    <div key={c.id} onClick={() => { const el = document.getElementById('review-' + c.book_id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } setOpenCommentBookId(c.book_id); }} className="bg-white p-2 border border-gray-400 text-xs cursor-pointer hover:bg-yellow-50 transition-colors">
                       <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
                         <span className="font-bold text-gray-800">{c.user_name}</span>
                         <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
