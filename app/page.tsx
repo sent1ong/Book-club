@@ -53,6 +53,7 @@ function BookClubContent() {
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState([]);
   const [showStats, setShowStats] = useState(false);
+  const [revealedComments, setRevealedComments] = useState>({});
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -715,7 +716,28 @@ const [commentForm, setCommentForm] = useState<{
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="text-gray-800 break-all text-xs leading-relaxed">{c.content}</div>
+                                        {(() => {
+                        const isSp = c.content.startsWith("[스포일러]");
+                        const isOpened = revealedComments[c.id];
+
+                        if (isSp && !isOpened) {
+                        return React.createElement(
+                        "div",
+                        {
+                        onClick: () => setRevealedComments({ ...revealedComments, [c.id]: true }),
+                        className: "bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
+                        },
+                        React.createElement("span", null, "⚠️ 스포일러가 포함된 댓글입니다."),
+                        React.createElement("span", { className: "underline text-[10px] font-bold" }, "내용 보기")
+                        );
+                        }
+
+                        return React.createElement(
+                        "div",
+                        { className: "text-gray-800 break-all text-xs leading-relaxed" },
+                        isSp ? c.content.replace("[스포일러]", "").trim() : c.content
+                        );
+                        })()}
                                 </div>
                               ))
                             )}
