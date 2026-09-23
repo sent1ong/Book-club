@@ -156,7 +156,9 @@ const [commentForm, setCommentForm] = useState<{
     return acc;
   }, {});
 
-  const topRatedBooks = reviews.filter(b => (b.rating || "").includes("★★★★★"));
+  const topRatedBooks = reviews
+  .filter(b => (b.rating || "").includes("★★★★★"))
+  .sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
