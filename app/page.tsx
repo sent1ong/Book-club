@@ -1,4 +1,4 @@
-"use client";
+    "use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -559,7 +559,15 @@ function BookClubContent() {
                   return (
                     <div key={book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
                       <div className="flex justify-between items-start gap-1 mb-1">
-                        <span className="font-bold text-[#1f4e5b] text-sm">{book.title}</span>
+                        <span className="font-bold text-[#1f4e5b] text-sm">
+                          {book.genre === "웹툰"
+                          ? "📱 "
+                           : book.genre === "만화"
+                          ? "💭 "
+                          : book.genre === "오디오드라마"
+                          ? "🎧 "
+                          : "📖 "}
+                          {book.title}</span>
                         <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider">{book.rating}</span>
                       </div>
                       
@@ -749,6 +757,11 @@ function BookClubContent() {
                       <div className="flex justify-between items-baseline mb-1">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
+                          {actualPercent >= 100 && (
+                          <span className="text-[10px] bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
+                              🏆 달성
+                          </span>
+                          )}
                           {avgRating && (
                             <span className="text-[11px] text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
                               ★ {avgRating}
