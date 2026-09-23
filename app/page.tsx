@@ -612,7 +612,7 @@ function BookClubContent() {
                   className: "bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
                 }, [
                   React.createElement("span", { key: "text" }, "⚠️ 스포일러가 포함된 감상평입니다."),
-                  React.createElement("span", { key: "btn", className: "text-[10px] underline font-bold" }, "클릭하여 보기")
+                  React.createElement("span", { key: "btn", className: "text-xs underline font-bold" }, "클릭하여 보기")
                     ])
               ) : (
                 React.createElement("p", {
