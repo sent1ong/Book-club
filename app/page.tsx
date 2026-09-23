@@ -1,4 +1,4 @@
-        "use client";
+                "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -262,7 +262,7 @@ const [commentForm, setCommentForm] = useState<{
         group_name: groupName,
         user_name: commentForm.user_name.trim(),
         password: commentForm.password,
-        content: commentForm.is_spoiler ? "[스포일러] " + commentForm.content.trim() : commentForm.content.trim(),
+        content: commentForm.is_spoiler ? "(스포일러) " + commentForm.content.trim() : commentForm.content.trim(),
       },
     ]);
 
@@ -717,7 +717,7 @@ const [commentForm, setCommentForm] = useState<{
                                     </div>
                                   </div>
                                         {(() => {
-                        const isSp = c.content.startsWith("[스포일러]");
+                        const isSp = c.content.startsWith("(스포일러)");
                         const isOpened = revealedComments[c.id];
 
                         if (isSp && !isOpened) {
@@ -735,7 +735,7 @@ const [commentForm, setCommentForm] = useState<{
                         return React.createElement(
                         "div",
                         { className: "text-gray-800 break-all text-xs leading-relaxed" },
-                        isSp ? c.content.replace("[스포일러]", "").trim() : c.content
+                        isSp ? c.content.replace("(스포일러)", "").trim() : c.content
                         );
                         })()}
                                 </div>
@@ -941,9 +941,33 @@ const [commentForm, setCommentForm] = useState<{
 {targetBook ? targetBook.title : "삭제된 책"}
                         </span>
                       </div>
-                      <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
-                        {c.content}
-                      </p>
+                            {(() => {
+                        const isSp = c.content.startsWith("(스포일러)") || c.content.startsWith("[스포일러]");
+                        const isOpened = revealedComments[c.id];
+
+                        if (isSp && !isOpened) {
+                        return React.createElement(
+                        "div",
+                        {
+                        onClick: function(e) {
+                        e.stopPropagation();
+                        setRevealedComments(Object.assign({}, revealedComments, { [c.id]: true }));
+                        },
+                        className: "bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
+                        },
+                        React.createElement("span", null, "⚠️ 스포일러가 포함된 댓글입니다."),
+                        React.createElement("span", { className: "underline text-[10px] font-bold" }, "내용 보기")
+                        );
+                        }
+
+                        const cleanText = c.content.replace("(스포일러)", "").replace("[스포일러]", "").trim();
+
+                        return React.createElement(
+                        "p",
+                        { className: "text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all" },
+                        cleanText
+                        );
+                        })()}
                     </div>
                   );
                 })
