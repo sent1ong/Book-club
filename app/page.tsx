@@ -58,11 +58,11 @@ function BookClubContent() {
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
 
   // 댓글 등록 폼
-  const [commentForm, setCommentForm] = useState({
-    user_name: "",
-    password: "",
-    content: "",
-  });
+const [commentForm, setCommentForm] = useState<{ 
+        user_name: string; 
+        password: string; 
+        content: string; 
+        is_spoiler?: boolean }>({ user_name: "", password: "", content: "", is_spoiler: false });
 
   // 독서 기록 입력 폼
   const [formData, setFormData] = useState({
