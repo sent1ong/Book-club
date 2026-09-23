@@ -52,6 +52,7 @@ function BookClubContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState([]);
+  const [showStats, setShowStats] = useState(false);
 
   // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -122,6 +123,22 @@ function BookClubContent() {
       fetchComments();
     }
   }, [groupName]);
+
+        const totalBooks = reviews.length;
+  const avgRating = totalBooks > 0
+    ? (reviews.reduce((acc, cur) => {
+        const stars = (cur.rating || "").match(/★/g);
+        return acc + (stars ? stars.length : 5);
+      }, 0) / totalBooks).toFixed(1)
+    : "0.0";
+
+  const genreCounts = reviews.reduce((acc: any, cur: any) => {
+    const g = cur.genre || "기타";
+    acc[g] = (acc[g] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topRatedBooks = reviews.filter(b => (b.rating || "").includes("★★★★★"));
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
@@ -528,10 +545,38 @@ function BookClubContent() {
 
           {/* 서재 목록 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-            <div className="bg-[#1f4e5b] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
-              <span>📚 서재 목록 ({displayedReviews.length}권)</span>
-              <button onClick={() => { fetchReviews(); fetchComments(); }} className="text-[10px] underline">새로고침</button>
-            </div>
+                  {React.createElement(
+              "div",
+              {
+                className: "bg-[#1f4e5b] text-white px-2 py-1 text-xs font-bold flex justify-between items-center"
+              },
+              React.createElement("span", null, "📚 서재 목록 (" + displayedReviews.length + "권)"),
+              React.createElement(
+                "div",
+                { className: "flex items-center gap-2" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: function() { setShowStats(true); },
+                    className: "bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black text-[10px] font-bold active:border-t-black active:border-l-black"
+                  },
+                  "📊 STATS.exe"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: function() {
+                      fetchReviews();
+                      fetchComments();
+                    },
+                    className: "text-[10px] underline"
+                  },
+                  "새로고침"
+                )
+              )
+            )}
 
         <div className="mb-2">
             <input
@@ -875,6 +920,97 @@ function BookClubContent() {
         </div>
 
       </div>
+            {showStats && (
+React.createElement(
+"div",
+{ className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" },
+React.createElement(
+"div",
+{ className: "w-full max-w-md bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 shadow-2xl font-mono text-xs text-black" },
+React.createElement(
+"div",
+{ className: "bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center select-none" },
+React.createElement("span", null, "STATS.exe"),
+React.createElement(
+"button",
+{
+type: "button",
+onClick: function() { setShowStats(false); },
+className: "bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black font-bold text-[10px]"
+},
+"X"
+)
+),
+React.createElement(
+"div",
+{ className: "p-3 space-y-3 bg-white mt-1 border-2 border-t-gray-600 border-l-gray-600 border-b-white border-r-white max-h-[70vh] overflow-y-auto" },
+React.createElement(
+"div",
+{ className: "grid grid-cols-2 gap-2 bg-gray-100 p-2 border border-gray-300" },
+React.createElement(
+"div",
+null,
+React.createElement("div", { className: "text-gray-500 text-[10px]" }, "총 등록 도서"),
+React.createElement("div", { className: "text-base font-bold text-blue-900" }, totalBooks + "권")
+),
+React.createElement(
+"div",
+null,
+React.createElement("div", { className: "text-gray-500 text-[10px]" }, "평균 별점"),
+React.createElement("div", { className: "text-base font-bold text-amber-600" }, "★ " + avgRating + " / 5.0")
+)
+),
+React.createElement(
+"div",
+null,
+React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-gray-700" }, "장르별 분포"),
+React.createElement(
+"div",
+{ className: "space-y-1" },
+Object.entries(genreCounts).map(function(item) {
+var genre = item[0];
+var count = item[1];
+var percent = Math.round((Number(count) / (totalBooks || 1)) * 100);
+return React.createElement(
+"div",
+{ key: genre, className: "flex justify-between items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200" },
+React.createElement("span", null, genre),
+React.createElement("span", { className: "font-bold text-gray-600" }, count + "권 (" + percent + "%)")
+);
+})
+)
+),
+React.createElement(
+"div",
+null,
+React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 도서"),
+topRatedBooks.length > 0
+? React.createElement(
+"ul",
+{ className: "list-disc list-inside space-y-0.5 text-gray-700" },
+topRatedBooks.slice(0, 5).map(function(b, idx) {
+return React.createElement("li", { key: idx, className: "truncate" }, b.title + " (" + (b.user_name || "익명") + ")");
+})
+)
+: React.createElement("div", { className: "text-gray-400 italic" }, "아직 만점 도서가 없습니다.")
+)
+),
+React.createElement(
+"div",
+{ className: "flex justify-end pt-2" },
+React.createElement(
+"button",
+{
+type: "button",
+onClick: function() { setShowStats(false); },
+className: "px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black font-bold"
+},
+"확인"
+)
+)
+)
+)
+)}
     </main>
   );
 }
