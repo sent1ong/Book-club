@@ -983,7 +983,7 @@ React.createElement("span", { className: "font-bold text-gray-600" }, count + "�
 React.createElement(
 "div",
 null,
-React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 작"),
+React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 작품"),
 topRatedBooks.length > 0
 ? React.createElement(
 "ul",
