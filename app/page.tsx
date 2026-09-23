@@ -612,7 +612,7 @@ const [commentForm, setCommentForm] = useState<{
             {
       React.createElement(
         "div",
-        { className: "flex flex-wrap gap-1 mb-2" },
+        { className: "flex flex-wrap gap-1.5 mb-3" },
         ["전체", "소설", "만화", "웹툰", "오디오드라마"].map(function(genre) {
           const isSelected = selectedGenre === genre;
           return React.createElement(
@@ -621,7 +621,7 @@ const [commentForm, setCommentForm] = useState<{
               key: genre,
               type: "button",
               onClick: function() { setSelectedGenre(genre); },
-              className: "px-2 py-0.5 text-xs border rounded transition-colors " +
+              className: "px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 " +
                 (isSelected
                   ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100")
@@ -688,7 +688,7 @@ const [commentForm, setCommentForm] = useState<{
                           ? "🎧 "
                           : "📖 "}
                           {book.title}</span>
-                        <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider">{book.rating}</span>
+                        <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">{book.rating}</span>
                       </div>
                       
                       <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
@@ -725,7 +725,7 @@ const [commentForm, setCommentForm] = useState<{
                 e.stopPropagation();
                 handleReactionClick(book.id, emoji);
               },
-              className: "inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-full transition-colors select-none"
+              className: "inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-300 rounded-full transition-colors select-none active:scale-95"
             },
             React.createElement("span", null, emoji),
             count > 0 ? React.createElement("span", { className: "text-[11px] font-bold text-gray-700" }, count) : null
