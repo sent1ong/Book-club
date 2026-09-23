@@ -145,19 +145,6 @@ const [commentForm, setCommentForm] = useState<{
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
-  const getRatingCount = (r: string) => (r ? (r.match(/★/g) || []).length : 0);
-
-  const filteredReviews = reviews
-    .filter((book) => {
-      if (selectedGenre === "전체") return true;
-      return book.genre === selectedGenre;
-    })
-    .sort((a, b) => {
-      if (sortBy === "별점높은순") return getRatingCount(b.rating) - getRatingCount(a.rating);
-      if (sortBy === "별점낮은순") return getRatingCount(a.rating) - getRatingCount(b.rating);
-      return (b.id || 0) - (a.id || 0);
-    });
-
   // 0.5점 단위 별점 점수 매핑
   const scoreMap: Record<string, number> = {
     "★★★★★": 5.0,
