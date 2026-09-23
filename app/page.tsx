@@ -988,7 +988,7 @@ topRatedBooks.length > 0
 ? React.createElement(
 "ul",
 { className: "list-disc list-inside space-y-0.5 text-gray-700" },
-topRatedBooks.slice(0, 5).map(function(b, idx) {
+topRatedBooks.map(function(b, idx) {
 return React.createElement("li", { key: idx, className: "truncate" }, b.title + " (" + (b.user_name || "익명") + ")");
 })
 )
