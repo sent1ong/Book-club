@@ -1,4 +1,4 @@
-    "use client";
+        "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -605,21 +605,21 @@ function BookClubContent() {
                         {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                       </div>
 
-            {book.review && (
-              book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
-                React.createElement("div", {
-                  onClick: () => setRevealedSpoilers([...revealedSpoilers, book.id]),
-                  className: "bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
-                }, [
-                  React.createElement("span", { key: "text" }, "⚠️ 스포일러가 포함된 감상평입니다."),
-                  React.createElement("span", { key: "btn", className: "text-xs underline font-bold" }, "클릭하여 보기")
+                {book.review && (
+                  book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
+                    React.createElement("div", {
+                      onClick: () => setRevealedSpoilers([...revealedSpoilers, book.id]),
+                      className: "bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
+                    }, [
+                      React.createElement("span", { key: "text" }, "⚠️ 스포일러가 포함된 감상평입니다."),
+                      React.createElement("span", { key: "btn", className: "text-xs underline font-bold text-amber-900 ml-2 shrink-0" }, "클릭하여 보기")
                     ])
-              ) : (
-                React.createElement("p", {
-                  className: "text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal"
-                }, book.review.replace("(스포일러)", ""))
-              )
-            )}
+                  ) : (
+                    React.createElement("p", {
+                      className: "text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal"
+                    }, book.review.replace("(스포일러)", ""))
+                  )
+                )}
 
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-100 text-[11px]">
                         <button
