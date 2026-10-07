@@ -453,6 +453,14 @@ const [commentForm, setCommentForm] = useState<{
     return rateB - rateA;
   });
 
+  // 읽은 권수가 가장 많은 상위 3명의 이름 배열 추출
+  const topReaders = [...goals]
+    .map((g) => ({ name: g.user_name, count: getReadCount(g.user_name) }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((item) => item.name);
+
   return (
     <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
       <div className="w-full max-w-4xl mb-2 text-right">
@@ -969,29 +977,37 @@ const [commentForm, setCommentForm] = useState<{
               </button>
             </form>
 
-            <div className="space-y-2">
+           <div className="space-y-2">
               {sortedGoals.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
                   등록된 목표가 없습니다. 위에서 목표를 먼저 세워보세요!
                 </div>
-      
               ) : (
-      
                 sortedGoals.map((g) => {
                   const readCount = getReadCount(g.user_name);
                   const actualPercent = Math.round((readCount / g.target_count) * 100);
                   const barPercent = Math.min(100, actualPercent);
                   const avgRating = getAverageRating(g.user_name);
 
+                  // 상위 3위 이름 매칭으로 메달 배정
+                  const rank = topReaders.indexOf(g.user_name);
+                  const medalBadge =
+                    rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : null;
+
                   return (
                     <div key={g.id} className="bg-white p-2 border border-gray-400 text-xs">
                       <div className="flex justify-between items-baseline mb-1">
                         <div className="flex items-center gap-1.5">
+                          {medalBadge && (
+                            <span className="text-base leading-none select-none">
+                              {medalBadge}
+                            </span>
+                          )}
                           <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
                           {actualPercent >= 100 && (
-                          <span className="text-xs bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
+                            <span className="text-xs bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
                               🏆 달성
-                          </span>
+                            </span>
                           )}
                           {avgRating && (
                             <span className="text-xs text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
@@ -1021,7 +1037,6 @@ const [commentForm, setCommentForm] = useState<{
                 })
               )}
             </div>
-          </div>
             
           {/* 전체 댓글 창 (스크롤 박스 적용) */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
