@@ -798,9 +798,9 @@ function BookClubContent() {
               <span>오늘 뭐 보지?</span>
             </button>
 
-            {/* 장르 및 특수 필터 (깔끔한 2줄 정렬) */}
-            <div className="space-y-1.5 mb-3">
-              {/* 1번째 줄: 기본 장르 탭 */}
+            {/* 장르 탭 (좌측) & 특수 필터 3종 우측 정렬 */}
+            <div className="flex flex-wrap items-center justify-between gap-1.5 mb-3">
+              {/* 좌측: 기본 장르 탭 */}
               <div className="flex flex-wrap items-center gap-1">
                 {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
                   const isSelected = filterType === "all" && selectedGenre === genre;
@@ -824,38 +824,41 @@ function BookClubContent() {
                 })}
               </div>
 
-              {/* 2번째 줄: 특수 상태 필터 (인생작, 재주행, 중도하차) */}
-              <div className="flex items-center gap-1">
+              {/* 우측: 배경색이 들어간 특수 필터 (인생작 / 재주행 / 중도하차) */}
+              <div className="flex items-center gap-1 ml-auto">
+                {/* 👑 인생작 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "favorite" ? "all" : "favorite")}
                   className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
                     filterType === "favorite"
-                      ? "bg-amber-100 text-amber-900 border-amber-400 font-bold shadow-inner"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-amber-50"
+                      ? "bg-amber-500 text-amber-950 border-amber-600 font-bold shadow-inner"
+                      : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
                   }`}
                 >
                   <span>👑</span> <span>인생작</span>
                 </button>
 
+                {/* 🔁 재주행 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "revisit" ? "all" : "revisit")}
                   className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
                     filterType === "revisit"
-                      ? "bg-sky-100 text-sky-900 border-sky-400 font-bold shadow-inner"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-sky-50"
+                      ? "bg-sky-600 text-white border-sky-700 font-bold shadow-inner"
+                      : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
                   }`}
                 >
                   <span>🔁</span> <span>재주행</span>
                 </button>
 
+                {/* 💔 중도하차 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "dropped" ? "all" : "dropped")}
-                  className={`ml-auto px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
+                  className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
                     filterType === "dropped"
-                      ? "bg-red-950 text-white border-red-500 shadow-inner font-bold"
+                      ? "bg-red-950 text-white border-red-500 font-bold shadow-inner"
                       : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
                   }`}
                 >
