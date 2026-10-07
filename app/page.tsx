@@ -798,9 +798,9 @@ function BookClubContent() {
               <span>오늘 뭐 보지?</span>
             </button>
 
-            {/* 장르 탭 (좌측) & 특수 필터 3종 우측 정렬 */}
-            <div className="flex flex-wrap items-center justify-between gap-1.5 mb-3">
-              {/* 좌측: 기본 장르 탭 */}
+            {/* 장르 및 특수 필터 (좌측 정렬 2줄) */}
+            <div className="space-y-1.5 mb-3">
+              {/* 1번째 줄: 기본 장르 탭 (좌측 정렬) */}
               <div className="flex flex-wrap items-center gap-1">
                 {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
                   const isSelected = filterType === "all" && selectedGenre === genre;
@@ -824,8 +824,8 @@ function BookClubContent() {
                 })}
               </div>
 
-              {/* 우측: 배경색이 들어간 특수 필터 (인생작 / 재주행 / 중도하차) */}
-              <div className="flex items-center gap-1 ml-auto">
+              {/* 2번째 줄: 특수 필터 3종 (좌측 정렬) */}
+              <div className="flex flex-wrap items-center gap-1">
                 {/* 👑 인생작 */}
                 <button
                   type="button"
