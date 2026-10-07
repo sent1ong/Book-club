@@ -989,17 +989,29 @@ const [commentForm, setCommentForm] = useState<{
                   const barPercent = Math.min(100, actualPercent);
                   const avgRating = getAverageRating(g.user_name);
 
-                  // 상위 3위 이름 매칭으로 메달 배정
-                  const rank = topReaders.indexOf(g.user_name);
-                  const medalBadge =
-                    rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : null;
+                  // 1. 전체 목표 인원들의 읽은 권수 목록을 내림차순(높은 순)으로 정렬 (중복 제거)
+                  const counts = Array.from(
+                    new Set(
+                      sortedGoals
+                        .map((item) => getReadCount(item.user_name))
+                        .filter((cnt) => cnt > 0)
+                    )
+                  ).sort((a, b) => b - a);
+
+                  // 2. 권수 기준 1위, 2위, 3위 메달 부여
+                  let medalBadge = null;
+                  if (readCount > 0) {
+                    if (readCount === counts[0]) medalBadge = "🥇";
+                    else if (readCount === counts[1]) medalBadge = "🥈";
+                    else if (readCount === counts[2]) medalBadge = "🥉";
+                  }
 
                   return (
                     <div key={g.id} className="bg-white p-2 border border-gray-400 text-xs">
                       <div className="flex justify-between items-baseline mb-1">
                         <div className="flex items-center gap-1.5">
                           {medalBadge && (
-                            <span className="text-base leading-none select-none">
+                            <span className="text-sm select-none leading-none">
                               {medalBadge}
                             </span>
                           )}
