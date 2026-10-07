@@ -60,21 +60,21 @@ function BookClubContent() {
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
   // 방 주소 생성 제한
-  const isAllowedGroup = isValidGroup(groupName);
+const isAllowedGroup = isValidGroup(groupName);
 
   if (!isAllowedGroup) {
-    return React.createElement(
-      "div",
-      { className: "min-h-screen flex items-center justify-center bg-gray-100 p-4" },
-      React.createElement(
-        "div",
-        { className: "bg-white p-6 rounded-lg shadow-md max-w-sm w-full text-center border border-gray-200" },
-        React.createElement("div", { className: "text-3xl mb-2" }, "🔒"),
-        React.createElement("h2", { className: "text-base font-bold text-gray-800 mb-1" }, "접근이 제한된 모임방입니다"),
-        React.createElement("p", { className: "text-xs text-gray-500 leading-relaxed mb-4" }, 
-          "존재하지 않거나 비공개된 방입니다.\n올바른 주소로 접속해 주세요."
-        )
-      )
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-6 rounded-lg shadow-md max-w-sm w-full text-center border border-gray-200">
+          <div className="text-3xl mb-2">🔒</div>
+          <h2 className="text-base font-bold text-gray-800 mb-1">접근이 제한된 모임방입니다</h2>
+          <p className="text-xs text-gray-500 leading-relaxed mb-4">
+            존재하지 않거나 비공개된 방입니다.
+            <br />
+            올바른 주소로 접속해 주세요.
+          </p>
+        </div>
+      </div>
     );
   }
 
