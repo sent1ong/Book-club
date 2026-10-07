@@ -38,27 +38,6 @@ interface Comment {
   created_at: string;
 }
 
-// 🔒 지정된 패턴의 모임방만 허용하는 검사 함수
-function isValidGroup(group: string) {
-  // 1. 기본 모임방 이름 허용
-  if (group === "기본모임") return true;
-
-  // 2. nogmbdj26 이상 (예: nogmbdj26, nogmbdj27, nogmbdj28 ...)
-  const nogMatch = group.match(/^nogmbdj(\d+)$/);
-  if (nogMatch && parseInt(nogMatch[1], 10) >= 26) {
-    return true;
-  }
-
-  // 3. forgaedus26 이상 (예: forgaedus26, forgaedus27, forgaedus28 ...)
-  const forMatch = group.match(/^forgaedus(\d+)$/);
-  if (forMatch && parseInt(forMatch[1], 10) >= 26) {
-    return true;
-  }
-
-  // 그 외 임의로 만든 방은 모두 차단
-  return false;
-}
-
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
@@ -1276,12 +1255,16 @@ className: "px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border
 )
 )
 )}
-    </main>
+        
+</main>
   );
 }
 
+// 🔒 모임방 허용 검사 (기본모임 허용 + nogmbdj26 이상, forgaedus26 이상 허용)
 const isValidGroup = (name: string | null) => {
   if (!name) return false;
+  if (name === "기본모임") return true;
+
   const match = name.match(/^(nogmbdj|forgaedus)(\d+)$/);
   if (!match) return false;
   const num = parseInt(match[2], 10);
