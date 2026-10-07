@@ -49,6 +49,58 @@ function isValidGroup(name: string | null) {
   return num >= 26;
 }
 
+// 🔊 레트로 윈도우 띠링~ 효과음 (Web Audio API)
+const playRetroDing = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    const playTone = (freq: number, start: number, dur: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+
+    playTone(523.25, 0, 0.2); // C5
+    playTone(1046.5, 0.08, 0.4); // C6
+  } catch (e) {
+    // 오디오 미지원 브라우저 예외 무시
+  }
+};
+
+// 🎆 목표 달성 폭죽 축하 효과음
+const playCelebrationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C - E - G - C - E 상승 팡파레
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.08);
+      osc.stop(ctx.currentTime + idx * 0.08 + 0.35);
+    });
+  } catch (e) {
+    // 오디오 미지원 브라우저 예외 무시
+  }
+};
+
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
@@ -69,6 +121,36 @@ function BookClubContent() {
   const [sortBy, setSortBy] = useState("최신순");
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
+
+  // 🔔 읽음 확인한 댓글 ID 목록 (localStorage 연동)
+  const [readCommentIds, setReadCommentIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`read_comments_${groupName}`);
+      if (saved) {
+        setReadCommentIds(JSON.parse(saved));
+      }
+    } catch (e) {
+      // 로컬 스토리지 비활성화 시 무시
+    }
+  }, [groupName]);
+
+  // 특정 유저 탭 클릭 시 해당 유저 책에 달린 댓글들을 '읽음' 처리
+  const handleSelectUser = (user: string) => {
+    setSelectedUser(user);
+    if (user === "전체") return;
+
+    // 해당 유저가 작성한 책들의 ID 추출
+    const targetBookIds = new Set(reviews.filter((r) => r.user_name === user).map((r) => r.id));
+    const targetComments = comments.filter((c) => targetBookIds.has(c.book_id));
+    const newReadIds = Array.from(new Set([...readCommentIds, ...targetComments.map((c) => c.id)]));
+
+    setReadCommentIds(newReadIds);
+    try {
+      localStorage.setItem(`read_comments_${groupName}`, JSON.stringify(newReadIds));
+    } catch (e) {}
+  };
 
   // 방 주소 생성 제한
   const isAllowedGroup = isValidGroup(groupName);
@@ -202,6 +284,20 @@ function BookClubContent() {
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
+  // 🔔 유저별 새 댓글(안 읽은 알림) 개수 계산
+  const getUnreadCommentCount = (userName: string) => {
+    if (userName === "전체") return 0;
+    // 이 유저가 등록한 책들의 ID 목록
+    const userBookIds = new Set(reviews.filter((r) => r.user_name === userName).map((r) => r.id));
+    if (userBookIds.size === 0) return 0;
+
+    // 내 책에 달린 댓글 중, 내가 직접 쓴 게 아니고, 아직 읽음 처리되지 않은 댓글
+    const unread = comments.filter(
+      (c) => userBookIds.has(c.book_id) && c.user_name !== userName && !readCommentIds.includes(c.id)
+    );
+    return unread.length;
+  };
+
   const scoreMap: Record<string, number> = {
     "★★★★★": 5.0,
     "★★★★☆": 4.5,
@@ -259,6 +355,7 @@ function BookClubContent() {
       if (error) {
         alert("수정 실패: " + error.message);
       } else {
+        playRetroDing();
         alert("기록이 수정되었습니다!");
         setEditingId(null);
         resetForm();
@@ -273,6 +370,15 @@ function BookClubContent() {
       if (error) {
         alert("저장 실패: " + error.message);
       } else {
+        const userGoal = goals.find((g) => g.user_name === formData.user_name);
+        const currentCount = reviews.filter((r) => r.user_name === formData.user_name).length + 1;
+
+        if (userGoal && currentCount >= userGoal.target_count) {
+          playCelebrationSound();
+        } else {
+          playRetroDing();
+        }
+
         alert(`[${groupName}] 에 기록이 등록되었습니다!`);
         resetForm();
         setIsSpoiler(false);
@@ -303,6 +409,7 @@ function BookClubContent() {
     if (error) {
       alert("목표 저장 실패: " + error.message);
     } else {
+      playRetroDing();
       alert(`${goalForm.user_name}님의 목표가 설정되었습니다!`);
       setGoalForm({ user_name: "", target_count: "10", message: "" });
       fetchGoals();
@@ -328,6 +435,7 @@ function BookClubContent() {
     if (error) {
       alert("댓글 저장 실패: " + error.message);
     } else {
+      playRetroDing();
       setCommentForm({ user_name: commentForm.user_name, password: "", content: "" });
       fetchComments();
     }
@@ -665,21 +773,31 @@ function BookClubContent() {
               })}
             </div>
 
+            {/* 상단 유저 탭 & 정렬 옵션 */}
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
-              <div className="flex gap-1 overflow-x-auto">
-                {userList.map((user) => (
-                  <button
-                    key={user}
-                    onClick={() => setSelectedUser(user)}
-                    className={`px-2 py-0.5 text-[11px] whitespace-nowrap font-bold border ${
-                      selectedUser === user
-                        ? "bg-[#1f4e5b] text-white border-black"
-                        : "bg-[#d4d8dc] text-gray-800 border-white hover:bg-gray-300"
-                    }`}
-                  >
-                    {user}
-                  </button>
-                ))}
+              <div className="flex gap-1 overflow-x-auto items-center">
+                {userList.map((user) => {
+                  const unreadCount = getUnreadCommentCount(user);
+                  return (
+                    <button
+                      key={user}
+                      onClick={() => handleSelectUser(user)}
+                      className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold border transition-colors ${
+                        selectedUser === user
+                          ? "bg-[#1f4e5b] text-white border-black"
+                          : "bg-[#d4d8dc] text-gray-800 border-white hover:bg-gray-300"
+                      }`}
+                    >
+                      {user}
+                      {/* 🔔 새 댓글 숫자 뱃지 */}
+                      {unreadCount > 0 && (
+                        <span className="ml-1 inline-flex items-center justify-center bg-red-600 text-white text-[10px] font-extrabold px-1 min-w-[15px] h-[15px] rounded-full shadow border border-white leading-none animate-pulse">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex items-center gap-1 ml-auto">
@@ -961,7 +1079,6 @@ function BookClubContent() {
                   const barPercent = Math.min(100, actualPercent);
                   const avgRating = getAverageRating(g.user_name);
 
-                  // 1. 전체 목표 인원들의 읽은 권수 목록을 내림차순으로 정렬 (중복 제거)
                   const counts = Array.from(
                     new Set(
                       sortedGoals
@@ -970,7 +1087,6 @@ function BookClubContent() {
                     )
                   ).sort((a, b) => b - a);
 
-                  // 2. 권수 기준 1위, 2위, 3위 메달 부여
                   let medalBadge = null;
                   if (readCount > 0) {
                     if (readCount === counts[0]) medalBadge = "🥇";
