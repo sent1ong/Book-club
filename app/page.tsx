@@ -38,7 +38,7 @@ interface Comment {
   created_at: string;
 }
 
-// 🔒 모임방 허용 검사 (기본모임 허용 + nogmbdj26 이상, forgaedus26 이상 허용)
+// 🔒 모임방 허용 검사
 function isValidGroup(name: string | null) {
   if (!name) return false;
   if (name === "기본모임") return true;
@@ -49,7 +49,7 @@ function isValidGroup(name: string | null) {
   return num >= 26;
 }
 
-// 🔊 레트로 윈도우 띠링~ 효과음 (Web Audio API)
+// 🔊 레트로 윈도우 띠링~ 효과음
 const playRetroDing = () => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -69,21 +69,19 @@ const playRetroDing = () => {
       osc.stop(ctx.currentTime + start + dur);
     };
 
-    playTone(523.25, 0, 0.2); // C5
-    playTone(1046.5, 0.08, 0.4); // C6
-  } catch (e) {
-    // 오디오 미지원 브라우저 예외 무시
-  }
+    playTone(523.25, 0, 0.2);
+    playTone(1046.5, 0.08, 0.4);
+  } catch (e) {}
 };
 
-// 🎆 목표 달성 폭죽 축하 효과음
+// 🎆 축하 효과음
 const playCelebrationSound = () => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
     const ctx = new AudioContext();
 
-    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C - E - G - C - E 상승 팡파레
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -96,9 +94,7 @@ const playCelebrationSound = () => {
       osc.start(ctx.currentTime + idx * 0.08);
       osc.stop(ctx.currentTime + idx * 0.08 + 0.35);
     });
-  } catch (e) {
-    // 오디오 미지원 브라우저 예외 무시
-  }
+  } catch (e) {}
 };
 
 function BookClubContent() {
@@ -118,12 +114,19 @@ function BookClubContent() {
   const [showStats, setShowStats] = useState(false);
   const [revealedComments, setRevealedComments] = useState<{ [key: number]: boolean }>({});
   const [selectedGenre, setSelectedGenre] = useState("전체");
-  const [showDroppedOnly, setShowDroppedOnly] = useState(false); // 💔중도하차 전용 필터
-  const [sortBy, setSortBy] = useState("최신순");
+  const [showDroppedOnly, setShowDroppedOnly] = useState(false);
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
-  // 🔔 읽음 확인한 댓글 ID 목록 (localStorage 연동)
+  // 🖨️ 영수증 출력 모달 상태
+  const [receiptData, setReceiptData] = useState<{
+    type: "single" | "list";
+    user: string;
+    items?: BookReview[];
+    singleItem?: BookReview;
+  } | null>(null);
+
+  // 🔔 읽음 확인한 댓글 ID
   const [readCommentIds, setReadCommentIds] = useState<number[]>([]);
 
   useEffect(() => {
@@ -132,12 +135,9 @@ function BookClubContent() {
       if (saved) {
         setReadCommentIds(JSON.parse(saved));
       }
-    } catch (e) {
-      // 로컬 스토리지 비활성화 시 무시
-    }
+    } catch (e) {}
   }, [groupName]);
 
-  // 특정 유저 탭 클릭 시 해당 유저 책에 달린 댓글들을 '읽음' 처리
   const handleSelectUser = (user: string) => {
     setSelectedUser(user);
     if (user === "전체") return;
@@ -152,7 +152,6 @@ function BookClubContent() {
     } catch (e) {}
   };
 
-  // 방 주소 생성 제한
   const isAllowedGroup = isValidGroup(groupName);
 
   if (!isAllowedGroup) {
@@ -173,12 +172,10 @@ function BookClubContent() {
 
   const handleRandomRecommend = () => {
     const fiveStarBooks = reviews.filter((b) => (b.rating || "").includes("★★★★★"));
-
     if (fiveStarBooks.length === 0) {
       alert("아직 5점 만점 작품이 등록되지 않았어요!");
       return;
     }
-
     const randomIndex = Math.floor(Math.random() * fiveStarBooks.length);
     setRandomBook(fiveStarBooks[randomIndex]);
   };
@@ -284,7 +281,6 @@ function BookClubContent() {
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
-  // 🔔 유저별 새 댓글(안 읽은 알림) 개수 계산
   const getUnreadCommentCount = (userName: string) => {
     if (userName === "전체") return 0;
     const userBookIds = new Set(reviews.filter((r) => r.user_name === userName).map((r) => r.id));
@@ -567,6 +563,8 @@ function BookClubContent() {
     return rateB - rateA;
   });
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   return (
     <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
       <div className="w-full max-w-4xl mb-2 text-right">
@@ -776,7 +774,7 @@ function BookClubContent() {
                 );
               })}
 
-              {/* 💔중도하차 전용 모아보기 버튼 (오른쪽 정렬) */}
+              {/* 💔중도하차 전용 모아보기 버튼 */}
               <button
                 type="button"
                 onClick={() => setShowDroppedOnly(!showDroppedOnly)}
@@ -790,7 +788,7 @@ function BookClubContent() {
               </button>
             </div>
 
-            {/* 상단 유저 탭 & 정렬 옵션 */}
+            {/* 상단 유저 탭 & 정렬 옵션 & 🧾목록 영수증 버튼 */}
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
               <div className="flex gap-1 overflow-x-auto items-center">
                 {userList.map((user) => {
@@ -806,7 +804,6 @@ function BookClubContent() {
                       }`}
                     >
                       {user}
-                      {/* 🔔 새 댓글 숫자 뱃지 */}
                       {unreadCount > 0 && (
                         <span className="ml-1 inline-flex items-center justify-center bg-red-600 text-white text-[10px] font-extrabold px-1 min-w-[15px] h-[15px] rounded-full shadow border border-white leading-none animate-pulse">
                           {unreadCount}
@@ -815,6 +812,24 @@ function BookClubContent() {
                     </button>
                   );
                 })}
+
+                {/* 🧾 특정 유저 완독 영수증 버튼 */}
+                {selectedUser !== "전체" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const userItems = reviews.filter((r) => r.user_name === selectedUser);
+                      setReceiptData({
+                        type: "list",
+                        user: selectedUser,
+                        items: userItems,
+                      });
+                    }}
+                    className="ml-1 px-2 py-0.5 text-[10px] font-bold bg-white text-gray-900 border border-gray-400 rounded hover:bg-gray-100 shadow-sm whitespace-nowrap active:scale-95"
+                  >
+                    🧾 {selectedUser} 영수증
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-1 ml-auto">
@@ -904,7 +919,22 @@ function BookClubContent() {
                         >
                           💬 댓글 <span className="text-[#1f4e5b] underline">({bookComments.length})</span>
                         </button>
-                        <div className="flex gap-2">
+                        <div className="flex items-center gap-2">
+                          {/* 🖨️ 단일 작품 영수증 출력 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReceiptData({
+                                type: "single",
+                                user: book.user_name,
+                                singleItem: book,
+                              })
+                            }
+                            className="text-gray-700 hover:text-black hover:underline font-bold"
+                          >
+                            🖨️ 영수증
+                          </button>
+                          <span className="text-gray-300">|</span>
                           <button
                             onClick={() => handleEdit(book)}
                             className="text-blue-600 hover:underline font-bold"
@@ -1094,7 +1124,7 @@ function BookClubContent() {
                   const readCount = getReadCount(g.user_name);
                   const actualPercent = Math.round((readCount / g.target_count) * 100);
                   const barPercent = Math.min(100, actualPercent);
-                  const avgRating = getAverageRating(g.user_name);
+                  const userAvg = getAverageRating(g.user_name);
 
                   const counts = Array.from(
                     new Set(
@@ -1126,9 +1156,9 @@ function BookClubContent() {
                               🏆 달성
                             </span>
                           )}
-                          {avgRating && (
+                          {userAvg && (
                             <span className="text-xs text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
-                              ★ {avgRating}
+                              ★ {userAvg}
                             </span>
                           )}
                         </div>
@@ -1286,6 +1316,143 @@ function BookClubContent() {
           </div>
         )}
       </div>
+
+      {/* 🖨️ 영수증 출력 팝업 모달 */}
+      {receiptData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setReceiptData(null)}
+        >
+          <div
+            className="w-full max-w-[340px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 닫기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setReceiptData(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-black font-bold text-sm select-none"
+            >
+              ✕
+            </button>
+
+            {/* 영수증 상단 헤더 */}
+            <div className="text-center pb-2 border-b-2 border-dashed border-gray-400">
+              <div className="text-base font-extrabold tracking-widest">RECEIPT_PRINT.exe</div>
+              <div className="text-[10px] text-gray-500 mt-0.5">================================</div>
+              <div className="flex justify-between text-[11px] text-gray-600 mt-1">
+                <span>발급일자: {todayStr}</span>
+                <span>모임: {groupName}</span>
+              </div>
+              <div className="text-left text-[11px] font-bold mt-0.5">
+                고객명: {receiptData.user} 님
+              </div>
+            </div>
+
+            {/* 단일 작품 모드 */}
+            {receiptData.type === "single" && receiptData.singleItem && (
+              <div className="py-3 space-y-2 text-xs">
+                <div className="font-bold border-b border-gray-300 pb-1 text-gray-700">[작품 정보]</div>
+                <div className="space-y-1">
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">제  목:</span>
+                    <span className="font-bold break-all">{receiptData.singleItem.title}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">작  가:</span>
+                    <span>{receiptData.singleItem.author || "미상"}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">장  르:</span>
+                    <span>{receiptData.singleItem.genre}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">평  점:</span>
+                    <span className="font-bold text-gray-900">{receiptData.singleItem.rating}</span>
+                  </div>
+                </div>
+
+                <div className="font-bold border-b border-gray-300 pb-1 text-gray-700 pt-2">[감상평]</div>
+                <div className="bg-gray-50 p-2.5 rounded border border-dashed border-gray-300 text-gray-800 leading-relaxed italic text-[11px] break-words">
+                  "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "등록된 한줄평이 없습니다."}"
+                </div>
+
+                <div className="pt-2 flex justify-between border-t border-dashed border-gray-300 text-[11px] font-bold">
+                  <span>상  태:</span>
+                  <span>{receiptData.singleItem.rating === "중도하차" ? "💔 중도하차" : "감상 완료"}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 목록 정산 모드 */}
+            {receiptData.type === "list" && receiptData.items && (
+              <div className="py-3 text-xs">
+                <div className="flex justify-between font-bold border-b border-gray-400 pb-1 text-gray-700 mb-1.5 text-[11px]">
+                  <span>[품목 / 장르]</span>
+                  <span>[평점]</span>
+                </div>
+
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {receiptData.items.length === 0 ? (
+                    <div className="text-center text-gray-400 py-3">등록된 작품이 없습니다.</div>
+                  ) : (
+                    receiptData.items.map((item, idx) => (
+                      <div key={item.id} className="flex justify-between items-baseline text-[11px] border-b border-gray-100 pb-0.5">
+                        <span className="truncate pr-2">
+                          {idx + 1}. {item.title} <span className="text-[10px] text-gray-500">({item.genre})</span>
+                        </span>
+                        <span className="font-bold shrink-0">{item.rating}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* 정산 통계 */}
+                {(() => {
+                  const total = receiptData.items.length;
+                  const dropped = receiptData.items.filter((i) => i.rating === "중도하차").length;
+                  const completed = total - dropped;
+                  const userAvg = getAverageRating(receiptData.user) || "0.0";
+
+                  return (
+                    <div className="mt-3 pt-2 border-t-2 border-dashed border-gray-400 space-y-1 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">총 정산 작품수:</span>
+                        <span className="font-bold">{total} 편</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">감상 완료:</span>
+                        <span className="font-bold">{completed} 편</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">중도하차:</span>
+                        <span className="font-bold text-red-600">{dropped} 편</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-gray-200 font-bold text-xs">
+                        <span>평균 평점:</span>
+                        <span>★ {userAvg}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* 영수증 하단: 바코드 및 슬로건 */}
+            <div className="text-center pt-3 border-t-2 border-dashed border-gray-400">
+              <div className="text-2xl tracking-[4px] font-serif select-none text-gray-800">
+                ||| | |||| ||| ||||||| | |||| |
+              </div>
+              <div className="text-xs font-black tracking-tighter mt-1 text-black">
+                *** 구매비덕질을 타파하자! ***
+              </div>
+              <div className="text-[9px] text-gray-400 mt-2 select-none">
+                화면을 캡처하여 단톡방에 공유해보세요!
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showStats && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
