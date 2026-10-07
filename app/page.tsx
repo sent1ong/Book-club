@@ -947,15 +947,15 @@ function BookClubContent() {
                               : "📖 "}
                             {book.title}
                           </span>
-                          {/* 목록 카드 뱃지 표시 */}
+                          {/* 목록 카드 뱃지 표시 (글씨 크기 확대 및 여백 개선) */}
                           {book.is_favorite && (
-                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] px-1 py-0.2 rounded">
-                              👑인생작
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1.5 py-0.5 rounded shadow-sm">
+                              👑 인생작
                             </span>
                           )}
                           {book.is_revisit && (
-                            <span className="bg-sky-100 text-sky-900 border border-sky-300 font-extrabold text-[10px] px-1 py-0.2 rounded">
-                              🔁재주행
+                            <span className="bg-sky-100 text-sky-900 border border-sky-300 font-bold text-xs px-1.5 py-0.5 rounded shadow-sm">
+                              🔁 재주행
                             </span>
                           )}
                         </div>
