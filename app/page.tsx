@@ -57,6 +57,24 @@ function BookClubContent() {
   const [selectedGenre, setSelectedGenre] = useState("전체");
   const [sortBy, setSortBy] = useState("최신순"); // "최신순", "별점높은순", "별점낮은순"
   const [reactions, setReactions] = useState({} as { [bookId: number]: { [emoji: string]: number } });
+
+  const isAllowedGroup = isValidGroup(groupName);
+
+  if (!isAllowedGroup) {
+    return React.createElement(
+      "div",
+      { className: "min-h-screen flex items-center justify-center bg-gray-100 p-4" },
+      React.createElement(
+        "div",
+        { className: "bg-white p-6 rounded-lg shadow-md max-w-sm w-full text-center border border-gray-200" },
+        React.createElement("div", { className: "text-3xl mb-2" }, "🔒"),
+        React.createElement("h2", { className: "text-base font-bold text-gray-800 mb-1" }, "접근이 제한된 모임방입니다"),
+        React.createElement("p", { className: "text-xs text-gray-500 leading-relaxed mb-4" }, 
+          "존재하지 않거나 비공개된 방입니다.\n올바른 주소로 접속해 주세요."
+        )
+      )
+    );
+  }
   
 
   // 열려있는 댓글창 관리 (bookId 단위)
@@ -1139,6 +1157,14 @@ className: "px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border
     </main>
   );
 }
+
+const isValidGroup = (name: string | null) => {
+  if (!name) return false;
+  const match = name.match(/^(nogmbdj|forgaedus)(\d+)$/);
+  if (!match) return false;
+  const num = parseInt(match[2], 10);
+  return num >= 26;
+};
 
 export default function Home() {
   return (
