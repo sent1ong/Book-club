@@ -1114,7 +1114,8 @@ const [commentForm, setCommentForm] = useState<{
               `${randomBook.author || "작자 미상"} · ${randomBook.genre || "장르 미분류"}`
             ),
             React.createElement("p", { className: "text-[11px] text-gray-400 mt-0.5 shrink-0" }, 
-              `작성자: ${randomBook.user || "익명"}`
+              `작성자: ${(randomBook as any).user || (randomBook as any).userName || (randomBook as any).username || (randomBook as any).name || "익명"}`
+            ),
             ),
             React.createElement("div", { className: "text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0" }, "★★★★★"),
             randomBook.review && React.createElement(
