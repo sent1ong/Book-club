@@ -974,7 +974,9 @@ const [commentForm, setCommentForm] = useState<{
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
                   등록된 목표가 없습니다. 위에서 목표를 먼저 세워보세요!
                 </div>
+      
               ) : (
+      
                 sortedGoals.map((g) => {
                   const readCount = getReadCount(g.user_name);
                   const actualPercent = Math.round((readCount / g.target_count) * 100);
@@ -1020,7 +1022,7 @@ const [commentForm, setCommentForm] = useState<{
               )}
             </div>
           </div>
-
+            
           {/* 전체 댓글 창 (스크롤 박스 적용) */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
