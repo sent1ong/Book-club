@@ -1434,7 +1434,7 @@ function BookClubContent() {
                 고객명: {receiptData.user} 님
               </div>
             </div>
-
+            
             {/* 단일 작품 모드 */}
             {receiptData.type === "single" && receiptData.singleItem && (
               <div className="py-3 space-y-2 text-xs">
@@ -1442,10 +1442,9 @@ function BookClubContent() {
                 <div className="space-y-1">
                   <div className="flex">
                     <span className="w-14 text-gray-500 shrink-0">제  목:</span>
+                    {/* 제목 옆 이모지 제거 */}
                     <span className="font-bold break-keep">
                       {receiptData.singleItem.title}
-                      {receiptData.singleItem.is_favorite ? " 👑" : ""}
-                      {receiptData.singleItem.is_revisit ? " 🔁" : ""}
                     </span>
                   </div>
                   <div className="flex">
@@ -1469,6 +1468,7 @@ function BookClubContent() {
 
                 <div className="pt-2 flex justify-between border-t border-dashed border-gray-300 text-xs font-bold">
                   <span>상  태:</span>
+                  {/* 이모지 없이 텍스트로만 출력 */}
                   <span>
                     {receiptData.singleItem.rating === "중도하차"
                       ? "💔 중도하차"
@@ -1476,16 +1476,16 @@ function BookClubContent() {
                           receiptData.singleItem.is_favorite && receiptData.singleItem.is_revisit
                             ? " (인생작/재주행)"
                             : receiptData.singleItem.is_favorite
-                            ? " (인생작👑)"
+                            ? " (인생작)"
                             : receiptData.singleItem.is_revisit
-                            ? " (재주행🔁)"
+                            ? " (재주행)"
                             : ""
                         }`}
                   </span>
                 </div>
               </div>
             )}
-
+            
             {/* 목록 정산 모드 */}
             {receiptData.type === "list" && receiptData.items && (
               <div className="py-3 text-xs">
