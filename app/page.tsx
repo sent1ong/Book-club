@@ -1,4 +1,4 @@
-                  "use client";
+"use client";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -38,6 +38,17 @@ interface Comment {
   created_at: string;
 }
 
+// 🔒 모임방 허용 검사 (기본모임 허용 + nogmbdj26 이상, forgaedus26 이상 허용)
+function isValidGroup(name: string | null) {
+  if (!name) return false;
+  if (name === "기본모임") return true;
+
+  const match = name.match(/^(nogmbdj|forgaedus)(\d+)$/);
+  if (!match) return false;
+  const num = parseInt(match[2], 10);
+  return num >= 26;
+}
+
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
@@ -51,16 +62,16 @@ function BookClubContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
-  const [revealedSpoilers, setRevealedSpoilers] = useState([]);
+  const [revealedSpoilers, setRevealedSpoilers] = useState<number[]>([]);
   const [showStats, setShowStats] = useState(false);
-  const [revealedComments, setRevealedComments] = useState({} as { [key: number]: boolean });
+  const [revealedComments, setRevealedComments] = useState<{ [key: number]: boolean }>({});
   const [selectedGenre, setSelectedGenre] = useState("전체");
-  const [sortBy, setSortBy] = useState("최신순"); // "최신순", "별점높은순", "별점낮은순"
-  const [reactions, setReactions] = useState({} as { [bookId: number]: { [emoji: string]: number } });
+  const [sortBy, setSortBy] = useState("최신순");
+  const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
   // 방 주소 생성 제한
-const isAllowedGroup = isValidGroup(groupName);
+  const isAllowedGroup = isValidGroup(groupName);
 
   if (!isAllowedGroup) {
     return (
@@ -78,31 +89,27 @@ const isAllowedGroup = isValidGroup(groupName);
     );
   }
 
-const handleRandomRecommend = () => {
-  // 별점 5점 만점 작품만 필터링
-  const fiveStarBooks = reviews.filter((b) => (b.rating || "").includes("★★★★★"));
+  const handleRandomRecommend = () => {
+    const fiveStarBooks = reviews.filter((b) => (b.rating || "").includes("★★★★★"));
 
-  if (fiveStarBooks.length === 0) {
-    alert("아직 5점 만점 작품이 등록되지 않았어요!");
-    return;
-  }
+    if (fiveStarBooks.length === 0) {
+      alert("아직 5점 만점 작품이 등록되지 않았어요!");
+      return;
+    }
 
-  const randomIndex = Math.floor(Math.random() * fiveStarBooks.length);
-  setRandomBook(fiveStarBooks[randomIndex]);
-};
-  
+    const randomIndex = Math.floor(Math.random() * fiveStarBooks.length);
+    setRandomBook(fiveStarBooks[randomIndex]);
+  };
 
-  // 열려있는 댓글창 관리 (bookId 단위)
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
 
-  // 댓글 등록 폼
-const [commentForm, setCommentForm] = useState<{ 
-        user_name: string; 
-        password: string; 
-        content: string; 
-        is_spoiler?: boolean }>({ user_name: "", password: "", content: "", is_spoiler: false });
+  const [commentForm, setCommentForm] = useState<{
+    user_name: string;
+    password: string;
+    content: string;
+    is_spoiler?: boolean;
+  }>({ user_name: "", password: "", content: "", is_spoiler: false });
 
-  // 독서 기록 입력 폼
   const [formData, setFormData] = useState({
     user_name: "",
     title: "",
@@ -112,20 +119,20 @@ const [commentForm, setCommentForm] = useState<{
     rating: "★★★★★",
   });
 
-    // 댓글 이모
-    const handleReactionClick = (bookId: number, emoji: string) => {
-      setReactions((prev) => {
-        const currentBookReactions = prev[bookId] || {};
-        const currentCount = currentBookReactions[emoji] || 0;
-        return Object.assign({}, prev, {
-          [bookId]: Object.assign({}, currentBookReactions, {
-            [emoji]: currentCount + 1,
-          }),
-        });
-      });
-    };
-  
-  // 목표 설정 입력 폼
+  const handleReactionClick = (bookId: number, emoji: string) => {
+    setReactions((prev) => {
+      const currentBookReactions = prev[bookId] || {};
+      const currentCount = currentBookReactions[emoji] || 0;
+      return {
+        ...prev,
+        [bookId]: {
+          ...currentBookReactions,
+          [emoji]: currentCount + 1,
+        },
+      };
+    });
+  };
+
   const [goalForm, setGoalForm] = useState({
     user_name: "",
     target_count: "10",
@@ -175,7 +182,7 @@ const [commentForm, setCommentForm] = useState<{
     }
   }, [groupName]);
 
-        const totalBooks = reviews.length;
+  const totalBooks = reviews.length;
   const avgRating = totalBooks > 0
     ? (reviews.reduce((acc, cur) => {
         const stars = (cur.rating || "").match(/★/g);
@@ -190,12 +197,11 @@ const [commentForm, setCommentForm] = useState<{
   }, {});
 
   const topRatedBooks = reviews
-  .filter(b => (b.rating || "").includes("★★★★★"))
-  .sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
+    .filter(b => (b.rating || "").includes("★★★★★"))
+    .sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
-  // 0.5점 단위 별점 점수 매핑
   const scoreMap: Record<string, number> = {
     "★★★★★": 5.0,
     "★★★★☆": 4.5,
@@ -210,16 +216,16 @@ const [commentForm, setCommentForm] = useState<{
     "중도하차": 0,
   };
 
-    const filteredReviews = reviews.filter((r) => {
+  const filteredReviews = reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
     const matchesGenre = selectedGenre === "전체" || r.genre === selectedGenre;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
-    !searchQuery ||
-    r.title?.toLowerCase().includes(q) ||
-    r.author?.toLowerCase().includes(q);
+      !searchQuery ||
+      r.title?.toLowerCase().includes(q) ||
+      r.author?.toLowerCase().includes(q);
     return matchesUser && matchesGenre && matchesSearch;
-    });
+  });
 
   const displayedReviews = [...filteredReviews].sort((a, b) => {
     if (sortOrder === "최신순") return b.id - a.id;
@@ -259,10 +265,10 @@ const [commentForm, setCommentForm] = useState<{
         fetchReviews();
       }
     } else {
-    const finalReview = isSpoiler ? "(스포일러) " + (formData.review || "") : formData.review;
-    const { error } = await supabase.from("books").insert([
-    { ...formData, review: finalReview, group_name: groupName },
-    ]);
+      const finalReview = isSpoiler ? "(스포일러) " + (formData.review || "") : formData.review;
+      const { error } = await supabase.from("books").insert([
+        { ...formData, review: finalReview, group_name: groupName },
+      ]);
 
       if (error) {
         alert("저장 실패: " + error.message);
@@ -462,10 +468,8 @@ const [commentForm, setCommentForm] = useState<{
       </div>
 
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-        
         {/* 왼쪽 영역: 독서 기록창 & 서재 목록 창 */}
         <div className="space-y-4">
-          
           {/* 독서 기록 입력 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
@@ -565,15 +569,15 @@ const [commentForm, setCommentForm] = useState<{
                   className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none resize-none"
                   placeholder="감상이나 리뷰를 적어주세요"
                 />
-                  <label className="flex items-center gap-1.5 mt-1 cursor-pointer text-[11px] text-gray-700 select-none">
-                    <input
+                <label className="flex items-center gap-1.5 mt-1 cursor-pointer text-[11px] text-gray-700 select-none">
+                  <input
                     type="checkbox"
                     checked={isSpoiler}
                     onChange={(e) => setIsSpoiler(e.target.checked)}
                     className="accent-amber-600"
-                      />
-                <span> ⚠️ 스포일러 포함 </span>
-            </label>
+                  />
+                  <span> ⚠️ 스포일러 포함 </span>
+                </label>
               </div>
 
               <div className="flex gap-1 pt-1">
@@ -599,84 +603,68 @@ const [commentForm, setCommentForm] = useState<{
 
           {/* 서재 목록 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-                  {React.createElement(
-              "div",
-              {
-                className: "bg-[#1f4e5b] text-white px-2 py-1 text-xs font-bold flex justify-between items-center"
-              },
-              React.createElement("span", null, "📚 서재 목록 (" + displayedReviews.length + "권)"),
-              React.createElement(
-                "div",
-                { className: "flex items-center gap-2" },
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    onClick: function() { setShowStats(true); },
-                    className: "bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black text-[10px] font-bold active:border-t-black active:border-l-black"
-                  },
-                  "📊 STATS.exe"
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    onClick: function() {
-                      fetchReviews();
-                      fetchComments();
-                    },
-                    className: "text-xs underline"
-                  },
-                  "새로고침"
-                )
-              )
-            )}
+            <div className="bg-[#1f4e5b] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
+              <span>📚 서재 목록 ({displayedReviews.length}권)</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowStats(true)}
+                  className="bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black text-[10px] font-bold active:border-t-black active:border-l-black"
+                >
+                  📊 STATS.exe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchReviews();
+                    fetchComments();
+                  }}
+                  className="text-xs underline"
+                >
+                  새로고침
+                </button>
+              </div>
+            </div>
 
-        <div className="mb-2">
-            <input
-            type="text"
-            placeholder="🔍 제목 또는 작가 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
-            />
-        </div>
-            
-      {/* 2단계: 추천 버튼 */}
-      <button
-        type="button"
-        onClick={handleRandomRecommend}
-        className="w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
-      >
-        <span>🎲</span>
-        <span>오늘 뭐 보지?</span>
-      </button>
+            <div className="mb-2">
+              <input
+                type="text"
+                placeholder="🔍 제목 또는 작가 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
+              />
+            </div>
 
-            {
-      React.createElement(
-        "div",
-        { className: "flex flex-wrap gap-1.5 mb-3" },
-        ["전체", "소설", "만화", "웹툰", "오디오드라마"].map(function(genre) {
-          const isSelected = selectedGenre === genre;
-          return React.createElement(
-            "button",
-            {
-              key: genre,
-              type: "button",
-              onClick: function() { setSelectedGenre(genre); },
-              className: "px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 " +
-                (isSelected
-                  ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100")
-            },
-            genre
-          );
-        })
-      )
-    }
-            
-              
-            {/* 상단 컨트롤러: 닉네임 탭 & 정렬 옵션 */}
+            <button
+              type="button"
+              onClick={handleRandomRecommend}
+              className="w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
+            >
+              <span>🎲</span>
+              <span>오늘 뭐 보지?</span>
+            </button>
+
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
+                const isSelected = selectedGenre === genre;
+                return (
+                  <button
+                    key={genre}
+                    type="button"
+                    onClick={() => setSelectedGenre(genre)}
+                    className={`px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 ${
+                      isSelected
+                        ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
               <div className="flex gap-1 overflow-x-auto">
                 {userList.map((user) => (
@@ -708,7 +696,6 @@ const [commentForm, setCommentForm] = useState<{
               </div>
             </div>
 
-            {/* 책 목록 리스트 */}
             <div className="mt-2 space-y-2 max-h-96 overflow-y-auto pr-0.5">
               {displayedReviews.length === 0 ? (
                 <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
@@ -720,62 +707,60 @@ const [commentForm, setCommentForm] = useState<{
                   const isOpen = openCommentBookId === book.id;
 
                   return (
-                    <div key={book.id} id={'review-' + book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
+                    <div key={book.id} id={"review-" + book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
                       <div className="flex justify-between items-start gap-1 mb-1">
                         <span className="font-bold text-[#1f4e5b] text-sm">
                           {book.genre === "웹툰"
-                          ? "📱 "
-                           : book.genre === "만화"
-                          ? "💭 "
-                          : book.genre === "오디오드라마"
-                          ? "🎧 "
-                          : "📖 "}
-                          {book.title}</span>
+                            ? "📱 "
+                            : book.genre === "만화"
+                            ? "💭 "
+                            : book.genre === "오디오드라마"
+                            ? "🎧 "
+                            : "📖 "}
+                          {book.title}
+                        </span>
                         <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">{book.rating}</span>
                       </div>
-                      
+
                       <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
                         {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                       </div>
 
-                {book.review && (
-                  book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
-                    React.createElement("div", {
-                      onClick: () => setRevealedSpoilers([...revealedSpoilers, book.id]),
-                      className: "bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
-                    }, [
-                      React.createElement("span", { key: "text" }, "⚠️ 스포일러가 포함된 감상평입니다."),
-                      React.createElement("span", { key: "btn", className: "text-xs underline font-bold text-amber-900 ml-2 shrink-0" }, "클릭하여 보기")
-                    ])
-                  ) : (
-                    React.createElement("p", {
-                      className: "text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal"
-                    }, book.review.replace("(스포일러)", ""))
-                  )
-                )}
-    {
-      React.createElement(
-        "div",
-        { className: "flex flex-wrap items-center gap-1.5 my-2 pt-2 border-t border-dashed border-gray-200" },
-        ["❤️", "📌", "😭", "😡", "👏"].map(function(emoji) {
-          const count = (reactions[book.id] && reactions[book.id][emoji]) || 0;
-          return React.createElement(
-            "button",
-            {
-              key: emoji,
-              type: "button",
-              onClick: function(e) {
-                e.stopPropagation();
-                handleReactionClick(book.id, emoji);
-              },
-              className: "inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-300 rounded-full transition-colors select-none active:scale-95"
-            },
-            React.createElement("span", null, emoji),
-            count > 0 ? React.createElement("span", { className: "text-[11px] font-bold text-gray-700" }, count) : null
-          );
-        })
-      )
-    }
+                      {book.review && (
+                        book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
+                          <div
+                            onClick={() => setRevealedSpoilers([...revealedSpoilers, book.id])}
+                            className="bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
+                          >
+                            <span>⚠️ 스포일러가 포함된 감상평입니다.</span>
+                            <span className="text-xs underline font-bold text-amber-900 ml-2 shrink-0">클릭하여 보기</span>
+                          </div>
+                        ) : (
+                          <p className="text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal">
+                            {book.review.replace("(스포일러)", "")}
+                          </p>
+                        )
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-1.5 my-2 pt-2 border-t border-dashed border-gray-200">
+                        {["❤️", "📌", "😭", "😡", "👏"].map((emoji) => {
+                          const count = (reactions[book.id] && reactions[book.id][emoji]) || 0;
+                          return (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReactionClick(book.id, emoji);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-300 rounded-full transition-colors select-none active:scale-95"
+                            >
+                              <span>{emoji}</span>
+                              {count > 0 && <span className="text-[11px] font-bold text-gray-700">{count}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
 
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-100 text-[11px]">
                         <button
@@ -826,28 +811,28 @@ const [commentForm, setCommentForm] = useState<{
                                       </button>
                                     </div>
                                   </div>
-                                        {(() => {
-                        const isSp = c.content.startsWith("(스포일러)");
-                        const isOpened = revealedComments[c.id];
+                                  {(() => {
+                                    const isSp = c.content.startsWith("(스포일러)");
+                                    const isOpened = revealedComments[c.id];
 
-                        if (isSp && !isOpened) {
-                        return React.createElement(
-                        "div",
-                        {
-                        onClick: () => setRevealedComments({ ...revealedComments, [c.id]: true }),
-                        className: "bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
-                        },
-                        React.createElement("span", null, "⚠️ 스포일러가 포함된 댓글입니다."),
-                        React.createElement("span", { className: "underline text-[10px] font-bold" }, "내용 보기")
-                        );
-                        }
+                                    if (isSp && !isOpened) {
+                                      return (
+                                        <div
+                                          onClick={() => setRevealedComments({ ...revealedComments, [c.id]: true })}
+                                          className="bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
+                                        >
+                                          <span>⚠️ 스포일러가 포함된 댓글입니다.</span>
+                                          <span className="underline text-[10px] font-bold">내용 보기</span>
+                                        </div>
+                                      );
+                                    }
 
-                        return React.createElement(
-                        "div",
-                        { className: "text-gray-800 break-all text-xs leading-relaxed" },
-                        isSp ? c.content.replace("(스포일러)", "").trim() : c.content
-                        );
-                        })()}
+                                    return (
+                                      <div className="text-gray-800 break-all text-xs leading-relaxed">
+                                        {isSp ? c.content.replace("(스포일러)", "").trim() : c.content}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               ))
                             )}
@@ -873,18 +858,14 @@ const [commentForm, setCommentForm] = useState<{
                                 className="p-1 text-xs bg-white border border-gray-400 outline-none"
                               />
                             </div>
-                                  {React.createElement(
-                                "label",
-                                { className: "flex items-center gap-1 mb-1 text-xs text-gray-700 select-none cursor-pointer" },
-                                React.createElement("input", {
-                                type: "checkbox",
-                                checked: commentForm.is_spoiler || false,
-                                onChange: function(e) {
-                                setCommentForm({ ...commentForm, is_spoiler: e.target.checked });
-                                }
-                                }),
-                                React.createElement("span", null, "⚠️ 스포일러 포함")
-                                )}
+                            <label className="flex items-center gap-1 mb-1 text-xs text-gray-700 select-none cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={commentForm.is_spoiler || false}
+                                onChange={(e) => setCommentForm({ ...commentForm, is_spoiler: e.target.checked })}
+                              />
+                              <span>⚠️ 스포일러 포함</span>
+                            </label>
                             <div className="flex gap-1">
                               <input
                                 type="text"
@@ -914,7 +895,6 @@ const [commentForm, setCommentForm] = useState<{
 
         {/* 오른쪽 영역: 목표 현황판 & 전체 댓글 창 */}
         <div className="space-y-4">
-          
           {/* 목표 현황판 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
@@ -969,7 +949,7 @@ const [commentForm, setCommentForm] = useState<{
               </button>
             </form>
 
-           <div className="space-y-2">
+            <div className="space-y-2">
               {sortedGoals.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
                   등록된 목표가 없습니다. 위에서 목표를 먼저 세워보세요!
@@ -981,7 +961,7 @@ const [commentForm, setCommentForm] = useState<{
                   const barPercent = Math.min(100, actualPercent);
                   const avgRating = getAverageRating(g.user_name);
 
-                  // 1. 전체 목표 인원들의 읽은 권수 목록을 내림차순(높은 순)으로 정렬 (중복 제거)
+                  // 1. 전체 목표 인원들의 읽은 권수 목록을 내림차순으로 정렬 (중복 제거)
                   const counts = Array.from(
                     new Set(
                       sortedGoals
@@ -1041,235 +1021,207 @@ const [commentForm, setCommentForm] = useState<{
                 })
               )}
             </div>
-            
-          {/* 전체 댓글 창 (스크롤 박스 적용) */}
-          <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-            <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-              <span>💬 COMMENTS.exe</span>
-              <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
-            </div>
 
-            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-0.5">
-              {comments.length === 0 ? (
-                <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
-                  아직 작성된 댓글이 없습니다.
-                </div>
-              ) : (
-                [...comments].reverse().map((c) => {
-                  const targetBook = reviews.find((r) => r.id === c.book_id);
-                  return (
-                    <div key={c.id} onClick={() => { const el = document.getElementById('review-' + c.book_id); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } setOpenCommentBookId(c.book_id); }} className="bg-white p-2 border border-gray-400 text-xs cursor-pointer hover:bg-yellow-50 transition-colors">
-                      <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
-                        <span className="font-bold text-gray-800">{c.user_name}</span>
-                        <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
-                          {targetBook?.genre === "웹툰"
-                          ? "📱 "
-                          : targetBook?.genre === "만화"
-                          ? "💭 "
-                          : targetBook?.genre === "오디오드라마"
-                          ? "🎧 "
-                          : "📖 "}
-{targetBook ? targetBook.title : "삭제된 책"}
-                        </span>
-                      </div>
-                            {(() => {
-                        const isSp = c.content.startsWith("(스포일러)") || c.content.startsWith("[스포일러]");
-                        const isOpened = revealedComments[c.id];
+            {/* 전체 댓글 창 */}
+            <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl mt-4">
+              <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
+                <span>💬 COMMENTS.exe</span>
+                <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
+              </div>
 
-                        if (isSp && !isOpened) {
-                        return React.createElement(
-                        "div",
-                        {
-                        onClick: function(e) {
-                        e.stopPropagation();
-                        setRevealedComments(Object.assign({}, revealedComments, { [c.id]: true }));
-                        },
-                        className: "bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
-                        },
-                        React.createElement("span", null, "⚠️ 스포일러가 포함된 댓글입니다."),
-                        React.createElement("span", { className: "underline text-[10px] font-bold" }, "내용 보기")
-                        );
-                        }
+              <div className="space-y-1.5 max-h-96 overflow-y-auto pr-0.5">
+                {comments.length === 0 ? (
+                  <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
+                    아직 작성된 댓글이 없습니다.
+                  </div>
+                ) : (
+                  [...comments].reverse().map((c) => {
+                    const targetBook = reviews.find((r) => r.id === c.book_id);
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          const el = document.getElementById("review-" + c.book_id);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }
+                          setOpenCommentBookId(c.book_id);
+                        }}
+                        className="bg-white p-2 border border-gray-400 text-xs cursor-pointer hover:bg-yellow-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
+                          <span className="font-bold text-gray-800">{c.user_name}</span>
+                          <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
+                            {targetBook?.genre === "웹툰"
+                              ? "📱 "
+                              : targetBook?.genre === "만화"
+                              ? "💭 "
+                              : targetBook?.genre === "오디오드라마"
+                              ? "🎧 "
+                              : "📖 "}
+                            {targetBook ? targetBook.title : "삭제된 책"}
+                          </span>
+                        </div>
+                        {(() => {
+                          const isSp = c.content.startsWith("(스포일러)") || c.content.startsWith("[스포일러]");
+                          const isOpened = revealedComments[c.id];
 
-                        const cleanText = c.content.replace("(스포일러)", "").replace("[스포일러]", "").trim();
+                          if (isSp && !isOpened) {
+                            return (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRevealedComments({ ...revealedComments, [c.id]: true });
+                                }}
+                                className="bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
+                              >
+                                <span>⚠️ 스포일러가 포함된 댓글입니다.</span>
+                                <span className="underline text-[10px] font-bold">내용 보기</span>
+                              </div>
+                            );
+                          }
 
-                        return React.createElement(
-                        "p",
-                        { className: "text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all" },
-                        cleanText
-                        );
+                          const cleanText = c.content.replace("(스포일러)", "").replace("[스포일러]", "").trim();
+
+                          return (
+                            <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
+                              {cleanText}
+                            </p>
+                          );
                         })()}
-                    </div>
-                  );
-                })
-              )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-
         </div>
 
-      {/* 3단계: 추천 모달 */}
-      {randomBook && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-          onClick={() => setRandomBook(null)}
-        >
+        {/* 3단계: 추천 모달 */}
+        {randomBook && (
           <div
-            className="bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => setRandomBook(null)}
           >
-            <div className="text-3xl mb-1 shrink-0">✨</div>
-            <div className="shrink-0">
-              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-block">
-                ⭐ 5점 만점 명작 추천
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-gray-900 mt-2.5 break-keep shrink-0">
-              {randomBook.title}
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5 shrink-0">
-              {randomBook.author || "작자 미상"} · {randomBook.genre || "장르 미분류"}
-            </p>
-            <p className="text-[11px] text-gray-400 mt-0.5 shrink-0">
-              작성자: {(randomBook as any).user_name || (randomBook as any).user || (randomBook as any).userName || "익명"}
-            </p>
-            <div className="text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0">
-              ★★★★★
-            </div>
-
-            {randomBook.review && (
-              <div className="text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 text-left leading-relaxed my-2 overflow-y-auto max-h-48 break-words">
-                "{randomBook.review.replace("(스포일러)", "")}"
+            <div
+              className="bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-3xl mb-1 shrink-0">✨</div>
+              <div className="shrink-0">
+                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-block">
+                  ⭐ 5점 만점 명작 추천
+                </span>
               </div>
-            )}
+              <h3 className="text-base font-bold text-gray-900 mt-2.5 break-keep shrink-0">
+                {randomBook.title}
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5 shrink-0">
+                {randomBook.author || "작자 미상"} · {randomBook.genre || "장르 미분류"}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5 shrink-0">
+                작성자: {(randomBook as any).user_name || (randomBook as any).user || (randomBook as any).userName || "익명"}
+              </p>
+              <div className="text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0">
+                ★★★★★
+              </div>
 
-            <div className="flex gap-2 mt-3 pt-1 shrink-0">
+              {randomBook.review && (
+                <div className="text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 text-left leading-relaxed my-2 overflow-y-auto max-h-48 break-words">
+                  "{randomBook.review.replace("(스포일러)", "")}"
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-3 pt-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleRandomRecommend}
+                  className="flex-1 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 active:scale-95 rounded-md transition-all"
+                >
+                  다시 뽑기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRandomBook(null)}
+                  className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-md transition-all"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showStats && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 shadow-2xl font-mono text-xs text-black">
+            <div className="bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center select-none">
+              <span>STATS.exe</span>
               <button
                 type="button"
-                onClick={handleRandomRecommend}
-                className="flex-1 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 active:scale-95 rounded-md transition-all"
+                onClick={() => setShowStats(false)}
+                className="bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black font-bold text-[10px]"
               >
-                다시 뽑기
+                X
               </button>
+            </div>
+            <div className="p-3 space-y-3 bg-white mt-1 border-2 border-t-gray-600 border-l-gray-600 border-b-white border-r-white max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-2 border border-gray-300">
+                <div>
+                  <div className="text-gray-600 text-xs font-bold">총 등록 작품</div>
+                  <div className="text-base font-bold text-blue-900">{totalBooks}권</div>
+                </div>
+                <div>
+                  <div className="text-gray-600 text-xs font-bold">평균 별점</div>
+                  <div className="text-amber-600 text-base font-bold">★ {avgRating} / 5.0</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-bold border-b border-gray-300 pb-1 mb-1.5 text-gray-700">장르별 분포</div>
+                <div className="space-y-1">
+                  {Object.entries(genreCounts).map(([genre, count]: [string, any]) => {
+                    const percent = Math.round((Number(count) / (totalBooks || 1)) * 100);
+                    return (
+                      <div key={genre} className="flex justify-between items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                        <span>{genre}</span>
+                        <span className="font-bold text-gray-600">{count}권 ({percent}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <div className="font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800">5점 만점 작품</div>
+                {topRatedBooks.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-0.5 text-gray-700">
+                    {topRatedBooks.map((b, idx) => (
+                      <li key={idx} className="truncate">
+                        {b.title}{b.genre ? ` (${b.genre})` : ""} by. {b.user_name || "익명"}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-gray-400 italic">아직 만점 작품이 없습니다.</div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
               <button
                 type="button"
-                onClick={() => setRandomBook(null)}
-                className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-md transition-all"
+                onClick={() => setShowStats(false)}
+                className="px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black font-bold"
               >
-                닫기
+                확인
               </button>
             </div>
           </div>
         </div>
       )}
-        
-      </div>
-            {showStats && (
-React.createElement(
-"div",
-{ className: "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" },
-React.createElement(
-"div",
-{ className: "w-full max-w-md bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 shadow-2xl font-mono text-xs text-black" },
-React.createElement(
-"div",
-{ className: "bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center select-none" },
-React.createElement("span", null, "STATS.exe"),
-React.createElement(
-"button",
-{
-type: "button",
-onClick: function() { setShowStats(false); },
-className: "bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black font-bold text-[10px]"
-},
-"X"
-)
-),
-React.createElement(
-"div",
-{ className: "p-3 space-y-3 bg-white mt-1 border-2 border-t-gray-600 border-l-gray-600 border-b-white border-r-white max-h-[70vh] overflow-y-auto" },
-React.createElement(
-"div",
-{ className: "grid grid-cols-2 gap-2 bg-gray-100 p-2 border border-gray-300" },
-React.createElement(
-"div",
-null,
-React.createElement("div", { className: "text-gray-600 text-xs font-bold" }, "총 등록 작품"),
-React.createElement("div", { className: "text-base font-bold text-blue-900" }, totalBooks + "권")
-),
-React.createElement(
-"div",
-null,
-React.createElement("div", { className: "text-gray-600 text-xs font-bold" }, "평균 별점"),
-React.createElement("div", { className: "text-base font-bold text-amber-600" }, "★ " + avgRating + " / 5.0")
-)
-),
-React.createElement(
-"div",
-null,
-React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-gray-700" }, "장르별 분포"),
-React.createElement(
-"div",
-{ className: "space-y-1" },
-Object.entries(genreCounts).map(function(item) {
-var genre = item[0];
-var count = item[1];
-var percent = Math.round((Number(count) / (totalBooks || 1)) * 100);
-return React.createElement(
-"div",
-{ key: genre, className: "flex justify-between items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200" },
-React.createElement("span", null, genre),
-React.createElement("span", { className: "font-bold text-gray-600" }, count + "권 (" + percent + "%)")
-);
-})
-)
-),
-React.createElement(
-"div",
-null,
-React.createElement("div", { className: "font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800" }, "5점 만점 작품"),
-topRatedBooks.length > 0
-? React.createElement(
-"ul",
-{ className: "list-disc list-inside space-y-0.5 text-gray-700" },
-topRatedBooks.map(function(b, idx) {
-return React.createElement("li", { key: idx, className: "truncate" }, b.title + (b.genre ? " (" + b.genre + ")" : "") + " by. " + (b.user_name || "익명"));
-})
-)
-: React.createElement("div", { className: "text-gray-400 italic" }, "아직 만점 작품이 없습니다.")
-)
-),
-React.createElement(
-"div",
-{ className: "flex justify-end pt-2" },
-React.createElement(
-"button",
-{
-type: "button",
-onClick: function() { setShowStats(false); },
-className: "px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black font-bold"
-},
-"확인"
-)
-)
-)
-)
-)}
-        
-</main>
+    </main>
   );
 }
-
-// 🔒 모임방 허용 검사 (기본모임 허용 + nogmbdj26 이상, forgaedus26 이상 허용)
-const isValidGroup = (name: string | null) => {
-  if (!name) return false;
-  if (name === "기본모임") return true;
-
-  const match = name.match(/^(nogmbdj|forgaedus)(\d+)$/);
-  if (!match) return false;
-  const num = parseInt(match[2], 10);
-  return num >= 26;
-};
 
 export default function Home() {
   return (
