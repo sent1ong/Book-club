@@ -17,6 +17,8 @@ interface BookReview {
   genre: string;
   rating: string;
   group_name: string;
+  is_favorite?: boolean;
+  is_revisit?: boolean;
   created_at?: string;
 }
 
@@ -107,11 +109,13 @@ function BookClubContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isRevisit, setIsRevisit] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState<number[]>([]);
   const [showStats, setShowStats] = useState(false);
   const [revealedComments, setRevealedComments] = useState<{ [key: number]: boolean }>({});
   const [selectedGenre, setSelectedGenre] = useState("전체");
-  const [showDroppedOnly, setShowDroppedOnly] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "dropped" | "favorite" | "revisit">("all");
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
@@ -303,15 +307,24 @@ function BookClubContent() {
 
   const filteredReviews = reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
-    const matchesGenre = showDroppedOnly
-      ? r.rating === "중도하차"
-      : selectedGenre === "전체" || r.genre === selectedGenre;
+
+    let matchesFilter = true;
+    if (filterType === "dropped") {
+      matchesFilter = r.rating === "중도하차";
+    } else if (filterType === "favorite") {
+      matchesFilter = !!r.is_favorite;
+    } else if (filterType === "revisit") {
+      matchesFilter = !!r.is_revisit;
+    } else {
+      matchesFilter = selectedGenre === "전체" || r.genre === selectedGenre;
+    }
+
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
       r.title?.toLowerCase().includes(q) ||
       r.author?.toLowerCase().includes(q);
-    return matchesUser && matchesGenre && matchesSearch;
+    return matchesUser && matchesFilter && matchesSearch;
   });
 
   const displayedReviews = [...filteredReviews].sort((a, b) => {
@@ -340,7 +353,11 @@ function BookClubContent() {
     if (editingId) {
       const { error } = await supabase
         .from("books")
-        .update({ ...formData })
+        .update({
+          ...formData,
+          is_favorite: isFavorite,
+          is_revisit: isRevisit,
+        })
         .eq("id", editingId);
 
       if (error) {
@@ -355,7 +372,13 @@ function BookClubContent() {
     } else {
       const finalReview = isSpoiler ? "(스포일러) " + (formData.review || "") : formData.review;
       const { error } = await supabase.from("books").insert([
-        { ...formData, review: finalReview, group_name: groupName },
+        {
+          ...formData,
+          review: finalReview,
+          group_name: groupName,
+          is_favorite: isFavorite,
+          is_revisit: isRevisit,
+        },
       ]);
 
       if (error) {
@@ -373,6 +396,8 @@ function BookClubContent() {
         alert(`[${groupName}] 에 기록이 등록되었습니다!`);
         resetForm();
         setIsSpoiler(false);
+        setIsFavorite(false);
+        setIsRevisit(false);
         fetchReviews();
       }
     }
@@ -502,6 +527,9 @@ function BookClubContent() {
       genre: "소설",
       rating: "★★★★★",
     });
+    setIsSpoiler(false);
+    setIsFavorite(false);
+    setIsRevisit(false);
   };
 
   const handleEdit = (book: BookReview) => {
@@ -510,10 +538,13 @@ function BookClubContent() {
       user_name: book.user_name,
       title: book.title,
       author: book.author || "",
-      review: book.review || "",
+      review: book.review ? book.review.replace("(스포일러) ", "") : "",
       genre: book.genre || "소설",
       rating: book.rating || "★★★★★",
     });
+    setIsSpoiler(book.review ? book.review.includes("(스포일러)") : false);
+    setIsFavorite(!!book.is_favorite);
+    setIsRevisit(!!book.is_revisit);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -669,15 +700,38 @@ function BookClubContent() {
                   className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none resize-none"
                   placeholder="감상이나 리뷰를 적어주세요"
                 />
-                <label className="flex items-center gap-1.5 mt-1 cursor-pointer text-[11px] text-gray-700 select-none">
-                  <input
-                    type="checkbox"
-                    checked={isSpoiler}
-                    onChange={(e) => setIsSpoiler(e.target.checked)}
-                    className="accent-amber-600"
-                  />
-                  <span> ⚠️ 스포일러 포함 </span>
-                </label>
+                {/* 체크박스 가로 3개 나란히 배치 */}
+                <div className="flex flex-wrap items-center gap-3 mt-1.5 pt-0.5 text-[11px] text-gray-700 select-none">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isSpoiler}
+                      onChange={(e) => setIsSpoiler(e.target.checked)}
+                      className="accent-amber-600"
+                    />
+                    <span>⚠️ 스포일러</span>
+                  </label>
+
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isFavorite}
+                      onChange={(e) => setIsFavorite(e.target.checked)}
+                      className="accent-amber-500"
+                    />
+                    <span className="font-bold text-amber-900">👑 인생작</span>
+                  </label>
+
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isRevisit}
+                      onChange={(e) => setIsRevisit(e.target.checked)}
+                      className="accent-sky-600"
+                    />
+                    <span className="font-bold text-sky-900">🔁 재주행</span>
+                  </label>
+                </div>
               </div>
 
               <div className="flex gap-1 pt-1">
@@ -744,18 +798,19 @@ function BookClubContent() {
               <span>오늘 뭐 보지?</span>
             </button>
 
+            {/* 장르 및 특수 필터 (인생작 / 재주행 / 중도하차) */}
             <div className="flex flex-wrap items-center gap-1.5 mb-3">
               {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
-                const isSelected = !showDroppedOnly && selectedGenre === genre;
+                const isSelected = filterType === "all" && selectedGenre === genre;
                 return (
                   <button
                     key={genre}
                     type="button"
                     onClick={() => {
-                      setShowDroppedOnly(false);
+                      setFilterType("all");
                       setSelectedGenre(genre);
                     }}
-                    className={`px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 ${
+                    className={`px-2 py-1 text-xs border rounded-md transition-colors active:scale-95 ${
                       isSelected
                         ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
                         : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
@@ -768,9 +823,33 @@ function BookClubContent() {
 
               <button
                 type="button"
-                onClick={() => setShowDroppedOnly(!showDroppedOnly)}
-                className={`ml-auto px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 font-bold ${
-                  showDroppedOnly
+                onClick={() => setFilterType(filterType === "favorite" ? "all" : "favorite")}
+                className={`px-2 py-1 text-xs border rounded-md transition-colors active:scale-95 font-bold ${
+                  filterType === "favorite"
+                    ? "bg-amber-400 text-amber-950 border-amber-500 shadow-inner"
+                    : "bg-white text-amber-900 border-amber-300 hover:bg-amber-50"
+                }`}
+              >
+                👑인생작
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterType(filterType === "revisit" ? "all" : "revisit")}
+                className={`px-2 py-1 text-xs border rounded-md transition-colors active:scale-95 font-bold ${
+                  filterType === "revisit"
+                    ? "bg-sky-500 text-white border-sky-600 shadow-inner"
+                    : "bg-white text-sky-900 border-sky-300 hover:bg-sky-50"
+                }`}
+              >
+                🔁재주행
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterType(filterType === "dropped" ? "all" : "dropped")}
+                className={`ml-auto px-2 py-1 text-xs border rounded-md transition-colors active:scale-95 font-bold ${
+                  filterType === "dropped"
                     ? "bg-red-950 text-white border-red-500 shadow-inner"
                     : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
                 }`}
@@ -803,7 +882,6 @@ function BookClubContent() {
                   );
                 })}
 
-                {/* 🧾 [이름] 영수증 버튼: 글자 크기(text-xs)와 패딩을 키워 가독성 향상 */}
                 {selectedUser !== "전체" && (
                   <button
                     type="button"
@@ -849,16 +927,29 @@ function BookClubContent() {
                   return (
                     <div key={book.id} id={"review-" + book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
                       <div className="flex justify-between items-start gap-1 mb-1">
-                        <span className="font-bold text-[#1f4e5b] text-sm">
-                          {book.genre === "웹툰"
-                            ? "📱 "
-                            : book.genre === "만화"
-                            ? "💭 "
-                            : book.genre === "오디오드라마"
-                            ? "🎧 "
-                            : "📖 "}
-                          {book.title}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="font-bold text-[#1f4e5b] text-sm">
+                            {book.genre === "웹툰"
+                              ? "📱 "
+                              : book.genre === "만화"
+                              ? "💭 "
+                              : book.genre === "오디오드라마"
+                              ? "🎧 "
+                              : "📖 "}
+                            {book.title}
+                          </span>
+                          {/* 목록 카드 뱃지 표시 */}
+                          {book.is_favorite && (
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[10px] px-1 py-0.2 rounded">
+                              👑인생작
+                            </span>
+                          )}
+                          {book.is_revisit && (
+                            <span className="bg-sky-100 text-sky-900 border border-sky-300 font-extrabold text-[10px] px-1 py-0.2 rounded">
+                              🔁재주행
+                            </span>
+                          )}
+                        </div>
                         <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">{book.rating}</span>
                       </div>
 
@@ -1309,7 +1400,6 @@ function BookClubContent() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           onClick={() => setReceiptData(null)}
         >
-          {/* 가로폭 max-w-[360px]로 단정하게 고정하여 영수증 비율 복원 */}
           <div
             className="w-full max-w-[360px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
@@ -1343,7 +1433,11 @@ function BookClubContent() {
                 <div className="space-y-1">
                   <div className="flex">
                     <span className="w-14 text-gray-500 shrink-0">제  목:</span>
-                    <span className="font-bold break-keep">{receiptData.singleItem.title}</span>
+                    <span className="font-bold break-keep">
+                      {receiptData.singleItem.title}
+                      {receiptData.singleItem.is_favorite ? " 👑" : ""}
+                      {receiptData.singleItem.is_revisit ? " 🔁" : ""}
+                    </span>
                   </div>
                   <div className="flex">
                     <span className="w-14 text-gray-500 shrink-0">작  가:</span>
@@ -1360,14 +1454,25 @@ function BookClubContent() {
                 </div>
 
                 <div className="font-bold border-b border-gray-300 pb-1 text-gray-700 pt-2">[감상평]</div>
-                {/* 1. 이탤릭 제거, 편안한 텍스트 크기(text-xs) 적용 */}
                 <div className="bg-gray-50 p-2.5 rounded border border-dashed border-gray-300 text-gray-800 leading-relaxed text-xs break-words whitespace-pre-wrap not-italic">
                   "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "등록된 한줄평이 없습니다."}"
                 </div>
 
                 <div className="pt-2 flex justify-between border-t border-dashed border-gray-300 text-xs font-bold">
                   <span>상  태:</span>
-                  <span>{receiptData.singleItem.rating === "중도하차" ? "💔 중도하차" : "감상 완료"}</span>
+                  <span>
+                    {receiptData.singleItem.rating === "중도하차"
+                      ? "💔 중도하차"
+                      : `감상 완료${
+                          receiptData.singleItem.is_favorite && receiptData.singleItem.is_revisit
+                            ? " (인생작/재주행)"
+                            : receiptData.singleItem.is_favorite
+                            ? " (인생작👑)"
+                            : receiptData.singleItem.is_revisit
+                            ? " (재주행🔁)"
+                            : ""
+                        }`}
+                  </span>
                 </div>
               </div>
             )}
@@ -1386,9 +1491,12 @@ function BookClubContent() {
                   ) : (
                     receiptData.items.map((item, idx) => (
                       <div key={item.id} className="flex justify-between items-baseline gap-1.5 border-b border-gray-100 pb-1 text-xs">
-                        {/* 말줄임표 없이 온전히 다 나오게 처리 */}
                         <div className="break-keep flex-1 leading-snug">
-                          <span className="font-medium text-gray-900">{idx + 1}. {item.title}</span>{" "}
+                          <span className="font-medium text-gray-900">
+                            {idx + 1}. {item.title}
+                            {item.is_favorite ? "👑" : ""}
+                            {item.is_revisit ? "🔁" : ""}
+                          </span>{" "}
                           <span className="text-[11px] text-gray-500">({item.genre})</span>
                         </div>
                         <span className="font-bold shrink-0 text-right whitespace-nowrap text-amber-700">{item.rating}</span>
@@ -1401,6 +1509,8 @@ function BookClubContent() {
                   const total = receiptData.items.length;
                   const dropped = receiptData.items.filter((i) => i.rating === "중도하차").length;
                   const completed = total - dropped;
+                  const favoriteCount = receiptData.items.filter((i) => i.is_favorite).length;
+                  const revisitCount = receiptData.items.filter((i) => i.is_revisit).length;
                   const userAvg = getAverageRating(receiptData.user) || "0.0";
 
                   return (
@@ -1416,6 +1526,14 @@ function BookClubContent() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">중도하차:</span>
                         <span className="font-bold text-red-600">{dropped} 편</span>
+                      </div>
+                      <div className="flex justify-between text-amber-900">
+                        <span>👑 인생작 선정:</span>
+                        <span className="font-bold">{favoriteCount} 편</span>
+                      </div>
+                      <div className="flex justify-between text-sky-900">
+                        <span>🔁 재주행 작품:</span>
+                        <span className="font-bold">{revisitCount} 편</span>
                       </div>
                       <div className="flex justify-between pt-1 border-t border-gray-200 font-bold text-xs">
                         <span>평균 평점:</span>
@@ -1435,7 +1553,6 @@ function BookClubContent() {
               <div className="text-xs font-black tracking-tight mt-1 text-black">
                 *** 구매비덕질을 타파하자! ***
               </div>
-              {/* 안내 문구 글자 크기 적절히 확보 (text-[11px]) */}
               <div className="text-[11px] text-gray-500 mt-2 select-none">
                 화면을 캡처하여 단톡방에 공유해보세요!
               </div>
