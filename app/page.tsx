@@ -57,7 +57,9 @@ function BookClubContent() {
   const [selectedGenre, setSelectedGenre] = useState("전체");
   const [sortBy, setSortBy] = useState("최신순"); // "최신순", "별점높은순", "별점낮은순"
   const [reactions, setReactions] = useState({} as { [bookId: number]: { [emoji: string]: number } });
+  const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
+  // 방 주소 생성 제한
   const isAllowedGroup = isValidGroup(groupName);
 
   if (!isAllowedGroup) {
@@ -75,6 +77,19 @@ function BookClubContent() {
       )
     );
   }
+
+const handleRandomRecommend = () => {
+  // 별점 5점 만점 작품만 필터링
+  const fiveStarBooks = reviews.filter((b) => (b.rating || "").includes("★★★★★"));
+
+  if (fiveStarBooks.length === 0) {
+    alert("아직 5점 만점 작품이 등록되지 않았어요!");
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * fiveStarBooks.length);
+  setRandomBook(fiveStarBooks[randomIndex]);
+};
   
 
   // 열려있는 댓글창 관리 (bookId 단위)
@@ -626,6 +641,19 @@ const [commentForm, setCommentForm] = useState<{
             className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
             />
         </div>
+            
+            {
+            React.createElement(
+  "button",
+  {
+    type: "button",
+    onClick: handleRandomRecommend,
+    className: "w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
+  },
+  React.createElement("span", null, "🎲"),
+  React.createElement("span", null, "오늘 뭐 읽지? (5점 만점 랜덤 추천)")
+              )    
+            }
 
             {
       React.createElement(
@@ -1062,6 +1090,59 @@ const [commentForm, setCommentForm] = useState<{
 
         </div>
 
+        {
+  randomBook && React.createElement(
+    "div",
+    {
+      className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm",
+      onClick: () => setRandomBook(null)
+    },
+    React.createElement(
+      "div",
+      {
+        className: "bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150",
+        onClick: (e) => e.stopPropagation()
+      },
+      React.createElement("div", { className: "text-3xl mb-1" }, "✨"),
+      React.createElement("span", { className: "text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" }, 
+        "⭐ 5점 만점 명작 추천"
+      ),
+      React.createElement("h3", { className: "text-base font-bold text-gray-900 mt-3 break-keep" }, randomBook.title),
+      React.createElement("p", { className: "text-xs text-gray-500 mt-0.5" }, 
+        `${randomBook.author || "작자 미상"} | ${randomBook.genre || "장르 미분류"}`
+      ),
+      React.createElement("div", { className: "text-amber-500 font-bold text-xs my-2 tracking-wider" }, "★★★★★"),
+      randomBook.review && React.createElement(
+        "p",
+        { className: "text-xs text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-left leading-relaxed line-clamp-3 my-2" },
+        `"${randomBook.review.replace("(스포일러)", "")}"`
+      ),
+      React.createElement(
+        "div",
+        { className: "flex gap-2 mt-4" },
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: handleRandomRecommend,
+            className: "flex-1 py-1.5 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors"
+          },
+          "다시 뽑기"
+        ),
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => setRandomBook(null),
+            className: "flex-1 py-1.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          },
+          "닫기"
+        )
+      )
+    )
+  )
+}
+        
       </div>
             {showStats && (
 React.createElement(
