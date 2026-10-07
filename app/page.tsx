@@ -454,7 +454,7 @@ const [commentForm, setCommentForm] = useState<{
           {/* 독서 기록 입력 창 */}
           <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
             <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-              <span>{editingId ? "EDITING_BOOK.exe" : "2026 활자먹음이.exe"}</span>
+              <span>{editingId ? "EDITING_BOOK.exe" : "활자먹음이.exe"}</span>
               <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
             </div>
 
