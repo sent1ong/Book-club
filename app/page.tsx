@@ -642,17 +642,17 @@ const [commentForm, setCommentForm] = useState<{
             />
         </div>
             
-            {
-            React.createElement(
-  "button",
-  {
-    type: "button",
-    onClick: handleRandomRecommend,
-    className: "w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
-  },
-  React.createElement("span", null, "🎲"),
-  React.createElement("span", null, "오늘 뭐 읽지? (5점 만점 랜덤 추천)")
-              )    
+          {
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: handleRandomRecommend,
+                  className: "w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
+                },
+                React.createElement("span", null, "🎲"),
+                React.createElement("span", null, "오늘 뭐 보지?")
+              )
             }
 
             {
@@ -1090,58 +1090,62 @@ const [commentForm, setCommentForm] = useState<{
 
         </div>
 
-        {
-  randomBook && React.createElement(
-    "div",
-    {
-      className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm",
-      onClick: () => setRandomBook(null)
-    },
-    React.createElement(
-      "div",
-      {
-        className: "bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150",
-        onClick: (e) => e.stopPropagation()
-      },
-      React.createElement("div", { className: "text-3xl mb-1" }, "✨"),
-      React.createElement("span", { className: "text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" }, 
-        "⭐ 5점 만점 명작 추천"
-      ),
-      React.createElement("h3", { className: "text-base font-bold text-gray-900 mt-3 break-keep" }, randomBook.title),
-      React.createElement("p", { className: "text-xs text-gray-500 mt-0.5" }, 
-        `${randomBook.author || "작자 미상"} | ${randomBook.genre || "장르 미분류"}`
-      ),
-      React.createElement("div", { className: "text-amber-500 font-bold text-xs my-2 tracking-wider" }, "★★★★★"),
-      randomBook.review && React.createElement(
-        "p",
-        { className: "text-xs text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 text-left leading-relaxed line-clamp-3 my-2" },
-        `"${randomBook.review.replace("(스포일러)", "")}"`
-      ),
-      React.createElement(
-        "div",
-        { className: "flex gap-2 mt-4" },
-        React.createElement(
-          "button",
+{/* 3단계: 추천 팝업(모달) */}
+        {randomBook && React.createElement(
+          "div",
           {
-            type: "button",
-            onClick: handleRandomRecommend,
-            className: "flex-1 py-1.5 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors"
+            className: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm",
+            onClick: () => setRandomBook(null)
           },
-          "다시 뽑기"
-        ),
-        React.createElement(
-          "button",
-          {
-            type: "button",
-            onClick: () => setRandomBook(null),
-            className: "flex-1 py-1.5 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          },
-          "닫기"
-        )
-      )
-    )
-  )
-}
+          React.createElement(
+            "div",
+            {
+              className: "bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col",
+              onClick: (e) => e.stopPropagation()
+            },
+            React.createElement("div", { className: "text-3xl mb-1 shrink-0" }, "✨"),
+            React.createElement("div", { className: "shrink-0" },
+              React.createElement("span", { className: "text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-block" }, 
+                "⭐ 5점 만점 명작 추천"
+              )
+            ),
+            React.createElement("h3", { className: "text-base font-bold text-gray-900 mt-2.5 break-keep shrink-0" }, randomBook.title),
+            React.createElement("p", { className: "text-xs text-gray-500 mt-0.5 shrink-0" }, 
+              `${randomBook.author || "작자 미상"} · ${randomBook.genre || "장르 미분류"}`
+            ),
+            React.createElement("p", { className: "text-[11px] text-gray-400 mt-0.5 shrink-0" }, 
+              `작성자: ${randomBook.user || "익명"}`
+            ),
+            React.createElement("div", { className: "text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0" }, "★★★★★"),
+            randomBook.review && React.createElement(
+              "div",
+              { className: "text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 text-left leading-relaxed my-2 overflow-y-auto max-h-48 break-words" },
+              `"${randomBook.review.replace("(스포일러)", "")}"`
+            ),
+            React.createElement(
+              "div",
+              { className: "flex gap-2 mt-3 pt-1 shrink-0" },
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: handleRandomRecommend,
+                  className: "flex-1 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 active:scale-95 rounded-md transition-all"
+                },
+                "다시 뽑기"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setRandomBook(null),
+                  className: "flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-md transition-all"
+                },
+                "닫기"
+              )
+            )
+          )
+        )}
         
       </div>
             {showStats && (
