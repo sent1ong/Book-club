@@ -453,14 +453,6 @@ const [commentForm, setCommentForm] = useState<{
     return rateB - rateA;
   });
 
-  // 읽은 권수가 가장 많은 상위 3명의 이름 배열 추출
-  const topReaders = [...goals]
-    .map((g) => ({ name: g.user_name, count: getReadCount(g.user_name) }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3)
-    .map((item) => item.name);
-
   return (
     <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
       <div className="w-full max-w-4xl mb-2 text-right">
