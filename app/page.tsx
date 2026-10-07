@@ -719,7 +719,7 @@ function BookClubContent() {
                       onChange={(e) => setIsFavorite(e.target.checked)}
                       className="accent-amber-500"
                     />
-                    <span className="font-bold text-amber-900">👑 인생작</span>
+                    <span>👑 인생작</span>
                   </label>
 
                   <label className="flex items-center gap-1 cursor-pointer">
@@ -729,7 +729,7 @@ function BookClubContent() {
                       onChange={(e) => setIsRevisit(e.target.checked)}
                       className="accent-sky-600"
                     />
-                    <span className="font-bold text-sky-900">🔁 재주행</span>
+                    <span>🔁 재주행</span>
                   </label>
                 </div>
               </div>
