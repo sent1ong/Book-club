@@ -118,6 +118,7 @@ function BookClubContent() {
   const [showStats, setShowStats] = useState(false);
   const [revealedComments, setRevealedComments] = useState<{ [key: number]: boolean }>({});
   const [selectedGenre, setSelectedGenre] = useState("전체");
+  const [showDroppedOnly, setShowDroppedOnly] = useState(false); // 💔중도하차 전용 필터
   const [sortBy, setSortBy] = useState("최신순");
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
@@ -141,7 +142,6 @@ function BookClubContent() {
     setSelectedUser(user);
     if (user === "전체") return;
 
-    // 해당 유저가 작성한 책들의 ID 추출
     const targetBookIds = new Set(reviews.filter((r) => r.user_name === user).map((r) => r.id));
     const targetComments = comments.filter((c) => targetBookIds.has(c.book_id));
     const newReadIds = Array.from(new Set([...readCommentIds, ...targetComments.map((c) => c.id)]));
@@ -287,11 +287,9 @@ function BookClubContent() {
   // 🔔 유저별 새 댓글(안 읽은 알림) 개수 계산
   const getUnreadCommentCount = (userName: string) => {
     if (userName === "전체") return 0;
-    // 이 유저가 등록한 책들의 ID 목록
     const userBookIds = new Set(reviews.filter((r) => r.user_name === userName).map((r) => r.id));
     if (userBookIds.size === 0) return 0;
 
-    // 내 책에 달린 댓글 중, 내가 직접 쓴 게 아니고, 아직 읽음 처리되지 않은 댓글
     const unread = comments.filter(
       (c) => userBookIds.has(c.book_id) && c.user_name !== userName && !readCommentIds.includes(c.id)
     );
@@ -314,7 +312,9 @@ function BookClubContent() {
 
   const filteredReviews = reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
-    const matchesGenre = selectedGenre === "전체" || r.genre === selectedGenre;
+    const matchesGenre = showDroppedOnly
+      ? r.rating === "중도하차"
+      : selectedGenre === "전체" || r.genre === selectedGenre;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
@@ -753,14 +753,18 @@ function BookClubContent() {
               <span>오늘 뭐 보지?</span>
             </button>
 
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            {/* 장르 선택 및 💔중도하차 토글 버튼 */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
               {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
-                const isSelected = selectedGenre === genre;
+                const isSelected = !showDroppedOnly && selectedGenre === genre;
                 return (
                   <button
                     key={genre}
                     type="button"
-                    onClick={() => setSelectedGenre(genre)}
+                    onClick={() => {
+                      setShowDroppedOnly(false);
+                      setSelectedGenre(genre);
+                    }}
                     className={`px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 ${
                       isSelected
                         ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
@@ -771,6 +775,19 @@ function BookClubContent() {
                   </button>
                 );
               })}
+
+              {/* 💔중도하차 전용 모아보기 버튼 (오른쪽 정렬) */}
+              <button
+                type="button"
+                onClick={() => setShowDroppedOnly(!showDroppedOnly)}
+                className={`ml-auto px-2.5 py-1 text-xs border rounded-md transition-colors active:scale-95 font-bold ${
+                  showDroppedOnly
+                    ? "bg-red-950 text-white border-red-500 shadow-inner"
+                    : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
+                }`}
+              >
+                💔중도하차
+              </button>
             </div>
 
             {/* 상단 유저 탭 & 정렬 옵션 */}
