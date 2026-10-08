@@ -1794,33 +1794,6 @@ function BookClubContent() {
         className="flex-1 overflow-y-auto p-3 pb-16 space-y-4"
         onClick={() => setStartMenuOpen(false)}
       >
-        {/* 20대 기능 아이콘 모바일 4열 / PC 5열 그리드 */}
-        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3 pt-4 sm:pt-6 max-w-4xl mx-auto">
-          {APP_LIST.map((app) => (
-              <button
-                key={app.id}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleAppClick(app.id);
-                  }}
-                className="flex flex-col items-center justify-center p-1 sm:p-2 rounded hover:bg-[#000080]/30 active:bg-[#000080]/50 transition-colors group"
-              >
-                <div className="relative w-8 h-8 sm:w-11 sm:h-11 mb-1 drop-shadow">
-                  <Image
-                    src={app.icon}
-                    alt={app.name}
-                    fill
-                    sizes="44px"
-                    className="object-contain"
-                  />
-                </div>
-                <span className="text-white text-[10px] sm:text-xs px-1 text-center font-bold tracking-tight bg-[#008080] group-hover:bg-[#000080] rounded line-clamp-1 w-full break-keep">
-                  {app.name}
-                </span>
-              </button>
-            ))}
-        </div>
-
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
           <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
@@ -4032,7 +4005,7 @@ function BookClubContent() {
                 BOOK CLUB 98
               </span>
             </div>
-            <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs max-h-[350px] overflow-y-auto">
+            <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs">
               {APP_LIST.map((app) => (
                   <button
                     key={app.id}
