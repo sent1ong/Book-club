@@ -2452,6 +2452,9 @@ function BookClubContent() {
           </div>
         </div>
       </footer>
+    </main>
+  );
+}
 
 export default function Home() {
   return (
