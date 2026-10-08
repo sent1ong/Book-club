@@ -183,7 +183,6 @@ function BookClubContent() {
 
   // 장르별 소비 비율 및 편식 진단 계산 (전체/개인별 필터링 적용)
   const genreStats = React.useMemo(() => {
-    // genreUser가 "전체"면 전체 리뷰, 특정 유저면 해당 유저 리뷰만 필터링
     const targetReviews =
       genreUser === "전체"
         ? reviews
@@ -231,22 +230,6 @@ function BookClubContent() {
       conicStyle: `conic-gradient(${gradientStops.join(", ")})`,
     };
   }, [reviews, genreUser]);
-  
-    // CSS Conic Gradient 생성 (도넛 차트용)
-    let accumulated = 0;
-    const gradientStops = items.map((item) => {
-      const start = accumulated;
-      accumulated += item.percent;
-      return `${item.color} ${start}% ${accumulated}%`;
-    });
-
-    return {
-      total,
-      items,
-      dominant: items[0], // 가장 많이 소비한 장르
-      conicStyle: `conic-gradient(${gradientStops.join(", ")})`,
-    };
-  }, [reviews]);
 
   // 윈도우 98 쉘 상태
   const [startMenuOpen, setStartMenuOpen] = useState(false);
