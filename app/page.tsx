@@ -58,7 +58,6 @@ interface AppItem {
 
 const APP_LIST: AppItem[] = [
   { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
-  { id: "receipt", name: "독서 영수증", icon: "/icons/receipt.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
   { id: "tags", name: "#키워드", icon: "/icons/tags.png" },
