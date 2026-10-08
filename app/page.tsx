@@ -151,6 +151,9 @@ function BookClubContent() {
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
+  // 장르 분석 창 전용 선택 사용자 ("전체" 또는 특정 유저명)
+  const [genreUser, setGenreUser] = useState<string>("전체");
+
   // 태그보드에서 선택된 태그 필터 (null이면 전체/태그목록 보기)
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -178,24 +181,29 @@ function BookClubContent() {
     return reviews.filter((r) => r.review && r.review.includes(selectedTag));
   }, [reviews, selectedTag]);
 
-// 장르별 소비 비율 및 편식 진단 계산
+  // 장르별 소비 비율 및 편식 진단 계산 (전체/개인별 필터링 적용)
   const genreStats = React.useMemo(() => {
-    const total = reviews.length;
+    // genreUser가 "전체"면 전체 리뷰, 특정 유저면 해당 유저 리뷰만 필터링
+    const targetReviews =
+      genreUser === "전체"
+        ? reviews
+        : reviews.filter((r) => r.user_name === genreUser);
+
+    const total = targetReviews.length;
     if (total === 0) return { total: 0, items: [], dominant: null, conicStyle: "" };
 
     const counts: { [genre: string]: number } = {};
-    reviews.forEach((r) => {
+    targetReviews.forEach((r) => {
       const g = r.genre || "기타";
       counts[g] = (counts[g] || 0) + 1;
     });
 
-    // 장르별 테마 색상 팔레트
     const palette: { [genre: string]: string } = {
-      소설: "#2563eb",         // 블루
-      웹툰: "#16a34a",         // 그린
-      만화: "#ea580c",         // 오렌지
-      오디오드라마: "#9333ea",   // 퍼플
-      기타: "#6b7280",         // 그레이
+      소설: "#2563eb",
+      웹툰: "#16a34a",
+      만화: "#ea580c",
+      오디오드라마: "#9333ea",
+      기타: "#6b7280",
     };
 
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -209,6 +217,21 @@ function BookClubContent() {
       };
     });
 
+    let accumulated = 0;
+    const gradientStops = items.map((item) => {
+      const start = accumulated;
+      accumulated += item.percent;
+      return `${item.color} ${start}% ${accumulated}%`;
+    });
+
+    return {
+      total,
+      items,
+      dominant: items[0],
+      conicStyle: `conic-gradient(${gradientStops.join(", ")})`,
+    };
+  }, [reviews, genreUser]);
+  
     // CSS Conic Gradient 생성 (도넛 차트용)
     let accumulated = 0;
     const gradientStops = items.map((item) => {
@@ -1661,7 +1684,7 @@ function BookClubContent() {
       {openWindow === "genre" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-lg bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
-            {/* 타이틀 바: 장르 분석으로 변경 */}
+            {/* 타이틀 바 */}
             <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-blue-900 to-indigo-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>📊</span>
@@ -1676,17 +1699,34 @@ function BookClubContent() {
               </button>
             </div>
 
-            {/* 본문 안내 헤더 */}
-            <div className="p-3 bg-gray-100 border-b border-gray-300 text-xs text-gray-700 flex justify-between items-center">
+            {/* 본문 안내 & 개인별 필터 셀렉트바 */}
+            <div className="p-2.5 bg-gray-100 border-b border-gray-300 text-xs flex flex-wrap gap-2 justify-between items-center">
               <div>
-                <p className="font-bold text-gray-900">📊 장르 소비 비율 분석</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  기록된 작품들의 장르 소비 밸런스를 측정합니다.
+                <p className="font-bold text-gray-900">🧬 덕질 영양소 & 편식 분석</p>
+                <p className="text-[11px] text-gray-500">
+                  {genreUser === "전체" ? "모임 전체" : `${genreUser} 님`}의 장르 소비 밸런스입니다.
                 </p>
               </div>
-              <span className="bg-blue-900 text-white px-2 py-0.5 rounded text-[11px] font-mono">
-                총 {genreStats.total}편 분석
-              </span>
+
+              {/* 대상 선택 셀렉트 박스 */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-700">분석 대상:</span>
+                <select
+                  value={genreUser}
+                  onChange={(e) => setGenreUser(e.target.value)}
+                  className="win-inset bg-white text-xs px-2 py-0.5 font-bold outline-none cursor-pointer"
+                >
+                  <option value="전체">전체 모임원</option>
+                  {Array.from(new Set(reviews.map((r) => r.user_name))).filter(Boolean).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <span className="bg-blue-900 text-white px-2 py-0.5 rounded text-[11px] font-mono">
+                  {genreStats.total}편
+                </span>
+              </div>
             </div>
 
             {/* 본문 차트 및 진단 */}
@@ -1710,8 +1750,9 @@ function BookClubContent() {
                       )}
                     </p>
                     <p className="text-[11px] text-blue-800 leading-relaxed">
-                      가장 애호하는 장르는 <strong>{genreStats.dominant?.genre}</strong>(
-                      {genreStats.dominant?.percent}%)이며, 총 {genreStats.items.length}개의 장르를 소비 중입니다.
+                      {genreUser === "전체" ? "모임에서" : `${genreUser} 님이`} 가장 애호하는 장르는{" "}
+                      <strong>{genreStats.dominant?.genre}</strong>({genreStats.dominant?.percent}%)이며, 총{" "}
+                      {genreStats.items.length}개의 장르를 즐기고 있습니다.
                     </p>
                   </div>
 
@@ -1721,7 +1762,6 @@ function BookClubContent() {
                       className="w-32 h-32 rounded-full relative flex items-center justify-center shadow-inner border border-gray-300"
                       style={{ background: genreStats.conicStyle }}
                     >
-                      {/* 도넛 가운데 홀 (Windows 98 스타일 중앙 캡슐) */}
                       <div className="w-16 h-16 rounded-full bg-white flex flex-col items-center justify-center shadow">
                         <span className="text-[10px] text-gray-400 font-bold">TOTAL</span>
                         <span className="text-xs font-black text-gray-800">{genreStats.total}</span>
@@ -1755,7 +1795,6 @@ function BookClubContent() {
                             {item.count}편 / {item.percent}%
                           </span>
                         </div>
-                        {/* 윈도우 스타일 음각 인셋 게이지 바 */}
                         <div className="w-full bg-gray-200 border border-gray-400 h-3 rounded-none overflow-hidden p-[1px]">
                           <div
                             className="h-full transition-all duration-500"
@@ -1785,7 +1824,7 @@ function BookClubContent() {
           </div>
         </div>
       )}
-
+      
       {/* 영수증 모달 */}
       {receiptData && (
         <div
