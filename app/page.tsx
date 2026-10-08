@@ -1362,6 +1362,94 @@ function BookClubContent() {
         </div>
       )}
 
+      {/* 🪦 단두대 / 하차 묘지 (GRAVEYARD.exe) */}
+      {openWindow === "graveyard" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-gray-800 to-gray-600 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>🪦</span>
+                <span>GRAVEYARD.exe - 중도하차 묘지 아카이브</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 안내 */}
+            <div className="p-3 bg-gray-100 border-b border-gray-300 text-xs text-gray-700 flex justify-between items-center">
+              <div>
+                <p className="font-bold text-gray-900">⚰️ 영면한 작품들의 안식처</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  취향에 맞지 않아 중도에 멈춘 작품과 모임원들의 마지막 한마디를 보관합니다.
+                </p>
+              </div>
+              <span className="bg-gray-800 text-white px-2 py-1 rounded text-[11px] font-mono">
+                총 {reviews.filter((r) => r.rating === "중도하차").length}위 안치됨
+              </span>
+            </div>
+
+            {/* 묘비 그리드 목록 */}
+            <div className="p-4 overflow-y-auto flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#2a2a2a]">
+              {reviews.filter((r) => r.rating === "중도하차").length === 0 ? (
+                <div className="col-span-full py-16 text-center text-gray-400 font-mono text-xs">
+                  안치된 작품이 없습니다. (모든 작품 완독 중!)
+                </div>
+              ) : (
+                reviews
+                  .filter((r) => r.rating === "중도하차")
+                  .map((book) => (
+                    <div
+                      key={book.id}
+                      className="bg-[#3a3a3a] border-2 border-t-gray-500 border-l-gray-500 border-b-black border-r-black p-3 text-gray-200 rounded-t-xl relative flex flex-col justify-between shadow-lg"
+                    >
+                      {/* 묘비 상단 곡선 장식 */}
+                      <div className="text-center pb-2 border-b border-gray-600">
+                        <div className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">
+                          R. I. P.
+                        </div>
+                        <div className="font-bold text-sm text-amber-200 break-keep mt-0.5">
+                          {book.title}
+                        </div>
+                        <div className="text-[11px] text-gray-400">
+                          {book.author || "미상"} · {book.genre}
+                        </div>
+                      </div>
+
+                      {/* 묘비명 (하차 사유) */}
+                      <div className="my-3 bg-[#1e1e1e] p-2.5 rounded border border-gray-700 text-xs italic text-gray-300 break-keep leading-relaxed min-h-[48px] flex items-center">
+                        "{book.review ? book.review.replace("(스포일러)", "") : "말없이 덮었습니다..."}"
+                      </div>
+
+                      {/* 하차자 및 기록일 */}
+                      <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 border-t border-gray-700 font-mono">
+                        <span>하차자: <strong className="text-gray-200">{book.user_name}</strong></span>
+                        <span>{book.created_at?.split("T")[0] || ""}</span>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 영수증 모달 */}
       {receiptData && (
         <div
