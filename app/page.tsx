@@ -418,7 +418,7 @@ function BookClubContent() {
   // 영업소 엽서 넘기기용 인덱스 상태
   const [salesIndex, setSalesIndex] = useState(0);
 
-  // 🏃 페이스메이커 (날짜 안전 계산 및 30일 기준 보정)
+  // 🏃 페이스메이커 (최근 14일 엄격 집계 버전)
   const paceData = React.useMemo(() => {
     if (!reviews || reviews.length === 0) return [];
 
@@ -434,22 +434,17 @@ function BookClubContent() {
     const userPaces = Object.entries(userGroups).map(([name, uReviews]) => {
       const totalCount = uReviews.length;
 
-      // 최근 30일 이내 독서량 집계 (created_at이 없으면 최근 등록된 상위권 책들을 기본 인정)
+      // 14일(2주) 이내에 실제 등록된 책만 집계 (created_at이 없으면 0권)
       const recentCount = uReviews.filter((r) => {
-        if (r.created_at) {
-          const createdDate = new Date(r.created_at);
-          if (!isNaN(createdDate.getTime())) {
-            const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
-            return diffDays <= 30; // 30일 기준
-          }
-        }
-        // created_at이 누락된 구버전 글인 경우: 전체 최신 리뷰 목록 중 상위에 위치하면 인정
-        const globalIndex = reviews.findIndex((allR) => allR.id === r.id);
-        return globalIndex >= 0 && globalIndex < 10;
+        if (!r.created_at) return false;
+        const createdDate = new Date(r.created_at);
+        if (isNaN(createdDate.getTime())) return false;
+        const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0 && diffDays <= 14;
       }).length;
 
-      // 주행 속도 (최근 활동량 비중 강화)
-      const speed = Math.min(180, Math.max(10, recentCount * 30 + totalCount * 5));
+      // 속도 공식: 14일 이내 완독 1권당 30km/h + 기본 서재 누적 보너스
+      const speed = Math.min(180, Math.max(10, recentCount * 30 + Math.min(30, totalCount * 2)));
 
       let status = "순항 중 🚙";
       let statusColor = "text-blue-800 bg-blue-100 border-blue-300";
@@ -459,14 +454,14 @@ function BookClubContent() {
         status = "초과속 질주 🏎️💨";
         statusColor = "text-red-800 bg-red-100 border-red-300";
         comment = "페이지에 불이 붙었습니다! 페달을 끝까지 밟은 완독 머신.";
-      } else if (speed >= 60) {
+      } else if (speed >= 50) {
         status = "고속 주행 🚗💨";
         statusColor = "text-amber-800 bg-amber-100 border-amber-300";
         comment = "거침없는 몰입감으로 페이스메이커 선두권을 달리는 중!";
       } else if (recentCount === 0) {
         status = "엔진 예열 중 🛞";
         statusColor = "text-gray-800 bg-gray-200 border-gray-400";
-        comment = "잠시 피트인(휴식) 상태입니다. 다음 작품으로 시동을 걸어보세요!";
+        comment = "피트인(휴식) 상태입니다. 새 책으로 시동을 걸어보세요!";
       }
 
       const trackProgress = Math.min(90, Math.max(5, (speed / 180) * 100));
@@ -485,7 +480,7 @@ function BookClubContent() {
 
     return userPaces.sort((a, b) => b.speed - a.speed);
   }, [reviews]);
-
+  
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -2823,7 +2818,7 @@ function BookClubContent() {
                       <span className="text-yellow-400 font-bold">★ CIRCUIT PACEMAKER ★</span>
                       <span>[GOAL 🏁]</span>
                     </div>
-
+                                      
                     {paceData.map((runner, idx) => (
                       <div key={runner.name} className="space-y-1">
                         <div className="flex justify-between text-xs text-gray-300 font-mono">
