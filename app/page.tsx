@@ -55,7 +55,7 @@ const APP_LIST: AppItem[] = [
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
   { id: "tags", name: "#키워드", icon: "/icons/tags.png" },
-  { id: "vending", name: "키워드 자판기", icon: "/icons/vending.png" },
+  { id: "vending", name: "#키워드_가챠", icon: "/icons/vending.png" },
   { id: "genre", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
   { id: "versus", name: "호불호 배틀", icon: "/icons/versus.png" },
