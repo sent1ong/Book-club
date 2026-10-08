@@ -2594,9 +2594,9 @@ function BookClubContent() {
                         <p className="text-[11px] text-gray-700 leading-relaxed break-keep border-t border-gray-200 pt-1.5 italic">
                           "{award.desc}"
                         </p>
-                        <div className="mt-2 flex justify-between items-center text-[10px] text-gray-400 font-mono">
+                        <div className="mt-2 flex justify-between items-center text-xs text-gray-700 font-mono font-semibold">
                           <span>{groupName} 북클럽</span>
-                          <span>직인생략 [인]</span>
+                          <span className="text-red-700 font-bold border border-red-700 px-1 py-0.5 rounded text-[11px] bg-red-50">직인생략 [인]</span>
                         </div>
                       </div>
                     </div>
