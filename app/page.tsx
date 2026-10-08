@@ -644,10 +644,30 @@ function BookClubContent() {
     if (!receiptRef.current) return;
     try {
       setDownloadingReceipt(true);
-      const canvas = await html2canvas(receiptRef.current, {
+
+      const target = receiptRef.current;
+      const canvas = await html2canvas(target, {
         scale: 2,
         backgroundColor: "#ffffff",
+        useCORS: true,
+        // 스크롤된 전체 내용이 잘리지 않고 온전히 다 찍히도록 설정
+        height: target.scrollHeight,
+        windowHeight: target.scrollHeight + 100,
+        onclone: (clonedDoc) => {
+          // 캡처 복제본에서만 스크롤/높이 제한을 풀어 전체를 깔끔하게 펼침
+          const element = clonedDoc.querySelector("[data-receipt-box]") as HTMLElement;
+          if (element) {
+            element.style.maxHeight = "none";
+            element.style.overflow = "visible";
+          }
+          const listScroll = clonedDoc.querySelector("[data-receipt-list]") as HTMLElement;
+          if (listScroll) {
+            listScroll.style.maxHeight = "none";
+            listScroll.style.overflow = "visible";
+          }
+        },
       });
+
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = dataUrl;
@@ -659,7 +679,7 @@ function BookClubContent() {
       setDownloadingReceipt(false);
     }
   };
-
+  
   const handleAppClick = (appId: string) => {
     setStartMenuOpen(false);
     if (appId === "receipt") {
@@ -1345,7 +1365,8 @@ function BookClubContent() {
         >
           <div
             ref={receiptRef}
-            className="w-full max-w-[360px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
+            data-receipt-box="true"
+            className="w-full max-w-[360px] bg-white text-black p-5 font-sans text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -1401,7 +1422,7 @@ function BookClubContent() {
                   <span>[품목 / 장르]</span>
                   <span>[평점]</span>
                 </div>
-                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                <div data-receipt-list="true" className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                   {receiptData.items.map((item, idx) => (
                     <div key={item.id} className="flex justify-between items-baseline border-b border-gray-100 pb-1 text-xs">
                       <span className="truncate flex-1">{idx + 1}. {item.title}</span>
