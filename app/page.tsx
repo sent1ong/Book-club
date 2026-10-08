@@ -418,6 +418,71 @@ function BookClubContent() {
   // 영업소 엽서 넘기기용 인덱스 상태
   const [salesIndex, setSalesIndex] = useState(0);
 
+  // 🏃 페이스메이커 (모임원 독서 주행 속도 & 페이스 분석)
+  const paceData = React.useMemo(() => {
+    if (!reviews || reviews.length === 0) return [];
+
+    const now = new Date();
+    const userGroups: { [name: string]: BookReview[] } = {};
+
+    reviews.forEach((r) => {
+      if (!r.user_name) return;
+      if (!userGroups[r.user_name]) userGroups[r.user_name] = [];
+      userGroups[r.user_name].push(r);
+    });
+
+    const userPaces = Object.entries(userGroups).map(([name, uReviews]) => {
+      const totalCount = uReviews.length;
+
+      // 최근 14일 이내 기록된 책 권수
+      const recentCount = uReviews.filter((r) => {
+        if (!r.created_at) return false;
+        const diffDays =
+          (now.getTime() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= 14;
+      }).length;
+
+      // 주행 속도 (최근 활동량 + 누적치 가중치 기반 km/h 환산)
+      const speed = Math.min(180, Math.max(10, recentCount * 25 + totalCount * 5));
+
+      // 주행 상태 진단
+      let status = "순항 중 🚙";
+      let statusColor = "text-blue-800 bg-blue-100 border-blue-300";
+      let comment = "안정적인 속도로 서재를 채워나가는 중입니다.";
+
+      if (speed >= 100) {
+        status = "초과속 질주 🏎️💨";
+        statusColor = "text-red-800 bg-red-100 border-red-300";
+        comment = "페이지에 불이 붙었습니다! 페달을 끝까지 밟은 완독 머신.";
+      } else if (speed >= 60) {
+        status = "고속 주행 🚗💨";
+        statusColor = "text-amber-800 bg-amber-100 border-amber-300";
+        comment = "거침없는 몰입감으로 페이스메이커 선두권을 달리는 중!";
+      } else if (recentCount === 0) {
+        status = "엔진 예열 중 🛞";
+        statusColor = "text-gray-800 bg-gray-200 border-gray-400";
+        comment = "잠시 피트인(휴식) 상태입니다. 다음 작품으로 시동을 걸어보세요!";
+      }
+
+      // 트랙 위 위치 퍼센트 (최대 100%)
+      const trackProgress = Math.min(92, Math.max(5, (speed / 150) * 100));
+
+      return {
+        name,
+        totalCount,
+        recentCount,
+        speed,
+        status,
+        statusColor,
+        comment,
+        trackProgress,
+      };
+    });
+
+    // 주행 속도가 빠른 순서대로 정렬
+    return userPaces.sort((a, b) => b.speed - a.speed);
+  }, [reviews]);
+
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -1672,7 +1737,7 @@ function BookClubContent() {
       )}
 
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -2688,6 +2753,144 @@ function BookClubContent() {
                     </div>
                   );
                 })()
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2.5 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-5 py-1.5 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏃 페이스메이커 (PACEMAKER.exe) */}
+      {openWindow === "pacemaker" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-emerald-800 via-teal-700 to-cyan-900 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span className="text-base">🏎️</span>
+                <span className="text-xs">PACEMAKER.exe - 실시간 독서 레이싱 경기장</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-2 py-0.5 text-black font-extrabold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 헤더 알림판 */}
+            <div className="p-3 bg-teal-50 border-b border-teal-200 text-xs flex justify-between items-center">
+              <div>
+                <p className="font-bold text-sm text-teal-950 flex items-center gap-1">
+                  <span>🏁</span> 모임원 독서 주행 페이스
+                </p>
+                <p className="text-xs text-teal-800 mt-0.5 font-medium">
+                  최근 2주간의 완독 속도와 활동량으로 달리는 실시간 서킷입니다.
+                </p>
+              </div>
+              <span className="bg-teal-800 text-white px-2.5 py-1 rounded text-xs font-mono font-bold shrink-0">
+                러너 {paceData.length}명 주행 중
+              </span>
+            </div>
+
+            {/* 본문 레이싱 트랙 & 러너 카드 */}
+            <div className="p-4 bg-gray-100 flex-1 overflow-y-auto space-y-4">
+              {paceData.length === 0 ? (
+                <div className="bg-white p-8 win-inset text-center text-xs text-gray-600">
+                  등록된 완독 기록이 없어 서킷이 대기 중입니다.
+                </div>
+              ) : (
+                <>
+                  {/* 🎮 레트로 도트 레이싱 트랙 영역 */}
+                  <div className="bg-[#242b35] border-2 border-gray-600 rounded p-3 win-inset space-y-2.5 shadow-inner">
+                    <div className="flex justify-between items-center text-xs text-gray-400 font-mono pb-1 border-b border-gray-700">
+                      <span>[START LINE]</span>
+                      <span className="text-yellow-400 font-bold">★ CIRCUIT PACEMAKER ★</span>
+                      <span>[GOAL 🏁]</span>
+                    </div>
+
+                    {paceData.map((runner, idx) => (
+                      <div key={runner.name} className="space-y-1">
+                        <div className="flex justify-between text-xs text-gray-300 font-mono">
+                          <span className="font-bold text-white">
+                            #{idx + 1} {runner.name}
+                          </span>
+                          <span className="text-cyan-400 font-bold">
+                            {runner.speed} km/h ({runner.recentCount}권/최근2주)
+                          </span>
+                        </div>
+
+                        {/* 트랙 아스팔트 레인 */}
+                        <div className="w-full bg-[#161a22] h-7 rounded border border-gray-700 relative flex items-center px-1">
+                          <div className="absolute inset-0 flex items-center justify-between px-3 pointer-events-none opacity-20">
+                            <span className="text-white text-xs">|</span>
+                            <span className="text-white text-xs">|</span>
+                            <span className="text-white text-xs">|</span>
+                            <span className="text-white text-xs">|</span>
+                          </div>
+
+                          {/* 달리는 러너 아이콘 */}
+                          <div
+                            className="absolute transition-all duration-700 flex items-center gap-1"
+                            style={{ left: `${runner.trackProgress}%` }}
+                          >
+                            <span className="text-lg drop-shadow">
+                              {idx === 0 ? "🏎️" : idx === 1 ? "🚗" : "🚙"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 📋 개별 주행 리포트 카드 그리드 */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold text-gray-700">📌 러너별 상세 진단서</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {paceData.map((runner) => (
+                        <div
+                          key={runner.name}
+                          className="bg-white p-3 rounded border border-gray-300 win-outset flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="font-extrabold text-sm text-gray-900">
+                                {runner.name} 님
+                              </span>
+                              <span
+                                className={`text-xs font-bold px-2 py-0.5 rounded border ${runner.statusColor}`}
+                              >
+                                {runner.status}
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-gray-600 space-y-0.5 font-medium">
+                              <div>총 완독 누적: <strong className="text-gray-900">{runner.totalCount}권</strong></div>
+                              <div>최근 14일 질주: <strong className="text-teal-900">{runner.recentCount}권</strong></div>
+                            </div>
+                          </div>
+
+                          <div className="mt-2.5 pt-2 border-t border-dashed border-gray-200">
+                            <p className="text-xs text-gray-700 italic break-keep leading-relaxed">
+                              "{runner.comment}"
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
