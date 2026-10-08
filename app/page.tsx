@@ -264,14 +264,24 @@ function BookClubContent() {
       const variance =
         scores.reduce((acc, score) => acc + Math.pow(score - mean, 2), 0) / scores.length;
 
+      // 1. 극호 진영: 4.0점 이상 (인생작 포함)
       const pro = bookReviews.filter(
         (r) => (localScoreMap[r.rating] ?? 0) >= 4.0 || r.rating === "★★★★★" || r.is_favorite
       );
+
+      // 2. 불호 진영: 2.5점 이하 또는 중도하차 (2.5부터 불호!)
       const con = bookReviews.filter(
         (r) => (localScoreMap[r.rating] ?? 0) <= 2.5 || r.rating === "중도하차"
       );
 
-      if (variance > maxVariance && (pro.length > 0 || con.length > 0)) {
+      // 3. 중립/보통 영역: 3.0점 ~ 3.5점
+      const neutral = bookReviews.filter((r) => {
+        const score = localScoreMap[r.rating] ?? 0;
+        return score >= 3.0 && score <= 3.5 && !r.is_favorite && r.rating !== "중도하차";
+      });
+
+      // ⭐ 배틀 조건: 호(4.0+)와 불호(2.5-) 양쪽에 각 1명 이상 있어야 진짜 '호불호 대립 배틀' 성립!
+      if (pro.length > 0 && con.length > 0 && variance > maxVariance) {
         maxVariance = variance;
         topControversial = {
           title,
@@ -281,10 +291,10 @@ function BookClubContent() {
           variance,
           proReviews: pro,
           conReviews: con,
+          neutralReviews: neutral, // 3점 관전석 코멘트 전달
           avgScore: Number(mean.toFixed(1)),
         };
       }
-    });
 
     return topControversial;
   }, [reviews]);
@@ -2356,6 +2366,31 @@ function BookClubContent() {
                       </div>
                     </div>
                   </div>
+
+                  {/* 기존 1:1 대결 그리드 바로 아래에 추가 */}
+                  {battleData.neutralReviews.length > 0 && (
+                    <div className="bg-gray-100 border border-gray-300 p-2.5 rounded text-xs shadow-xs">
+                      <div className="flex justify-between items-center mb-1.5 font-bold text-gray-700">
+                        <span>⚖️ 팝콘 뜯는 중립 지대 (3.0~3.5점 무난/평타)</span>
+                        <span className="text-[11px] font-mono text-gray-500">
+                          {battleData.neutralReviews.length}명
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {battleData.neutralReviews.map((r) => (
+                          <div key={r.id} className="bg-white p-2 rounded border border-gray-200 flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <span className="font-bold text-gray-800 text-[11px] mr-1.5">{r.user_name}</span>
+                              <span className="text-gray-700 text-[11px]">
+                                "{r.review ? r.review.replace("(스포일러)", "") : "무난하게 읽었습니다."}"
+                              </span>
+                            </div>
+                            <span className="text-gray-500 font-bold text-[11px] shrink-0">{r.rating}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 하단 전체 평가자 리스트 */}
                   <div className="p-2 bg-gray-50 border border-gray-200 rounded text-[11px] text-gray-600">
