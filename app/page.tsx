@@ -72,7 +72,6 @@ const APP_LIST: AppItem[] = [
   { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
   { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
   { id: "collector", name: "카드 도감", icon: "/icons/collector.png" },
-  { id: "motto", name: "덕질 가훈", icon: "/icons/motto.png" },
 ];
 
 function isValidGroup(name: string | null) {
@@ -499,6 +498,64 @@ function BookClubContent() {
     });
     return recentItems.join("   ◆   ");
   }, [reviews]);
+
+  // 🎲 덕질 빙고 상태 (3x3 보드)
+  const BINGO_CELLS_DEFAULT = [
+    { id: 1, title: "새벽 2시 넘어 완독", desc: "다음날 일정 포기하고 달림" },
+    { id: 2, title: "인생작 등극", desc: "별점 5.0 만점 부여 완료" },
+    { id: 3, title: "강제 영업 성공", desc: "내 리뷰 보고 멤버가 구매함" },
+    { id: 4, title: "주접 리뷰 박제", desc: "리뷰 칸에 주접 3줄 이상 남김" },
+    { id: 5, title: "과몰입 후유증", desc: "다 읽고 며칠간 현실 적응 불가" },
+    { id: 6, title: "중도하차 결단", desc: "과감하게 묘지에 묻어줌" },
+    { id: 7, title: "N차 재주행", desc: "이미 아는 맛인데 또 읽음" },
+    { id: 8, title: "오디오/웹툰 정복", desc: "소설 외 다른 미디어 감상" },
+    { id: 9, title: "스포 방지 배려", desc: "후기에 (스포일러) 태그 준수" },
+  ];
+
+  // 현재 선택된 멤버 (기본값: '전체' 제외한 첫 번째 멤버 또는 '얼이')
+  const [selectedBingoUser, setSelectedBingoUser] = useState<string>("얼이");
+
+  // 멤버별 체크된 칸 목록 { "얼이": [5, 1, 2], "루프": [5, 3] }
+  const [userBingoData, setUserBingoData] = useState<Record<string, number[]>>({
+    얼이: [5],
+    루프: [5],
+    홍시: [5],
+    체리: [5],
+    뿌리: [5],
+  });
+
+  // 현재 선택된 멤버의 체크 배열
+  const currentChecked = userBingoData[selectedBingoUser] || [5];
+
+  // 빙고 줄 수 계산 로직 (가로 3, 세로 3, 대각선 2)
+  const completedBingoLines = React.useMemo(() => {
+    const lines = [
+      [1, 2, 3], [4, 5, 6], [7, 8, 9], // 가로
+      [1, 4, 7], [2, 5, 8], [3, 6, 9], // 세로
+      [1, 5, 9], [3, 5, 7],             // 대각선
+    ];
+    return lines.filter((line) => line.every((id) => currentChecked.includes(id))).length;
+  }, [currentChecked]);
+
+  // 개별 칸 토글 함수
+  const toggleBingoCell = (id: number) => {
+    if (id === 5) return; // FREE칸은 고정
+    setUserBingoData((prev) => {
+      const userList = prev[selectedBingoUser] || [5];
+      const nextList = userList.includes(id)
+        ? userList.filter((x) => x !== id)
+        : [...userList, id];
+      return { ...prev, [selectedBingoUser]: nextList };
+    });
+  };
+
+  // 현재 선택된 멤버의 빙고판 초기화
+  const resetCurrentBingo = () => {
+    setUserBingoData((prev) => ({
+      ...prev,
+      [selectedBingoUser]: [5],
+    }));
+  };
   
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
@@ -2943,6 +3000,131 @@ function BookClubContent() {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎲 덕질 빙고 모달 (BINGO.exe) */}
+      {openWindow === "bingo" && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
+          <div className="bg-[#c0c0c0] win-outset p-1 w-full max-w-md shadow-2xl text-black">
+            {/* 타이틀 바 */}
+            <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center select-none">
+              <span className="flex items-center gap-1.5">
+                <Image
+                  src="/icons/bingo.png"
+                  alt="bingo"
+                  width={16}
+                  height={16}
+                  className="inline-block pixelated"
+                  onError={(e) => ((e.target as any).style.display = "none")}
+                />
+                BINGO.exe - [{selectedBingoUser}] 님의 덕질 빙고판
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3 bg-[#d4d8dc] space-y-3">
+              {/* 👤 멤버 전환 탭 */}
+              <div className="flex flex-wrap items-center gap-1 bg-[#c0c0c0] p-1.5 win-inset">
+                <span className="text-xs font-bold text-gray-700 mr-1 select-none">멤버 선택:</span>
+                {userList.filter((u) => u !== "전체").map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setSelectedBingoUser(u)}
+                    className={`px-2 py-0.5 text-xs win-btn font-bold ${
+                      selectedBingoUser === u ? "win-inset bg-[#000080] text-white" : ""
+                    }`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+
+              {/* 스코어 및 상태 표시 */}
+              <div className="bg-white win-inset p-2 flex justify-between items-center">
+                <div className="text-xs">
+                  <span className="font-bold text-gray-800">{selectedBingoUser} 님의 달성: </span>
+                  <span className="font-extrabold text-blue-700 text-sm">{completedBingoLines}줄</span> 완성
+                </div>
+                <div className="flex gap-1 items-center">
+                  {completedBingoLines >= 3 ? (
+                    <span className="bg-red-600 text-white font-bold text-xs px-2 py-0.5 animate-bounce rounded-xs">
+                      🎉 BINGO 달성!
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-500">3줄 달성 시 빙고</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={resetCurrentBingo}
+                    className="win-btn text-xs px-2 py-0.5 ml-1"
+                  >
+                    초기화
+                  </button>
+                </div>
+              </div>
+
+              {/* 3x3 빙고 보드 */}
+              <div className="grid grid-cols-3 gap-1.5 bg-[#808080] p-1.5 win-inset">
+                {BINGO_CELLS_DEFAULT.map((cell) => {
+                  const isChecked = currentChecked.includes(cell.id);
+                  const isFree = cell.id === 5;
+
+                  return (
+                    <button
+                      key={cell.id}
+                      type="button"
+                      onClick={() => toggleBingoCell(cell.id)}
+                      className={`h-24 p-1.5 flex flex-col justify-between items-center text-center transition-all select-none relative ${
+                        isChecked
+                          ? "bg-[#e8f0fe] win-inset border-blue-500"
+                          : "bg-[#c0c0c0] win-outset hover:bg-[#d0d0d0]"
+                      }`}
+                    >
+                      {/* 스탬프 도장 */}
+                      {isChecked && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-85">
+                          <span className="border-2 border-red-600 text-red-600 font-black text-sm px-2 py-0.5 rounded-full transform -rotate-12 tracking-wider">
+                            {isFree ? "PASS" : "CLEAR"}
+                          </span>
+                        </div>
+                      )}
+
+                      <span className={`text-xs font-bold leading-tight ${isFree ? "text-purple-800" : "text-gray-900"}`}>
+                        {cell.title}
+                      </span>
+                      <span className="text-xs leading-3 text-gray-600 break-keep">
+                        {cell.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 안내 가이드 */}
+              <div className="text-xs text-gray-600 bg-[#e4e4e4] p-2 win-inset leading-relaxed">
+                💡 상단 탭에서 멤버를 전환해 각자의 빙고 상태를 체크할 수 있습니다.
+              </div>
+
+              {/* 닫기 버튼 */}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenWindow(null)}
+                  className="win-btn px-4 py-1 text-xs font-bold"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
