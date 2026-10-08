@@ -2663,7 +2663,7 @@ function BookClubContent() {
                             (예: #후회공, #구원서사, #재주행필수 등)
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-2 content-start items-center justify-start p-4">
+                          <div className="flex flex-wrap gap-2 items-center justify-center p-4">
                             {tagCounts.map(([tag, count]) => {
                                 const fontSizeClass =
                                 count >= 5 ? "text-base font-black text-teal-900" :
