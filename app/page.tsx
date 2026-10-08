@@ -1390,7 +1390,7 @@ function BookClubContent() {
                 </p>
               </div>
               <span className="bg-gray-800 text-white px-2 py-1 rounded text-[11px] font-mono">
-                총 {reviews.filter((r) => r.rating === "중도하차").length}위 안치됨
+                총 {reviews.filter((r) => r.rating === "중도하차").length}작품 안치됨
               </span>
             </div>
 
@@ -1427,9 +1427,9 @@ function BookClubContent() {
                       </div>
 
                       {/* 하차자 및 기록일 */}
-                      <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 border-t border-gray-700 font-mono">
-                        <span>하차자: <strong className="text-gray-200">{book.user_name}</strong></span>
-                        <span>{book.created_at?.split("T")[0] || ""}</span>
+                      <div className="flex justify-between items-center text-xs text-gray-300 pt-2 border-t border-gray-700 font-mono">
+                        <span>하차자: <strong className="text-white font-bold ml-1">{book.user_name}</strong></span>
+                        <span className="text-[11px] text-gray-400">{book.created_at?.split("T")[0] || ""}</span>
                       </div>
                     </div>
                   ))
