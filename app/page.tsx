@@ -130,6 +130,27 @@ function renderReviewText(text: string): React.ReactNode {
   );
 }
 
+function serializeReview(text: string, spoiler: boolean): string {
+  const clean = text.replace(/^\s*(?:\(스포일러\)\s*)+/, "");
+  return spoiler ? "(스포일러) " + clean : clean;
+}
+
+function SpoilerReviewText({ text }: { text: string }) {
+  const [revealedText, setRevealedText] = useState<string | null>(null);
+  if (text.includes("(스포일러)") && revealedText !== text) {
+    return (
+      <button
+        type="button"
+        onClick={() => setRevealedText(text)}
+        className="win-btn px-2 py-1 text-xs text-gray-700"
+      >
+        ⚠️ 스포일러 리뷰 보기
+      </button>
+    );
+  }
+  return renderReviewText(text.replace(/\(스포일러\)/g, ""));
+}
+
 function isValidGroup(name: string | null) {
   if (!name) return false;
   if (name === "기본모임") return true;
@@ -1066,7 +1087,9 @@ function BookClubContent() {
       return "속보: 현재 서재가 평화롭습니다. 첫 번째 독서 기록을 등록해 보세요! 📢";
     }
     const recentItems = reviews.slice(0, 5).map((r) => {
-      const cleanReview = r.review ? r.review.replace("(스포일러)", "").trim() : "감상 등록 완료";
+      const cleanReview = r.review?.includes("(스포일러)")
+        ? "스포일러 포함 리뷰 (본문 숨김)"
+        : r.review?.trim() || "감상 등록 완료";
       const shortReview = cleanReview.length > 25 ? `${cleanReview.slice(0, 25)}...` : cleanReview;
       return `[NEW] ${r.user_name}님이 《${r.title}》에 평점 ${r.rating}을 남겼습니다: "${shortReview}"`;
     });
@@ -1401,12 +1424,14 @@ function BookClubContent() {
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
     setLoading(true);
+    const finalReview = serializeReview(formData.review || "", isSpoiler);
 
     if (editingId) {
       const { error } = await supabase
         .from("books")
         .update({
         ...formData,
+        review: finalReview,
         is_favorite: isFavorite,
         is_revisit: isRevisit,
       })
@@ -1417,13 +1442,13 @@ function BookClubContent() {
       } else {
         playRetroDing();
         alert("기록이 수정되었습니다!");
+        setRevealedSpoilers((previous) => previous.filter((id) => id !== editingId));
         setEditingId(null);
         resetForm();
         setOpenWindow(null);
         fetchReviews();
       }
     } else {
-      const finalReview = isSpoiler ? "(스포일러) " + (formData.review || "") : formData.review;
       const { error } = await supabase.from("books").insert([
         {
           ...formData,
@@ -1598,7 +1623,7 @@ function BookClubContent() {
       user_name: book.user_name,
       title: book.title,
       author: book.author || "",
-      review: book.review ? book.review.replace("(스포일러) ", "") : "",
+      review: serializeReview(book.review || "", false),
       genre: book.genre || "소설",
       rating: book.rating || "★★★★★",
     });
@@ -2279,7 +2304,7 @@ function BookClubContent() {
                     value={formData.review}
                     onChange={(e) => setFormData({ ...formData, review: e.target.value })}
                     className="w-full p-1.5 text-xs bg-white win-inset outline-none resize-none"
-                    placeholder="키워드 입력할 때는 쉼표 사용 금지. 띄어쓰기만 사용할 것. ex) #연하공 #연상수 "
+                    placeholder="감상이나 리뷰를 적어주세요"
                   />
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-[11px] text-gray-700">
                     <label className="flex items-center gap-1 cursor-pointer">
@@ -2548,7 +2573,7 @@ function BookClubContent() {
 
                         {/* 묘비명 (하차 사유) */}
                         <div className="my-3 bg-[#1e1e1e] p-2.5 rounded border border-gray-700 text-xs italic text-gray-300 break-keep leading-relaxed min-h-[48px] flex items-center">
-                          "{renderReviewText(book.review ? book.review.replace("(스포일러)", "") : "말없이 덮었습니다...")}"
+                          "<SpoilerReviewText text={book.review || "말없이 덮었습니다..."} />"
                         </div>
 
                         {/* 하차자 및 기록일 */}
@@ -2648,7 +2673,7 @@ function BookClubContent() {
                                 {book.author || "미상"} · {book.genre} · 작성자: <strong className="text-gray-700">{book.user_name}</strong>
                               </div>
                               <div className="text-xs bg-white p-2 rounded border border-dashed border-gray-300 text-gray-800 break-keep">
-                                {renderReviewText(book.review || "작성된 감상평이 없습니다.")}
+                                <SpoilerReviewText text={book.review || "작성된 감상평이 없습니다."} />
                               </div>
                             </div>
                           ))
@@ -2944,7 +2969,7 @@ function BookClubContent() {
                           {vendingBook.author || "미상"} · 추천자: {vendingBook.user_name}
                         </p>
                         <p className="text-xs bg-amber-50 p-1.5 rounded text-gray-700 line-clamp-2 italic">
-                          "{renderReviewText(vendingBook.review || "키워드와 함께 즐겨보세요!")}"
+                          "<SpoilerReviewText text={vendingBook.review || "키워드와 함께 즐겨보세요!"} />"
                         </p>
                       </div>
                     )}
@@ -3178,7 +3203,7 @@ function BookClubContent() {
                                       <span className="text-amber-600">{r.rating}</span>
                                     </div>
                                     <p className="text-gray-800 text-[11px] leading-snug break-keep">
-                                      "{renderReviewText(r.review ? r.review.replace("(스포일러)", "") : "말이 필요 없는 명작")}"
+                                      "<SpoilerReviewText text={r.review || "말이 필요 없는 명작"} />"
                                     </p>
                                   </div>
                                 ))
@@ -3204,7 +3229,7 @@ function BookClubContent() {
                                       <span className="text-gray-600">{r.rating}</span>
                                     </div>
                                     <p className="text-gray-800 text-[11px] leading-snug break-keep">
-                                      "{renderReviewText(r.review ? r.review.replace("(스포일러)", "") : "저와는 맞지 않았습니다...")}"
+                                      "<SpoilerReviewText text={r.review || "저와는 맞지 않았습니다..."} />"
                                     </p>
                                   </div>
                                 ))
@@ -3231,7 +3256,7 @@ function BookClubContent() {
                                     <div className="flex-1">
                                       <span className="font-bold text-gray-800 text-[11px] mr-1.5">{r.user_name}</span>
                                       <span className="text-gray-700 text-[11px]">
-                                        "{renderReviewText(r.review ? r.review.replace("(스포일러)", "") : "무난하게 읽었습니다.")}"
+                                        "<SpoilerReviewText text={r.review || "무난하게 읽었습니다."} />"
                                       </span>
                                     </div>
                                     <span className="text-gray-500 font-bold text-[11px] shrink-0">{r.rating}</span>
@@ -3453,7 +3478,7 @@ function BookClubContent() {
                               💬 영업 사원의 절규:
                             </div>
                             <p className="text-sm font-medium text-gray-900 leading-relaxed break-keep">
-                              "{renderReviewText(currentSale.review.replace("(스포일러)", ""))}"
+                              "<SpoilerReviewText text={currentSale.review} />"
                             </p>
                           </div>
                         </div>
@@ -3836,7 +3861,7 @@ function BookClubContent() {
                     <div className="space-y-1">
                       <div className="font-bold text-gray-700">[감상평]</div>
                       <div className="bg-transparent p-2.5 rounded border border-dashed border-gray-300 text-gray-800 text-xs break-keep leading-relaxed">
-                        "{renderReviewText(receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "감상평 없음")}"
+                        "<SpoilerReviewText text={receiptData.singleItem.review || "감상평 없음"} />"
                       </div>
                     </div>
 
@@ -3983,7 +4008,7 @@ function BookClubContent() {
                 <div className="text-amber-500 font-bold">{randomBook.rating}</div>
                 {randomBook.review && (
                     <div className="bg-gray-50 p-2 text-xs text-gray-700 win-inset break-words">
-                      "{renderReviewText(randomBook.review.replace("(스포일러)", ""))}"
+                      "<SpoilerReviewText text={randomBook.review} />"
                     </div>
                   )}
               </div>
