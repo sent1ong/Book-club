@@ -418,7 +418,7 @@ function BookClubContent() {
   // 영업소 엽서 넘기기용 인덱스 상태
   const [salesIndex, setSalesIndex] = useState(0);
 
-  // 🏃 페이스메이커 (모임원 독서 주행 속도 & 페이스 분석)
+  // 🏃 페이스메이커 (날짜 안전 계산 및 30일 기준 보정)
   const paceData = React.useMemo(() => {
     if (!reviews || reviews.length === 0) return [];
 
@@ -434,18 +434,23 @@ function BookClubContent() {
     const userPaces = Object.entries(userGroups).map(([name, uReviews]) => {
       const totalCount = uReviews.length;
 
-      // 최근 14일 이내 기록된 책 권수
+      // 최근 30일 이내 독서량 집계 (created_at이 없으면 최근 등록된 상위권 책들을 기본 인정)
       const recentCount = uReviews.filter((r) => {
-        if (!r.created_at) return false;
-        const diffDays =
-          (now.getTime() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24);
-        return diffDays <= 14;
+        if (r.created_at) {
+          const createdDate = new Date(r.created_at);
+          if (!isNaN(createdDate.getTime())) {
+            const diffDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+            return diffDays <= 30; // 30일 기준
+          }
+        }
+        // created_at이 누락된 구버전 글인 경우: 전체 최신 리뷰 목록 중 상위에 위치하면 인정
+        const globalIndex = reviews.findIndex((allR) => allR.id === r.id);
+        return globalIndex >= 0 && globalIndex < 10;
       }).length;
 
-      // 주행 속도 (최근 활동량 + 누적치 가중치 기반 km/h 환산)
-      const speed = Math.min(180, Math.max(10, recentCount * 25 + totalCount * 5));
+      // 주행 속도 (최근 활동량 비중 강화)
+      const speed = Math.min(180, Math.max(10, recentCount * 30 + totalCount * 5));
 
-      // 주행 상태 진단
       let status = "순항 중 🚙";
       let statusColor = "text-blue-800 bg-blue-100 border-blue-300";
       let comment = "안정적인 속도로 서재를 채워나가는 중입니다.";
@@ -464,8 +469,7 @@ function BookClubContent() {
         comment = "잠시 피트인(휴식) 상태입니다. 다음 작품으로 시동을 걸어보세요!";
       }
 
-      // 트랙 위 위치 퍼센트 (최대 100%)
-      const trackProgress = Math.min(92, Math.max(5, (speed / 150) * 100));
+      const trackProgress = Math.min(90, Math.max(5, (speed / 180) * 100));
 
       return {
         name,
@@ -479,7 +483,6 @@ function BookClubContent() {
       };
     });
 
-    // 주행 속도가 빠른 순서대로 정렬
     return userPaces.sort((a, b) => b.speed - a.speed);
   }, [reviews]);
 
@@ -898,6 +901,7 @@ function BookClubContent() {
           group_name: groupName,
           is_favorite: isFavorite,
           is_revisit: isRevisit,
+          created_at: new Date().toISOString(),
         },
       ]);
 
@@ -2827,7 +2831,7 @@ function BookClubContent() {
                             #{idx + 1} {runner.name}
                           </span>
                           <span className="text-cyan-400 font-bold">
-                            {runner.speed} km/h ({runner.recentCount}권/최근2주)
+                            {runner.speed} km/h ({runner.recentCount}권/최근 한 달)
                           </span>
                         </div>
 
@@ -2840,12 +2844,12 @@ function BookClubContent() {
                             <span className="text-white text-xs">|</span>
                           </div>
 
-                          {/* 달리는 러너 아이콘 */}
+                          {/* 달리는 러너 아이콘 (-scale-x-100 추가로 오른쪽 방향 주행) */}
                           <div
-                            className="absolute transition-all duration-700 flex items-center gap-1"
+                            className="absolute transition-all duration-700 flex items-center"
                             style={{ left: `${runner.trackProgress}%` }}
                           >
-                            <span className="text-lg drop-shadow">
+                            <span className="text-lg drop-shadow transform -scale-x-100 inline-block">
                               {idx === 0 ? "🏎️" : idx === 1 ? "🚗" : "🚙"}
                             </span>
                           </div>
