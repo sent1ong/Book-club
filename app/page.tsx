@@ -2913,14 +2913,34 @@ function BookClubContent() {
                           ★ 럭키 키워드 당첨 ★
                         </span>
                         <div className="flex flex-wrap gap-1.5 justify-center">
-                          {vendingTags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="bg-yellow-400 text-black px-2 py-1 rounded text-xs font-black shadow"
+                          {vendingTags.map((tag) => {
+                        const matchedTags =
+                          vendingBook?.review?.match(/#[^\s#]+/g) || [];
+                        
+                        const isMatched = matchedTags.includes(tag);
+                        
+                        return (
+                          <div key={tag} className="flex flex-col items-center gap-0.5">
+                            <span
+                              className={`text-[10px] font-black ${
+                                isMatched ? "text-green-400" : "invisible"
+                              }`}
                               >
-                                {tag}
-                              </span>
-                            ))}
+                              ✓ MATCH!
+                            </span>
+                            
+                            <span
+                              className={`text-black px-2 py-1 rounded text-xs font-black shadow ${
+                                isMatched
+                                ? "bg-green-300 ring-2 ring-green-500"
+                                : "bg-yellow-400"
+                              }`}
+                              >
+                              {tag}
+                            </span>
+                          </div>
+                        );
+                      })}
                         </div>
                       </div>
                     )}
