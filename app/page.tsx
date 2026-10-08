@@ -517,15 +517,15 @@ function BookClubContent() {
 
   // 멤버별 체크된 칸 목록 { "얼이": [5, 1, 2], "루프": [5, 3] }
   const [userBingoData, setUserBingoData] = useState<Record<string, number[]>>({
-    얼이: [5],
-    루프: [5],
-    홍시: [5],
-    체리: [5],
-    뿌리: [5],
-  });
+  얼이: [],
+  루프: [],
+  홍시: [],
+  체리: [],
+  뿌리: [],
+  });  
 
   // 현재 선택된 멤버의 체크 배열
-  const currentChecked = userBingoData[selectedBingoUser] || [5];
+  const currentChecked = userBingoData[selectedBingoUser] || [];
 
   // 빙고 줄 수 계산 로직 (가로 3, 세로 3, 대각선 2)
   const completedBingoLines = React.useMemo(() => {
@@ -540,7 +540,7 @@ function BookClubContent() {
   // 개별 칸 토글 함수
   const toggleBingoCell = (id: number) => {
     setUserBingoData((prev) => {
-      const userList = prev[selectedBingoUser] || [5];
+      const userList = prev[selectedBingoUser] || [];
       const nextList = userList.includes(id)
         ? userList.filter((x) => x !== id)
         : [...userList, id];
@@ -552,7 +552,7 @@ function BookClubContent() {
   const resetCurrentBingo = () => {
     setUserBingoData((prev) => ({
       ...prev,
-      [selectedBingoUser]: [5],
+      [selectedBingoUser]: [],
     }));
   };
   
