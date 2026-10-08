@@ -58,6 +58,7 @@ interface AppItem {
 
 const APP_LIST: AppItem[] = [
   { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
+  { id: "comments", name: "댓글", icon: "/icons/comments.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "genre", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
@@ -68,7 +69,6 @@ const APP_LIST: AppItem[] = [
   { id: "vending", name: "#키워드_가챠", icon: "/icons/vending.png" },
   { id: "versus", name: "호불호 배틀", icon: "/icons/versus.png" },
   { id: "graveyard", name: "하차작 묘지", icon: "/icons/graveyard.png" },
-  { id: "gossip", name: "익명 대나무숲", icon: "/icons/gossip.png" },
   { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
   { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
   { id: "collector", name: "카드 도감", icon: "/icons/collector.png" },
@@ -1232,6 +1232,40 @@ function BookClubContent() {
     }
   };
 
+  // 💬 댓글 클릭 시 해당 리뷰로 이동
+const jumpToReview = (bookId: number) => {
+  const targetBook = reviews.find((r) => r.id === bookId);
+
+  if (!targetBook) {
+    alert("해당 리뷰를 찾을 수 없습니다.");
+    return;
+  }
+
+  // 댓글창 닫기
+  setOpenWindow(null);
+
+  // 리뷰 검색 및 필터 초기화
+  setSelectedUser("전체");
+  setSelectedGenre("전체");
+  setFilterType("all");
+  setSearchQuery("");
+
+  // 해당 리뷰의 댓글창 열기
+  setOpenCommentBookId(bookId);
+
+  // 화면이 갱신된 뒤 해당 리뷰로 스크롤
+  setTimeout(() => {
+    const target = document.getElementById(`review-${bookId}`);
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, 100);
+};
+
   const handleAppClick = (appId: string) => {
     setStartMenuOpen(false);
     if (appId === "receipt") {
@@ -1802,8 +1836,8 @@ function BookClubContent() {
         </div>
       )}
 
-      {/* 4. 익명 대나무숲 & 전체 댓글 (gossip) */}
-      {openWindow === "gossip" && (
+      {/* 4. 전체 댓글 (comments) */}
+      {openWindow === "comments" && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85vh]">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -1817,13 +1851,19 @@ function BookClubContent() {
                 [...comments].reverse().map((c) => {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
-                    <div key={c.id} className="bg-gray-50 p-2 border border-gray-200 text-xs">
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => jumpToReview(c.book_id)}
+                      disabled={!targetBook}
+                      className="w-full text-left bg-gray-50 p-2 border border-gray-200 text-xs hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer disabled:cursor-default disabled:opacity-60"
+                      >
                       <div className="flex justify-between font-bold text-gray-800 mb-0.5">
                         <span>{c.user_name}</span>
                         <span className="text-[#000080] truncate max-w-[150px]">{targetBook ? targetBook.title : "삭제된 도서"}</span>
                       </div>
                       <p className="text-gray-700">{c.content.replace("(스포일러)", "").trim()}</p>
-                    </div>
+                    </button>
                   );
                 })
               )}
@@ -1833,7 +1873,7 @@ function BookClubContent() {
       )}
 
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
