@@ -2663,7 +2663,7 @@ function BookClubContent() {
                             (예: #후회공, #구원서사, #재주행필수 등)
                           </div>
                         ) : (
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-4">
+                          <div className="flex flex-wrap gap-2 items-center justify-center p-4">
                             {tagCounts.map(([tag, count]) => {
                                 const fontSizeClass =
                                 count >= 5 ? "text-base font-black text-teal-900" :
@@ -2676,7 +2676,7 @@ function BookClubContent() {
                                     key={tag}
                                     type="button"
                                     onClick={() => setSelectedTag(tag)}
-                                    className={`win-btn w-full min-w-0 min-h-9 px-1.5 py-1 flex items-center justify-center gap-1 ${fontSizeClass}`}
+                                    className={`win-btn px-2.5 py-1 flex items-center gap-1 shrink-0 whitespace-nowrap ${fontSizeClass}`}
                                   >
                                     <span>{tag}</span>
                                     <span className="text-[10px] bg-teal-100 text-teal-800 px-1 rounded-full font-mono">
