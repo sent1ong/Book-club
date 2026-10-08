@@ -2968,7 +2968,7 @@ function BookClubContent() {
                         <p className="text-[11px] text-gray-500 mb-1.5">
                           {vendingBook.author || "미상"} · 추천자: {vendingBook.user_name}
                         </p>
-                        <p className="text-xs bg-amber-50 p-1.5 rounded text-gray-700 line-clamp-2 italic">
+                        <p className="text-xs bg-amber-50 p-1.5 rounded text-gray-700 italic max-h-40 overflow-y-auto whitespace-pre-wrap break-words">
                           "<SpoilerReviewText text={vendingBook.review || "키워드와 함께 즐겨보세요!"} />"
                         </p>
                       </div>
