@@ -151,6 +151,33 @@ function BookClubContent() {
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
 
+  // 태그보드에서 선택된 태그 필터 (null이면 전체/태그목록 보기)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // 모든 리뷰의 한줄평에서 #태그 추출 및 빈도 계산
+  const tagCounts = React.useMemo(() => {
+    const counts: { [tag: string]: number } = {};
+    reviews.forEach((r) => {
+      if (!r.review) return;
+      // #뒤에 공백이나 특수문자가 오기 전까지의 단어 추출
+      const matched = r.review.match(/#[^\s#]+/g);
+      if (matched) {
+        // 한 리뷰 내 중복 태그 제거 후 카운트
+        Array.from(new Set(matched)).forEach((tag) => {
+          counts[tag] = (counts[tag] || 0) + 1;
+        });
+      }
+    });
+    // 많이 언급된 순서대로 정렬
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [reviews]);
+
+  // 선택된 태그가 포함된 리뷰 목록
+  const taggedReviews = React.useMemo(() => {
+    if (!selectedTag) return [];
+    return reviews.filter((r) => r.review && r.review.includes(selectedTag));
+  }, [reviews, selectedTag]);
+
   // 윈도우 98 쉘 상태
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [openWindow, setOpenWindow] = useState<string | null>(null);
@@ -1441,6 +1468,140 @@ function BookClubContent() {
               <button
                 type="button"
                 onClick={() => setOpenWindow(null)}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏷️ #태그보드 (TAGS.exe) */}
+      {openWindow === "tags" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-teal-900 to-teal-700 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>🏷️</span>
+                <span>TAGS.exe - 키워드 태그 클라우드</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenWindow(null);
+                  setSelectedTag(null);
+                }}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 상단 툴바 / 뒤로가기 네비게이션 */}
+            <div className="p-2.5 bg-gray-100 border-b border-gray-300 text-xs flex justify-between items-center">
+              <div>
+                {selectedTag ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTag(null)}
+                      className="win-btn px-2 py-0.5 text-xs font-bold"
+                    >
+                      ← 전체 태그로 돌아가기
+                    </button>
+                    <span className="font-bold text-teal-800">
+                      선택된 태그: {selectedTag} ({taggedReviews.length}편)
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-bold text-gray-900">🔖 한줄평 자동 추출 태그</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      리뷰에 남긴 #태그를 클릭하면 연관된 작품들만 모아볼 수 있습니다.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <span className="bg-teal-800 text-white px-2 py-0.5 rounded text-[11px] font-mono shrink-0">
+                총 {tagCounts.length}개 키워드
+              </span>
+            </div>
+
+            {/* 본문 콘텐츠 */}
+            <div className="p-4 overflow-y-auto flex-1 bg-white">
+              {/* 1. 특정 태그 클릭 시: 해당 작품 목록 출력 */}
+              {selectedTag ? (
+                <div className="space-y-2">
+                  {taggedReviews.length === 0 ? (
+                    <div className="py-12 text-center text-gray-400 text-xs">해당 태그의 작품이 없습니다.</div>
+                  ) : (
+                    taggedReviews.map((book) => (
+                      <div
+                        key={book.id}
+                        className="p-3 border border-gray-300 bg-gray-50 hover:bg-teal-50/40 rounded transition-colors"
+                      >
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="font-bold text-sm text-gray-900">{book.title}</span>
+                          <span className="text-xs text-amber-700 font-bold">{book.rating}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 mb-2">
+                          {book.author || "미상"} · {book.genre} · 작성자: <strong className="text-gray-700">{book.user_name}</strong>
+                        </div>
+                        <div className="text-xs bg-white p-2 rounded border border-dashed border-gray-300 text-gray-800 break-keep">
+                          {book.review || "작성된 감상평이 없습니다."}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                /* 2. 기본 상태: 태그 클라우드 */
+                <div>
+                  {tagCounts.length === 0 ? (
+                    <div className="py-16 text-center text-gray-400 text-xs font-mono">
+                      한줄평에 작성된 #태그가 아직 없습니다.<br />
+                      (예: #후회공, #구원서사, #재주행필수 등)
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 items-center justify-center p-4">
+                      {tagCounts.map(([tag, count]) => {
+                        // 빈도수에 따른 글자 크기 가중치 (12px ~ 18px)
+                        const fontSizeClass =
+                          count >= 5 ? "text-base font-black text-teal-900" :
+                          count >= 3 ? "text-sm font-bold text-teal-850" :
+                          count >= 2 ? "text-xs font-bold text-teal-700" :
+                          "text-xs font-medium text-gray-700";
+
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setSelectedTag(tag)}
+                            className={`win-btn px-2.5 py-1 flex items-center gap-1 active:scale-95 transition-transform ${fontSizeClass}`}
+                          >
+                            <span>{tag}</span>
+                            <span className="text-[10px] bg-teal-100 text-teal-800 px-1 rounded-full font-mono">
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenWindow(null);
+                  setSelectedTag(null);
+                }}
                 className="win-btn px-4 py-1 font-bold text-xs"
               >
                 닫기
