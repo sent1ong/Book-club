@@ -773,6 +773,18 @@ function BookClubContent() {
 
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
 
+  // 💬 댓글 스포일러 공개 상태
+const [revealedCommentSpoilers, setRevealedCommentSpoilers] =
+  useState<number[]>([]);
+
+const toggleCommentSpoiler = (commentId: number) => {
+  setRevealedCommentSpoilers((prev) =>
+    prev.includes(commentId)
+      ? prev.filter((id) => id !== commentId)
+      : [...prev, commentId]
+  );
+};
+
   const [commentForm, setCommentForm] = useState<{
     user_name: string;
     password: string;
@@ -1047,7 +1059,12 @@ function BookClubContent() {
       alert("댓글 저장 실패: " + error.message);
     } else {
       playRetroDing();
-      setCommentForm({ user_name: commentForm.user_name, password: "", content: "" });
+      setCommentForm({ 
+        user_name: commentForm.user_name, 
+        password: "",  
+        content: "",
+        is_spoiler: false,
+      });
       fetchComments();
     }
   };
@@ -1578,7 +1595,29 @@ const jumpToReview = (bookId: number) => {
                                     </div>
                                   </div>
                                   <div className="text-gray-800 break-all text-xs leading-relaxed">
-                                    {c.content.replace("(스포일러)", "").trim()}
+                                    {c.content.startsWith("(스포일러)") &&
+                                      !revealedCommentSpoilers.includes(c.id) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleCommentSpoiler(c.id)}
+                                          className="w-full text-left bg-gray-200 border border-dashed border-gray-400 px-2 py-1.5 text-gray-600 hover:bg-gray-300 cursor-pointer"
+                                          >
+                                          🔒 스포일러가 포함된 댓글입니다. 클릭하여 보기
+                                        </button>
+                                      ) : (
+                                        <div>
+                                          {c.content.replace(/^\(스포일러\)\s*/, "").trim()}
+                                          {c.content.startsWith("(스포일러)") && (
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleCommentSpoiler(c.id)}
+                                            className="block mt-1 text-[10px] text-blue-700 hover:underline"
+                                            >
+                                            🔒 다시 가리기
+                                          </button>
+                                        )}
+                                        </div>
+                                      )}
                                   </div>
                                 </div>
                               ))
@@ -1613,11 +1652,27 @@ const jumpToReview = (bookId: number) => {
                                 value={commentForm.content}
                                 onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
                                 className="flex-1 p-1 text-xs bg-white win-inset outline-none"
-                              />
+                              />                
                               <button type="submit" className="win-btn px-2.5 py-1 text-xs font-bold">
                                 등록
                               </button>
                             </div>
+
+                            {/* 스포일러 체크박스 */}
+                            <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer mt-1">
+                              <input
+                                type="checkbox"
+                                checked={commentForm.is_spoiler || false}
+                                onChange={(e) =>
+                                  setCommentForm({
+                                    ...commentForm,
+                                    is_spoiler: e.target.checked,
+                                  })
+                                }
+                                className="accent-[#000080]"
+                              />
+                              <span>⚠️ 스포일러 포함</span>
+                            </label>
                           </form>
                         </div>
                       )}
@@ -1626,6 +1681,7 @@ const jumpToReview = (bookId: number) => {
                 })
               )}
             </div>
+            
            {/* 📟 실시간 속보 LED 전광판 (서재 창 내부 도킹) */}
           <div className="mt-2 bg-black border-2 border-gray-600 rounded px-2.5 py-1.5 flex items-center gap-2 win-inset overflow-hidden shrink-0">
             {/* 좌측 레트로 속보 뱃지 */}
@@ -1851,20 +1907,52 @@ const jumpToReview = (bookId: number) => {
                 [...comments].reverse().map((c) => {
                   const targetBook = reviews.find((r) => r.id === c.book_id);
                   return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => jumpToReview(c.book_id)}
-                      disabled={!targetBook}
-                      className="w-full text-left bg-gray-50 p-2 border border-gray-200 text-xs hover:bg-blue-50 hover:border-blue-400 transition-colors cursor-pointer disabled:cursor-default disabled:opacity-60"
-                      >
-                      <div className="flex justify-between font-bold text-gray-800 mb-0.5">
-                        <span>{c.user_name}</span>
-                        <span className="text-[#000080] truncate max-w-[150px]">{targetBook ? targetBook.title : "삭제된 도서"}</span>
-                      </div>
-                      <p className="text-gray-700">{c.content.replace("(스포일러)", "").trim()}</p>
-                    </button>
-                  );
+  <div
+    key={c.id}
+    className="w-full bg-gray-50 p-2 border border-gray-200 text-xs"
+  >
+    {/* 댓글 작성자 및 도서 제목 */}
+    <button
+      type="button"
+      onClick={() => jumpToReview(c.book_id)}
+      disabled={!targetBook}
+      className="w-full text-left flex justify-between font-bold text-gray-800 mb-1 hover:bg-blue-50 cursor-pointer disabled:cursor-default"
+    >
+      <span>{c.user_name}</span>
+      <span className="text-[#000080] truncate max-w-[150px] underline">
+        {targetBook ? targetBook.title : "삭제된 도서"}
+      </span>
+    </button>
+
+    {/* 스포일러 댓글 표시 */}
+    {c.content.startsWith("(스포일러)") &&
+    !revealedCommentSpoilers.includes(c.id) ? (
+      <button
+        type="button"
+        onClick={() => toggleCommentSpoiler(c.id)}
+        className="w-full text-left bg-gray-200 border border-dashed border-gray-400 px-2 py-1.5 text-gray-600 hover:bg-gray-300"
+      >
+        🔒 스포일러가 포함된 댓글입니다. 클릭하여 보기
+      </button>
+    ) : (
+      <div>
+        <p className="text-gray-700 break-all">
+          {c.content.replace(/^\(스포일러\)\s*/, "").trim()}
+        </p>
+
+        {c.content.startsWith("(스포일러)") && (
+          <button
+            type="button"
+            onClick={() => toggleCommentSpoiler(c.id)}
+            className="mt-1 text-[10px] text-blue-700 hover:underline"
+          >
+            🔒 다시 가리기
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+);
                 })
               )}
             </div>
