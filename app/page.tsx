@@ -2914,7 +2914,7 @@ function BookClubContent() {
                         </span>
                         <div className="flex flex-wrap gap-1.5 justify-center">
                           {vendingTags.map((tag) => {
-                        const matchedTags =
+                        const matchedTags: string[] =
                           vendingBook?.review?.match(/#[^\s#]+/g) || [];
                         
                         const isMatched = matchedTags.includes(tag);
