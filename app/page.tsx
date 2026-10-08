@@ -336,6 +336,293 @@ function ReviewQuizWindow({ groupName, onClose }: { groupName: string; onClose: 
 }
 
 
+// function BookClubContent() 바로 위에 삽입합니다.
+type CollectorCard = {
+  key: string;
+  title: string;
+  author: string;
+  owner: string;
+  genre: string;
+  records: BookReview[];
+};
+
+function buildCollectorCards(reviews: BookReview[], groupName: string): CollectorCard[] {
+  const cards = new Map<string, CollectorCard>();
+  const sorted = reviews.filter((review) => review.group_name === groupName)
+    .slice().sort((a, b) => b.id - a.id);
+  for (const review of sorted) {
+    const title = review.title?.trim();
+    const owner = review.user_name?.trim();
+    if (!title || !owner) continue;
+    const author = review.author?.trim() || "작가 미상";
+    const key = JSON.stringify([owner, title, author]);
+    const existing = cards.get(key);
+    if (existing) {
+      existing.records.push(review);
+    } else {
+      cards.set(key, { key, title, author, owner, genre: review.genre?.trim() || "기타", records: [review] });
+    }
+  }
+  return Array.from(cards.values());
+}
+
+const COLLECTOR_COLORS = [
+  { background: "#f4d9e4", ink: "#672f4c", accent: "#c07698" },
+  { background: "#dce8d8", ink: "#2c543c", accent: "#789c77" },
+  { background: "#dbe5f4", ink: "#314b76", accent: "#7c99c0" },
+  { background: "#f4e6cc", ink: "#70502c", accent: "#bf9961" },
+  { background: "#e7def2", ink: "#594173", accent: "#a48aba" },
+  { background: "#d5eae8", ink: "#285c58", accent: "#73a7a1" },
+];
+
+function collectorColor(genre: string) {
+  let hash = 0;
+  for (let i = 0; i < genre.length; i++) hash = (hash * 31 + genre.charCodeAt(i)) >>> 0;
+  return COLLECTOR_COLORS[hash % COLLECTOR_COLORS.length];
+}
+
+function CollectorWindow({ reviews, groupName, onClose }: {
+  reviews: BookReview[]; groupName: string; onClose: () => void;
+}) {
+  const [owner, setOwner] = useState("전체");
+  const [genre, setGenre] = useState("전체");
+  const [query, setQuery] = useState("");
+  const [flipped, setFlipped] = useState<string[]>([]);
+  const [revealed, setRevealed] = useState<number[]>([]);
+  const allCards = React.useMemo(() => buildCollectorCards(reviews, groupName), [reviews, groupName]);
+  const owners = Array.from(new Set(allCards.map((card) => card.owner)));
+  const ownedCards = allCards.filter((card) => owner === "전체" || card.owner === owner);
+  const genres = Array.from(new Set(ownedCards.map((card) => card.genre))).sort();
+  const search = query.trim().toLocaleLowerCase();
+  const visibleCards = ownedCards.filter((card) =>
+    (genre === "전체" || card.genre === genre) &&
+    [card.title, card.author, card.genre].some((value) => value.toLocaleLowerCase().includes(search))
+  );
+  const favorites = ownedCards.filter((card) => card.records.some((record) => record.is_favorite)).length;
+  const toggleCard = (key: string) => setFlipped((previous) =>
+    previous.includes(key) ? previous.filter((item) => item !== key) : [...previous, key]
+  );
+  const formatDate = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("ko-KR");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
+      <div role="dialog" aria-modal="true" aria-labelledby="collector-title"
+        className="w-full max-w-3xl max-h-[90dvh] flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
+        <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
+          <span id="collector-title">카드 도감.exe</span>
+          <button type="button" onClick={onClose} aria-label="카드 도감 닫기" className="win-btn text-black px-1">✕</button>
+        </div>
+        <div className="p-3 space-y-3 overflow-y-auto min-h-0">
+          <div className="bg-white win-inset p-3 flex flex-wrap items-center justify-between gap-2">
+            <div><p className="text-xs text-gray-500 tracking-widest">MY READING COLLECTION</p>
+              <h2 className="font-bold text-lg">📇 나의 작품 카드 도감</h2></div>
+            <div className="text-xs text-right"><p className="font-bold">수집 카드 {ownedCards.length}장 · 인생작 {favorites}장</p>
+              <p className="text-gray-600 mt-1">{owner === "전체" ? "모임원별 카드 전체 보기" : `${owner} 님의 컬렉션`}</p></div>
+          </div>
+          <div className="flex flex-wrap gap-1" aria-label="모임원 선택">
+            {["전체", ...owners].map((name) => (
+              <button key={name} type="button" aria-pressed={owner === name}
+                onClick={() => { setOwner(name); setGenre("전체"); setFlipped([]); setRevealed([]); }}
+                className={`win-btn px-2 py-1 text-xs ${owner === name ? "bg-[#000080] text-white" : ""}`}>{name}</button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="text-xs flex items-center gap-1">장르
+              <select value={genre} onChange={(event) => setGenre(event.target.value)} className="bg-white win-inset p-1 text-black">
+                <option value="전체">전체</option>
+                {genres.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="flex-1 min-w-[140px] text-xs flex items-center gap-1">검색
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="제목 · 작가 · 장르"
+                className="w-full min-w-0 bg-white win-inset p-1 text-black" />
+            </label>
+          </div>
+          <p className="text-xs text-gray-700">카드를 누르면 뒤집혀요. 같은 멤버의 제목·작가가 같은 기록은 한 카드에 모입니다.</p>
+          {visibleCards.length === 0 ? (
+            <p role="status" className="bg-white win-inset p-6 text-center text-sm">
+              {allCards.length === 0 ? "아직 수집한 카드가 없어요. 작품을 기록하면 자동으로 카드가 생깁니다!" : "조건에 맞는 카드가 없어요."}
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {visibleCards.map((card) => {
+                const colors = collectorColor(card.genre);
+                const isFavorite = card.records.some((record) => record.is_favorite);
+                const isRevisit = card.records.some((record) => record.is_revisit);
+                const isBack = flipped.includes(card.key);
+                return (
+                  <article key={card.key} className="rounded-xl p-2 shadow-md min-w-0 border-2"
+                    style={{ background: colors.background, color: colors.ink, borderColor: isFavorite ? "#b88b29" : colors.accent }}>
+                    {!isBack ? (
+                      <button type="button" onClick={() => toggleCard(card.key)} aria-label={`${card.title} 카드 뒷면 보기`}
+                        className="w-full h-72 sm:h-80 flex flex-col text-left rounded-lg border p-3 relative overflow-hidden"
+                        style={{ borderColor: colors.accent }}>
+                        <div aria-hidden="true" className="absolute -right-8 -top-8 w-28 h-28 rounded-full border-[12px] opacity-20" style={{ borderColor: colors.accent }} />
+                        <div className="relative flex justify-between items-start gap-1 text-[10px] tracking-widest"><span>BOOK CLUB<br />COLLECTION</span><span>✦</span></div>
+                        <div className="relative flex-1 flex flex-col justify-center py-4 min-h-0">
+                          <p className="text-[10px] mb-2 tracking-widest">TITLE</p>
+                          <h3 className="font-extrabold text-lg sm:text-xl leading-snug break-words line-clamp-4">{card.title}</h3>
+                          <p className="mt-3 text-xs break-words line-clamp-2">{card.author}</p>
+                        </div>
+                        <div className="relative border-t pt-2 space-y-2 text-xs" style={{ borderColor: colors.accent }}>
+                          <p className="font-bold break-words">{card.genre}</p>
+                          <div className="flex flex-wrap gap-1">{isFavorite && <span>👑 인생작</span>}{isRevisit && <span>🔁 재주행</span>}</div>
+                          <p className="text-[10px] break-words">{card.owner} 님 · 기록 {card.records.length}개</p>
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="h-72 sm:h-80 flex flex-col rounded-lg bg-white/70 p-3">
+                        <button type="button" onClick={() => toggleCard(card.key)} className="text-left shrink-0 border-b pb-2 text-xs font-bold" style={{ borderColor: colors.accent }}>
+                          ← 앞면 보기 · {card.title}
+                        </button>
+                        <div className="flex-1 overflow-y-auto mt-2 space-y-3 min-h-0 select-text">
+                          <p className="text-xs break-words">{card.author} · {card.genre}<br />{card.owner} 님의 기록</p>
+                          {card.records.map((record) => {
+                            const text = record.review?.replace(/\(스포일러\)/g, "").trim();
+                            const hidden = record.review?.includes("(스포일러)") && !revealed.includes(record.id);
+                            return (
+                              <div key={record.id} className="border-t pt-2 space-y-1 text-xs" style={{ borderColor: colors.accent }}>
+                                <p className="font-bold">{record.rating || "평점 없음"}{record.is_favorite ? " · 👑" : ""}{record.is_revisit ? " · 🔁" : ""}</p>
+                                <p className="text-[10px] opacity-70">{formatDate(record.created_at)}</p>
+                                {hidden ? (
+                                  <button type="button" onClick={() => setRevealed((previous) => [...previous, record.id])}
+                                    className="win-btn p-1 text-black text-left">⚠️ 스포일러 리뷰 보기</button>
+                                ) : <p className="whitespace-pre-wrap break-words leading-relaxed">{text || "아직 감상평이 없어요."}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          <div className="text-xs text-gray-600 flex justify-between"><span>표시 중 {visibleCards.length}장</span><span>✦ 읽을수록 채워지는 도감 ✦</span></div>
+        </div>
+        <div className="flex justify-end p-2 shrink-0"><button type="button" onClick={onClose} className="win-btn px-4 py-1 text-xs">닫기</button></div>
+      </div>
+    </div>
+  );
+}
+
+
+// 기존 parseSavedBingo와 useSavedBingo를 모두 지우고 이 코드를 넣습니다.
+function useSupabaseBingo(groupName: string) {
+  const [snapshot, setSnapshot] = useState<{ group: string; data: Record<string, number[]> }>({ group: "", data: {} });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [reload, setReload] = useState(0);
+  const activeGroup = React.useRef(groupName);
+  const busy = React.useRef(false);
+  const version = React.useRef(0);
+  const refreshRef = React.useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let reading = false;
+    activeGroup.current = groupName;
+    busy.current = false;
+    version.current += 1;
+    setSaving(false);
+    setLoading(true);
+    setErrorMessage("");
+    const load = async () => {
+      if (cancelled || reading || busy.current || !isValidGroup(groupName)) return;
+      reading = true;
+      const requestVersion = version.current;
+      try {
+        const { data, error } = await supabase.from("bingo_states")
+          .select("user_name,cell_id,checked").eq("group_name", groupName)
+          .order("user_name").order("cell_id");
+        if (cancelled || busy.current || requestVersion !== version.current) return;
+        if (error) throw error;
+        const next: Record<string, number[]> = Object.create(null);
+        (data || []).forEach((row) => {
+          if (!row.checked) return;
+          if (!next[row.user_name]) next[row.user_name] = [];
+          next[row.user_name].push(row.cell_id);
+        });
+        setSnapshot({ group: groupName, data: next });
+        setErrorMessage("");
+      } catch {
+        if (!cancelled && requestVersion === version.current) {
+          setErrorMessage("빙고를 불러오지 못했어요. Supabase 테이블·권한과 연결 상태를 확인해 주세요.");
+        }
+      } finally {
+        reading = false;
+        if (!cancelled && requestVersion === version.current) setLoading(false);
+      }
+    };
+    refreshRef.current = () => { void load(); };
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 5000);
+    const onFocus = () => { void load(); };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      refreshRef.current = null;
+    };
+  }, [groupName, reload]);
+
+  const data = snapshot.group === groupName ? snapshot.data : {};
+  const ready = snapshot.group === groupName && !loading;
+  const save = async (user: string, cellId: number | null) => {
+    if (!ready || busy.current || !user.trim()) return;
+    const checked = !(data[user] || []).includes(cellId ?? 0);
+    const rows = cellId === null
+      ? Array.from({ length: 9 }, (_, index) => ({ group_name: groupName, user_name: user, cell_id: index + 1, checked: false }))
+      : [{ group_name: groupName, user_name: user, cell_id: cellId, checked }];
+    busy.current = true;
+    version.current += 1;
+    const saveVersion = version.current;
+    setSaving(true);
+    setErrorMessage("");
+    let saved = false;
+    try {
+      const { error } = await supabase.from("bingo_states")
+        .upsert(rows, { onConflict: "group_name,user_name,cell_id" });
+      if (error) throw error;
+      if (activeGroup.current !== groupName || version.current !== saveVersion) return;
+      saved = true;
+      setSnapshot((previous) => {
+        if (previous.group !== groupName) return previous;
+        const current = previous.data[user] || [];
+        const next = cellId === null ? [] : checked
+          ? Array.from(new Set([...current, cellId])) : current.filter((id) => id !== cellId);
+        return { group: groupName, data: { ...previous.data, [user]: next } };
+      });
+    } catch {
+      if (activeGroup.current === groupName && version.current === saveVersion) {
+        setErrorMessage("빙고 저장에 실패했어요. 체크는 변경하지 않았습니다. 연결을 확인하고 다시 눌러 주세요.");
+      }
+    } finally {
+      if (activeGroup.current === groupName && version.current === saveVersion) {
+        busy.current = false;
+        setSaving(false);
+        if (saved) refreshRef.current?.();
+      }
+    }
+  };
+  return {
+    data, loading, saving, ready, errorMessage,
+    toggle: (user: string, id: number) => { void save(user, id); },
+    reset: (user: string) => { void save(user, null); },
+    retry: () => setReload((previous) => previous + 1),
+  };
+}
+
+
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
@@ -722,13 +1009,8 @@ function BookClubContent() {
   const [selectedBingoUser, setSelectedBingoUser] = useState<string>("얼이");
 
   // 멤버별 체크된 칸 목록 { "얼이": [5, 1, 2], "루프": [5, 3] }
-  const [userBingoData, setUserBingoData] = useState<Record<string, number[]>>({
-  얼이: [],
-  루프: [],
-  홍시: [],
-  체리: [],
-  뿌리: [],
-  });  
+  const bingo = useSupabaseBingo(groupName);
+  const userBingoData = bingo.data;  
 
   // 현재 선택된 멤버의 체크 배열
   const currentChecked = userBingoData[selectedBingoUser] || [];
@@ -743,25 +1025,10 @@ function BookClubContent() {
     return lines.filter((line) => line.every((id) => currentChecked.includes(id))).length;
   }, [currentChecked]);
 
-  // 개별 칸 토글 함수
-  const toggleBingoCell = (id: number) => {
-    setUserBingoData((prev) => {
-      const userList = prev[selectedBingoUser] || [];
-      const nextList = userList.includes(id)
-        ? userList.filter((x) => x !== id)
-        : [...userList, id];
-      return { ...prev, [selectedBingoUser]: nextList };
-    });
-  };
+  // 서버 저장이 완료된 후 체크 상태를 반영합니다.
+  const toggleBingoCell = (id: number) => bingo.toggle(selectedBingoUser, id);
+  const resetCurrentBingo = () => bingo.reset(selectedBingoUser);
 
-  // 현재 선택된 멤버의 빙고판 초기화
-  const resetCurrentBingo = () => {
-    setUserBingoData((prev) => ({
-      ...prev,
-      [selectedBingoUser]: [],
-    }));
-  };
-  
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -2169,8 +2436,11 @@ const jumpToReview = (bookId: number) => {
       {openWindow === "quiz" && (
         <ReviewQuizWindow key={groupName} groupName={groupName} onClose={() => setOpenWindow(null)} />
       )}
+      {openWindow === "collector" && (
+        <CollectorWindow key={groupName} reviews={reviews} groupName={groupName} onClose={() => setOpenWindow(null)} />
+      )}
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -3385,6 +3655,13 @@ const jumpToReview = (bookId: number) => {
                 ))}
               </div>
 
+              {bingo.errorMessage && (
+                <p role="alert" className="bg-white win-inset p-2 text-xs text-red-700">{bingo.errorMessage}</p>
+              )}
+              <div className="flex items-center justify-between gap-2 text-xs text-gray-700">
+                <span role="status">{bingo.saving ? "Supabase에 저장 중..." : bingo.loading ? "빙고 불러오는 중..." : bingo.ready ? "모임 공유 저장 · 5초마다 동기화" : "빙고 연결을 확인해 주세요."}</span>
+                <button type="button" onClick={bingo.retry} disabled={bingo.saving || bingo.loading} className="win-btn px-2 py-0.5">다시 불러오기</button>
+              </div>
               {/* 스코어 및 상태 표시 */}
               <div className="bg-white win-inset p-2 flex justify-between items-center">
                 <div className="text-xs">
@@ -3402,6 +3679,7 @@ const jumpToReview = (bookId: number) => {
                   <button
                     type="button"
                     onClick={resetCurrentBingo}
+                    disabled={!bingo.ready || bingo.saving}
                     className="win-btn text-xs px-2 py-0.5 ml-1"
                   >
                     초기화
@@ -3419,6 +3697,7 @@ const jumpToReview = (bookId: number) => {
                       key={cell.id}
                       type="button"
                       onClick={() => toggleBingoCell(cell.id)}
+                      disabled={!bingo.ready || bingo.saving}
                       className={`h-24 p-1.5 flex flex-col justify-between items-center text-center transition-all select-none relative ${
                         isChecked
                           ? "bg-[#e8f0fe] win-inset border-blue-500"
