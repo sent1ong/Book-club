@@ -2826,7 +2826,7 @@ function BookClubContent() {
                             #{idx + 1} {runner.name}
                           </span>
                           <span className="text-cyan-400 font-bold">
-                            {runner.speed} km/h ({runner.recentCount}권/최근 한 달)
+                            {runner.speed} km/h ({runner.recentCount}권/최근 2주)
                           </span>
                         </div>
 
