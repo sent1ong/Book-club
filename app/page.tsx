@@ -217,11 +217,10 @@ function BookClubContent() {
     };
   }, [reviews, mateTargetUser]);
 
-  // ⚔️ 호불호 논쟁작 배틀 데이터 분석 (런타임 에러 방지 안전 버전)
+  // ⚔️ 호불호 논쟁작 배틀 데이터 분석 (완전체)
   const battleData = React.useMemo(() => {
     if (!reviews || reviews.length === 0) return null;
 
-    // 안전한 내부 점수 매핑 (외부 scoreMap 위치 무관)
     const localScoreMap: Record<string, number> = {
       "★★★★★": 5.0,
       "★★★★☆": 4.5,
@@ -251,6 +250,7 @@ function BookClubContent() {
       variance: number;
       proReviews: BookReview[];
       conReviews: BookReview[];
+      neutralReviews: BookReview[];
       avgScore: number;
     } | null = null;
 
@@ -264,23 +264,19 @@ function BookClubContent() {
       const variance =
         scores.reduce((acc, score) => acc + Math.pow(score - mean, 2), 0) / scores.length;
 
-      // 1. 극호 진영: 4.0점 이상 (인생작 포함)
       const pro = bookReviews.filter(
         (r) => (localScoreMap[r.rating] ?? 0) >= 4.0 || r.rating === "★★★★★" || r.is_favorite
       );
 
-      // 2. 불호 진영: 2.5점 이하 또는 중도하차 (2.5부터 불호!)
       const con = bookReviews.filter(
         (r) => (localScoreMap[r.rating] ?? 0) <= 2.5 || r.rating === "중도하차"
       );
 
-      // 3. 중립/보통 영역: 3.0점 ~ 3.5점
       const neutral = bookReviews.filter((r) => {
         const score = localScoreMap[r.rating] ?? 0;
         return score >= 3.0 && score <= 3.5 && !r.is_favorite && r.rating !== "중도하차";
       });
 
-      // ⭐ 배틀 조건: 호(4.0+)와 불호(2.5-) 양쪽에 각 1명 이상 있어야 진짜 '호불호 대립 배틀' 성립!
       if (pro.length > 0 && con.length > 0 && variance > maxVariance) {
         maxVariance = variance;
         topControversial = {
@@ -291,10 +287,11 @@ function BookClubContent() {
           variance,
           proReviews: pro,
           conReviews: con,
-          neutralReviews: neutral, // 3점 관전석 코멘트 전달
+          neutralReviews: neutral,
           avgScore: Number(mean.toFixed(1)),
         };
       }
+    });
 
     return topControversial;
   }, [reviews]);
