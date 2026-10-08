@@ -2174,7 +2174,7 @@ function BookClubContent() {
                   onMouseOver={(e) => (e.currentTarget as any).stop()}
                   onMouseOut={(e) => (e.currentTarget as any).start()}
                 >
-                  {renderReviewText(tickerText)}
+                  {tickerText}
                 </marquee>
               </div>
             </div>
