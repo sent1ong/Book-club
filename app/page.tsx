@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import html2canvas from "html2canvas";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -129,7 +130,9 @@ const playCelebrationSound = () => {
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
-
+  const receiptRef = React.useRef<HTMLDivElement>(null);
+  
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [reviews, setReviews] = useState<BookReview[]>([]);
   const [goals, setGoals] = useState<UserGoal[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -636,6 +639,26 @@ function BookClubContent() {
   });
 
   const todayStr = new Date().toISOString().split("T")[0];
+
+  const handleSaveReceiptImage = async () => {
+    if (!receiptRef.current) return;
+    try {
+      setDownloadingReceipt(true);
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
+      link.click();
+    } catch (err) {
+      alert("이미지 저장 중 오류가 발생했습니다.");
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  };
 
   const handleAppClick = (appId: string) => {
     setStartMenuOpen(false);
@@ -1321,11 +1344,13 @@ function BookClubContent() {
           onClick={() => setReceiptData(null)}
         >
           <div
+            ref={receiptRef}
             className="w-full max-w-[360px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
+              data-html2canvas-ignore="true"
               onClick={() => setReceiptData(null)}
               className="absolute top-2 right-2 text-gray-400 hover:text-black font-bold text-sm select-none"
             >
@@ -1393,6 +1418,19 @@ function BookClubContent() {
               </div>
               <div className="text-xs font-black tracking-tight mt-1 text-black">
                 *** 구매비덕질을 타파하자! ***
+              </div>
+
+              {/* 저장 버튼 */}
+              <div data-html2canvas-ignore="true" className="mt-3 pt-2 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleSaveReceiptImage}
+                  disabled={downloadingReceipt}
+                  className="w-full py-1.5 win-btn font-bold text-xs flex items-center justify-center gap-1 active:scale-95"
+                >
+                  <span>💾</span>
+                  <span>{downloadingReceipt ? "저장 중..." : "영수증 이미지로 저장"}</span>
+                </button>
               </div>
             </div>
           </div>
