@@ -54,9 +54,9 @@ const APP_LIST: AppItem[] = [
   { id: "stats", name: "통계", icon: "/icons/stats.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
-  { id: "tags", name: "#태그", icon: "/icons/tags.png" },
-  { id: "chart-pie", name: "장르 분석", icon: "/icons/chart-pie.png" },
+  { id: "tags", name: "#키워드", icon: "/icons/tags.png" },
   { id: "vending", name: "키워드 자판기", icon: "/icons/vending.png" },
+  { id: "chart-pie", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
   { id: "versus", name: "호불호 배틀", icon: "/icons/versus.png" },
   { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
@@ -1477,7 +1477,7 @@ function BookClubContent() {
         </div>
       )}
 
-      {/* 🏷️ #태그보드 (TAGS.exe) */}
+      {/* 🏷️ #키워드보드 (KEYWORDS.exe) */}
       {openWindow === "tags" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
@@ -1485,7 +1485,7 @@ function BookClubContent() {
             <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-teal-900 to-teal-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>🏷️</span>
-                <span>TAGS.exe - 키워드 태그 클라우드</span>
+                <span>KEYWORDS.exe - 작품 키워드 모음</span>
               </span>
               <button
                 type="button"
@@ -1509,17 +1509,17 @@ function BookClubContent() {
                       onClick={() => setSelectedTag(null)}
                       className="win-btn px-2 py-0.5 text-xs font-bold"
                     >
-                      ← 전체 태그로 돌아가기
+                      ← 전체 키워드로 돌아가기
                     </button>
                     <span className="font-bold text-teal-800">
-                      선택된 태그: {selectedTag} ({taggedReviews.length}편)
+                      선택된 키워드: {selectedTag} ({taggedReviews.length}편)
                     </span>
                   </div>
                 ) : (
                   <div>
-                    <p className="font-bold text-gray-900">🔖 한줄평 자동 추출 태그</p>
+                    <p className="font-bold text-gray-900">🔖 한줄평 자동 추출 키워드</p>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      리뷰에 남긴 #태그를 클릭하면 연관된 작품들만 모아볼 수 있습니다.
+                      리뷰에 남긴 #키워드를 클릭하면 연관된 작품들만 모아볼 수 있습니다.
                     </p>
                   </div>
                 )}
@@ -1531,11 +1531,11 @@ function BookClubContent() {
 
             {/* 본문 콘텐츠 */}
             <div className="p-4 overflow-y-auto flex-1 bg-white">
-              {/* 1. 특정 태그 클릭 시: 해당 작품 목록 출력 */}
+              {/* 1. 특정 키워드 클릭 시: 해당 작품 목록 출력 */}
               {selectedTag ? (
                 <div className="space-y-2">
                   {taggedReviews.length === 0 ? (
-                    <div className="py-12 text-center text-gray-400 text-xs">해당 태그의 작품이 없습니다.</div>
+                    <div className="py-12 text-center text-gray-400 text-xs">해당 키워드의 작품이 없습니다.</div>
                   ) : (
                     taggedReviews.map((book) => (
                       <div
@@ -1557,20 +1557,19 @@ function BookClubContent() {
                   )}
                 </div>
               ) : (
-                /* 2. 기본 상태: 태그 클라우드 */
+                /* 2. 기본 상태: 키워드 클라우드 */
                 <div>
                   {tagCounts.length === 0 ? (
                     <div className="py-16 text-center text-gray-400 text-xs font-mono">
-                      한줄평에 작성된 #태그가 아직 없습니다.<br />
+                      한줄평에 작성된 #키워드가 아직 없습니다.<br />
                       (예: #후회공, #구원서사, #재주행필수 등)
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2 items-center justify-center p-4">
                       {tagCounts.map(([tag, count]) => {
-                        // 빈도수에 따른 글자 크기 가중치 (12px ~ 18px)
                         const fontSizeClass =
                           count >= 5 ? "text-base font-black text-teal-900" :
-                          count >= 3 ? "text-sm font-bold text-teal-850" :
+                          count >= 3 ? "text-sm font-bold text-teal-800" :
                           count >= 2 ? "text-xs font-bold text-teal-700" :
                           "text-xs font-medium text-gray-700";
 
