@@ -1440,11 +1440,12 @@ function BookClubContent() {
           className="absolute bottom-10 left-0 z-50 w-60 bg-[#c0c0c0] win-outset flex shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-8 bg-[#808080] flex items-end justify-center pb-2">
-            <span className="text-white text-xs font-bold -rotate-90 origin-center whitespace-nowrap tracking-wider">
+          {/* 좌측 사이드바 */}
+          <div className="w-8 bg-gradient-to-t from-[#000080] via-[#1084d0] to-[#000080] flex items-center justify-center relative overflow-hidden select-none">
+            <span className="text-white font-extrabold text-xs -rotate-90 whitespace-nowrap tracking-widest drop-shadow">
               BOOK CLUB 98
             </span>
-          </div>
+            </div>
           <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs max-h-[350px] overflow-y-auto">
             {APP_LIST.map((app) => (
               <button
