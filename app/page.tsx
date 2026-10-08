@@ -1395,47 +1395,61 @@ function BookClubContent() {
             </div>
 
             {receiptData.type === "single" && receiptData.singleItem && (
-  <div className="py-3 space-y-2 text-xs">
-    <div className="flex justify-between items-center border-b border-gray-300 pb-1 text-gray-700">
-      <span className="font-bold">[작품 정보]</span>
-      <div className="flex items-center gap-1">
-        {receiptData.singleItem.is_favorite && (
-          <span className="bg-amber-100 text-amber-900 border border-amber-300 px-1 py-0.5 rounded text-[10px] font-bold">
-            👑 인생작
-          </span>
-        )}
-        {receiptData.singleItem.is_revisit && (
-          <span className="bg-sky-100 text-sky-900 border border-sky-300 px-1 py-0.5 rounded text-[10px] font-bold">
-            🔁 재주행
-          </span>
-        )}
-      </div>
-    </div>
-    <div className="space-y-1">
-      <div className="flex">
-        <span className="w-14 text-gray-500 shrink-0">제  목:</span>
-        <span className="font-bold break-keep text-gray-900">
-          {receiptData.singleItem.title}
-        </span>
-      </div>
-      <div className="flex">
-        <span className="w-14 text-gray-500 shrink-0">작  가:</span>
-        <span>{receiptData.singleItem.author || "미상"}</span>
-      </div>
-      <div className="flex">
-        <span className="w-14 text-gray-500 shrink-0">장  르:</span>
-        <span>{receiptData.singleItem.genre}</span>
-      </div>
-      <div className="flex">
-        <span className="w-14 text-gray-500 shrink-0">평  점:</span>
-        <span className="font-bold text-gray-900">{receiptData.singleItem.rating}</span>
-      </div>
-    </div>
-    <div className="bg-gray-50 p-2.5 rounded border border-dashed border-gray-300 text-gray-800 text-xs break-keep">
-      "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "감상평 없음"}"
-    </div>
-  </div>
-)}
+              <div className="py-3 space-y-3 text-xs">
+                {/* 작품 정보 헤더 */}
+                <div className="font-bold border-b border-gray-400 pb-1 text-gray-700">
+                  [작품 정보]
+                </div>
+
+                {/* 기본 정보 */}
+                <div className="space-y-1">
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">제  목:</span>
+                    <span className="font-bold break-keep text-gray-900">{receiptData.singleItem.title}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">작  가:</span>
+                    <span>{receiptData.singleItem.author || "미상"}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">장  르:</span>
+                    <span>{receiptData.singleItem.genre}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">평  점:</span>
+                    <span className="font-bold text-gray-900">{receiptData.singleItem.rating}</span>
+                  </div>
+                </div>
+
+                {/* 감상평 */}
+                <div className="space-y-1">
+                  <div className="font-bold text-gray-700">[감상평]</div>
+                  <div className="bg-transparent p-2.5 rounded border border-dashed border-gray-300 text-gray-800 text-xs break-keep leading-relaxed">
+                    "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "감상평 없음"}"
+                  </div>
+                </div>
+
+                {/* 원래 상태 줄: 이모지 없이 깔끔한 텍스트 표기 */}
+                <div className="pt-2 border-t border-dashed border-gray-400 flex justify-between items-center font-bold text-xs">
+                  <span className="tracking-widest">상  태:</span>
+                  <span className="text-gray-900">
+                    {receiptData.singleItem.rating === "중도하차" ? "중도하차" : "감상 완료"}
+                    {(receiptData.singleItem.is_favorite || receiptData.singleItem.is_revisit) && (
+                      <span className="text-gray-700 font-normal ml-1">
+                        (
+                        {[
+                          receiptData.singleItem.is_favorite ? "인생작" : null,
+                          receiptData.singleItem.is_revisit ? "재주행" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" / ")}
+                        )
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {receiptData.type === "list" && receiptData.items && (
               <div className="py-3 text-xs">
