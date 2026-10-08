@@ -48,25 +48,25 @@ interface AppItem {
 }
 
 const APP_LIST: AppItem[] = [
-  { id: "book-add", name: "새 도서 등록", icon: "/icons/book-add.png" },
+  { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
   { id: "receipt", name: "독서 영수증", icon: "/icons/receipt.png" },
-  { id: "stats", name: "STATS.exe", icon: "/icons/stats.png" },
+  { id: "stats", name: "통계", icon: "/icons/stats.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
-  { id: "tags", name: "태그 클라우드", icon: "/icons/tags.png" },
-  { id: "chart-pie", name: "편식 지표", icon: "/icons/chart-pie.png" },
+  { id: "tags", name: "#태그", icon: "/icons/tags.png" },
+  { id: "chart-pie", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "vending", name: "키워드 자판기", icon: "/icons/vending.png" },
-  { id: "awards", name: "결산 어워즈", icon: "/icons/awards.png" },
-  { id: "versus", name: "논쟁작 배틀", icon: "/icons/versus.png" },
+  { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
+  { id: "versus", name: "호불호 배틀", icon: "/icons/versus.png" },
   { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
   { id: "graveyard", name: "하차작 묘지", icon: "/icons/graveyard.png" },
   { id: "sales", name: "강제 영업소", icon: "/icons/sales.png" },
-  { id: "ticker", name: "속보 티커", icon: "/icons/ticker.png" },
+  { id: "ticker", name: "실시간 속보", icon: "/icons/ticker.png" },
   { id: "gossip", name: "익명 대나무숲", icon: "/icons/gossip.png" },
   { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
   { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
   { id: "fever", name: "과몰입 체온계", icon: "/icons/fever.png" },
-  { id: "collector", name: "포토카드 도감", icon: "/icons/collector.png" },
+  { id: "collector", name: "카드 도감", icon: "/icons/collector.png" },
   { id: "motto", name: "덕질 가훈", icon: "/icons/motto.png" },
 ];
 
