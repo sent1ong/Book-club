@@ -170,13 +170,14 @@ function BookClubContent() {
   }
 
   const handleRandomRecommend = () => {
-    const fiveStarBooks = reviews.filter((b) => (b.rating || "").includes("★★★★★"));
-    if (fiveStarBooks.length === 0) {
-      alert("아직 5점 만점 작품이 등록되지 않았어요!");
+    // 중도하차를 제외한 모든 작품 대상
+    const validBooks = reviews.filter((b) => b.rating !== "중도하차");
+    if (validBooks.length === 0) {
+      alert("추천할 수 있는 감상 완료 작품이 아직 없어요!");
       return;
     }
-    const randomIndex = Math.floor(Math.random() * fiveStarBooks.length);
-    setRandomBook(fiveStarBooks[randomIndex]);
+    const randomIndex = Math.floor(Math.random() * validBooks.length);
+    setRandomBook(validBooks[randomIndex]);
   };
 
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
@@ -1357,10 +1358,10 @@ function BookClubContent() {
               className="bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-3xl mb-1 shrink-0">✨</div>
+
               <div className="shrink-0">
                 <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-block">
-                  ⭐ 5점 만점 명작 추천
+                  🎲 오늘의 랜덤 추천작
                 </span>
               </div>
               <h3 className="text-base font-bold text-gray-900 mt-2.5 break-keep shrink-0">
@@ -1372,8 +1373,9 @@ function BookClubContent() {
               <p className="text-[11px] text-gray-400 mt-0.5 shrink-0">
                 작성자: {(randomBook as any).user_name || (randomBook as any).user || (randomBook as any).userName || "익명"}
               </p>
+              {/* 실제 해당 책의 별점/평점이 그대로 나오도록 변경 */}
               <div className="text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0">
-                ★★★★★
+                {randomBook.rating}
               </div>
 
               {randomBook.review && (
