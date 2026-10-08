@@ -361,6 +361,27 @@ function BookClubContent() {
     return () => clearInterval(timer);
   }, []);
 
+  // 1. 현재 접속 중인 모임명이나 파라미터를 브라우저(앱)에 실시간 저장
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // 주소창의 쿼리스트링(?group=... 등)을 통째로 저장
+      if (window.location.search) {
+        localStorage.setItem("last_bookclub_search", window.location.search);
+      }
+    }
+  }, [groupName]);
+
+  // 2. 앱 다운로드 후 깡통 주소('/')로 열렸을 때, 마지막 모임 주소로 자동 복원
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedQuery = localStorage.getItem("last_bookclub_search");
+      // 현재 주소창에 파라미터가 없고, 이전에 저장된 모임 주소가 있다면 즉시 이동
+      if (!window.location.search && savedQuery) {
+        window.location.replace(`/${savedQuery}`);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`read_comments_${groupName}`);
