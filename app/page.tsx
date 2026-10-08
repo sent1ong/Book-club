@@ -51,7 +51,6 @@ interface AppItem {
 const APP_LIST: AppItem[] = [
   { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
   { id: "receipt", name: "독서 영수증", icon: "/icons/receipt.png" },
-  { id: "stats", name: "통계", icon: "/icons/stats.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
   { id: "tags", name: "#키워드", icon: "/icons/tags.png" },
@@ -1150,13 +1149,6 @@ function BookClubContent() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setOpenWindow("stats")}
-                className="win-btn text-black px-1.5 py-0.5 text-[10px] font-bold"
-              >
-                📊 STATS
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   fetchReviews();
                   fetchComments();
@@ -1583,61 +1575,6 @@ function BookClubContent() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. 통계 창 (stats) */}
-      {openWindow === "stats" && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
-          <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl font-mono text-xs text-black">
-            <div className="bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center">
-              <span>STATS.exe</span>
-              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
-            </div>
-            <div className="p-3 space-y-3 bg-white mt-1 win-inset max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-2 border border-gray-300">
-                <div>
-                  <div className="text-gray-600 text-xs font-bold">총 등록 작품</div>
-                  <div className="text-base font-bold text-blue-900">{totalBooks}권</div>
-                </div>
-                <div>
-                  <div className="text-gray-600 text-xs font-bold">평균 별점</div>
-                  <div className="text-amber-600 text-base font-bold">★ {avgRating} / 5.0</div>
-                </div>
-              </div>
-              <div>
-                <div className="font-bold border-b border-gray-300 pb-1 mb-1.5 text-gray-700">장르별 분포</div>
-                <div className="space-y-1">
-                  {Object.entries(genreCounts).map(([genre, count]: [string, any]) => {
-                    const percent = Math.round((Number(count) / (totalBooks || 1)) * 100);
-                    return (
-                      <div key={genre} className="flex justify-between items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
-                        <span>{genre}</span>
-                        <span className="font-bold text-gray-600">{count}권 ({percent}%)</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <div className="font-bold border-b border-gray-300 pb-1 mb-1.5 text-amber-800">5점 만점 작품</div>
-                {topRatedBooks.length > 0 ? (
-                  <ul className="list-disc list-inside space-y-0.5 text-gray-700">
-                    {topRatedBooks.map((b, idx) => (
-                      <li key={idx} className="truncate">
-                        {b.title}{b.genre ? ` (${b.genre})` : ""} by. {b.user_name || "익명"}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-gray-400 italic">아직 만점 작품이 없습니다.</div>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <button onClick={() => setOpenWindow(null)} className="win-btn px-4 py-1 text-xs font-bold">확인</button>
-            </div>
           </div>
         </div>
       )}
