@@ -3386,7 +3386,7 @@ function BookClubContent() {
       {/* 📢 강제 영업소 (SALES.exe) */}
       {openWindow === "sales" && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="win-box w-full max-w-xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl">
+            <div className="win-box w-full min-w-0 max-w-xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
               {/* 타이틀 바 */}
               <div className="win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-orange-800 via-amber-700 to-yellow-800 text-white font-bold text-xs select-none">
                 <span className="flex items-center gap-1.5">
@@ -3418,7 +3418,7 @@ function BookClubContent() {
               </div>
 
               {/* 본문: 레트로 엽서/전단지 디자인 */}
-              <div className="p-4 bg-gray-200 flex-1 overflow-y-auto flex flex-col items-center justify-center">
+              <div className="p-4 bg-gray-200 flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start">
                 {salesReviews.length === 0 ? (
                     <div className="bg-white p-8 win-inset text-center text-xs text-gray-600 w-full space-y-2">
                       <p className="text-2xl">📭</p>
@@ -3431,7 +3431,7 @@ function BookClubContent() {
                   (() => {
                     const currentSale = salesReviews[salesIndex % salesReviews.length];
                     return (
-                      <div className="w-full bg-[#fffef0] border-4 border-dashed border-orange-500 p-5 rounded-lg shadow-xl relative flex flex-col justify-between min-h-[360px] win-outset">
+                      <div className="w-full min-w-0 max-w-full shrink-0 bg-[#fffef0] border-4 border-dashed border-orange-500 p-3 sm:p-5 rounded-lg shadow-xl relative flex flex-col justify-between min-h-[360px] win-outset">
                         {/* 엽서 상단 스탬프 & 번호 */}
                         <div>
                           <div className="flex justify-between items-center pb-2 border-b-2 border-orange-200">
@@ -3468,18 +3468,18 @@ function BookClubContent() {
                           </div>
 
                           {/* 영업 한줄평 엽서 본문 */}
-                          <div className="mt-3 bg-white p-3.5 rounded border border-orange-300 win-inset">
+                          <div className="mt-3 min-w-0 max-w-full bg-white p-3.5 rounded border border-orange-300 win-inset">
                             <div className="text-xs font-bold text-orange-800 mb-1">
                               💬 영업 사원의 절규:
                             </div>
-                            <p className="text-sm font-medium text-gray-900 leading-relaxed break-keep">
+                            <p className="text-sm font-medium text-gray-900 leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap">
                               "<SpoilerReviewText text={currentSale.review} />"
                             </p>
                           </div>
                         </div>
 
                         {/* 엽서 하단 컨트롤 버튼 */}
-                        <div className="mt-4 pt-3 border-t-2 border-dashed border-orange-200 flex justify-between items-center">
+                        <div className="mt-4 pt-3 border-t-2 border-dashed border-orange-200 flex flex-wrap justify-between items-center gap-2">
                           <button
                             type="button"
                             onClick={() =>
