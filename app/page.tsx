@@ -65,7 +65,6 @@ const APP_LIST: AppItem[] = [
   { id: "gossip", name: "익명 대나무숲", icon: "/icons/gossip.png" },
   { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
   { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
-  { id: "fever", name: "과몰입 체온계", icon: "/icons/fever.png" },
   { id: "collector", name: "카드 도감", icon: "/icons/collector.png" },
   { id: "motto", name: "덕질 가훈", icon: "/icons/motto.png" },
 ];
