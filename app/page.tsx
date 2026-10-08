@@ -404,6 +404,22 @@ function BookClubContent() {
     ];
   }, [reviews]);
 
+  // 📢 강제 영업소 (인생작 / 5점 만점 작품 전단지 모음)
+  const salesReviews = React.useMemo(() => {
+    if (!reviews || reviews.length === 0) return [];
+
+    // 5점 만점(★★★★★)이거나 인생작으로 꼽힌 리뷰 중 감상평이 있는 것만 선별
+    const targets = reviews.filter(
+      (r) => (r.rating === "★★★★★" || r.rating === "5" || r.is_favorite) && r.review && r.review.trim().length > 0
+    );
+
+    // 열 때마다 신선하게 볼 수 있도록 무작위 셔플
+    return [...targets].sort(() => 0.5 - Math.random());
+  }, [reviews]);
+
+  // 영업소 엽서 넘기기용 인덱스 상태
+  const [salesIndex, setSalesIndex] = useState(0);
+
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -1720,7 +1736,7 @@ function BookClubContent() {
       )}
 
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -2611,6 +2627,140 @@ function BookClubContent() {
                 type="button"
                 onClick={() => setOpenWindow(null)}
                 className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📢 강제 영업소 (SALES.exe) */}
+      {openWindow === "sales" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-orange-800 via-amber-700 to-yellow-800 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span className="text-base">📢</span>
+                <span className="text-xs">SALES.exe - 긴급 편성! 강제 영업 확성기</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-2 py-0.5 text-black font-extrabold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 헤더 알림판 */}
+            <div className="p-3 bg-amber-100 border-b border-amber-300 text-xs flex justify-between items-center">
+              <div>
+                <p className="font-bold text-sm text-amber-950 flex items-center gap-1">
+                  <span>🚨</span> 이건 제발 무조건 봐라!
+                </p>
+                <p className="text-xs text-amber-900 mt-0.5 font-medium">
+                  모임원들이 별점 5점과 영혼을 갈아 넣은 찐 인생작 찌라시입니다.
+                </p>
+              </div>
+              <span className="bg-orange-700 text-white px-2.5 py-1 rounded text-xs font-mono font-bold shrink-0">
+                영업작 {salesReviews.length}건 보관
+              </span>
+            </div>
+
+            {/* 본문: 레트로 엽서/전단지 디자인 */}
+            <div className="p-4 bg-gray-200 flex-1 overflow-y-auto flex flex-col items-center justify-center">
+              {salesReviews.length === 0 ? (
+                <div className="bg-white p-8 win-inset text-center text-xs text-gray-600 w-full space-y-2">
+                  <p className="text-2xl">📭</p>
+                  <p className="font-bold text-sm text-gray-800">아직 접수된 강제 영업작이 없습니다.</p>
+                  <p className="text-xs text-gray-500">
+                    인생작(👑)을 체크하거나 5점(★★★★★) 만점 리뷰를 남겨 첫 영업을 시작해보세요!
+                  </p>
+                </div>
+              ) : (
+                (() => {
+                  const currentSale = salesReviews[salesIndex % salesReviews.length];
+                  return (
+                    <div className="w-full bg-[#fffef0] border-4 border-dashed border-orange-500 p-5 rounded-lg shadow-xl relative flex flex-col justify-between min-h-[360px] win-outset">
+                      {/* 엽서 상단 스탬프 & 번호 */}
+                      <div>
+                        <div className="flex justify-between items-center pb-2 border-b-2 border-orange-200">
+                          <span className="bg-orange-600 text-white text-xs font-black px-2 py-0.5 rounded tracking-wide">
+                            🔥 필 독 권 고
+                          </span>
+                          <span className="font-mono text-xs font-bold text-gray-600">
+                            엽서 {((salesIndex % salesReviews.length) + 1)} / {salesReviews.length}
+                          </span>
+                        </div>
+
+                        {/* 도서 타이틀 및 영업자 정보 */}
+                        <div className="mt-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-gray-800 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                              {currentSale.genre}
+                            </span>
+                            <span className="text-amber-600 text-sm font-black">
+                              {currentSale.rating}
+                            </span>
+                            {currentSale.is_favorite && (
+                              <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
+                                👑 인생작
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-black text-gray-950 break-keep leading-tight">
+                            {currentSale.title}
+                          </h3>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {currentSale.author ? `${currentSale.author} 저` : "작가 미상"} | 영업 사원:{" "}
+                            <strong className="text-orange-900 font-bold text-sm">{currentSale.user_name}</strong>
+                          </p>
+                        </div>
+
+                        {/* 영업 한줄평 엽서 본문 */}
+                        <div className="mt-3 bg-white p-3.5 rounded border border-orange-300 win-inset">
+                          <div className="text-xs font-bold text-orange-800 mb-1">
+                            💬 영업 사원의 절규:
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 leading-relaxed break-keep">
+                            "{currentSale.review.replace("(스포일러)", "")}"
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 엽서 하단 컨트롤 버튼 */}
+                      <div className="mt-4 pt-3 border-t-2 border-dashed border-orange-200 flex justify-between items-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSalesIndex((prev) => (prev > 0 ? prev - 1 : salesReviews.length - 1))
+                          }
+                          className="win-btn px-3 py-1.5 font-bold text-xs flex items-center gap-1 active:scale-95"
+                        >
+                          ◀ 이전 영업작
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSalesIndex((prev) => prev + 1)}
+                          className="win-btn px-4 py-1.5 font-black text-xs text-orange-950 bg-amber-200 flex items-center gap-1 active:scale-95"
+                        >
+                          다음 영업작 뽑기 📢
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2.5 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-5 py-1.5 font-bold text-xs"
               >
                 닫기
               </button>
