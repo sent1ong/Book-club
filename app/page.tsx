@@ -650,24 +650,44 @@ function BookClubContent() {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
-        // 스크롤된 전체 내용이 잘리지 않고 온전히 다 찍히도록 설정
-        height: target.scrollHeight,
-        windowHeight: target.scrollHeight + 100,
+        // 고정 높이를 주지 않고 복제본 스타일을 먼저 펼치도록 처리
         onclone: (clonedDoc) => {
-          // 캡처 복제본에서만 스크롤/높이 제한을 풀어 전체를 깔끔하게 펼침
+          // 1. 스크롤 박스 및 겉 박스 높이 제한 완전히 해제
           const element = clonedDoc.querySelector("[data-receipt-box]") as HTMLElement;
           if (element) {
             element.style.maxHeight = "none";
+            element.style.height = "auto";
             element.style.overflow = "visible";
           }
           const listScroll = clonedDoc.querySelector("[data-receipt-list]") as HTMLElement;
           if (listScroll) {
             listScroll.style.maxHeight = "none";
+            listScroll.style.height = "auto";
             listScroll.style.overflow = "visible";
           }
+
+          // 2. 글자 쪼개짐/자모 분리 방지 (고딕 폰트 강제 적용)
+          const allTexts = clonedDoc.querySelectorAll("*");
+          allTexts.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.letterSpacing = "0px";
+            htmlEl.style.fontFamily = "Apple SD Gothic Neo, Malgun Gothic, 맑은 고딕, sans-serif";
+          });
         },
       });
 
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
+      link.click();
+    } catch (err) {
+      alert("이미지 저장 중 오류가 발생했습니다.");
+    } finally {
+      setDownloadingReceipt(false);
+    }
+  };
+  
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = dataUrl;
@@ -1422,17 +1442,67 @@ function BookClubContent() {
                   <span>[품목 / 장르]</span>
                   <span>[평점]</span>
                 </div>
+
                 <div data-receipt-list="true" className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                  {receiptData.items.map((item, idx) => (
-                    <div key={item.id} className="flex justify-between items-baseline border-b border-gray-100 pb-1 text-xs">
-                      <span className="truncate flex-1">{idx + 1}. {item.title}</span>
-                      <span className="font-bold shrink-0 text-amber-700">{item.rating}</span>
-                    </div>
-                  ))}
+                  {receiptData.items.length === 0 ? (
+                    <div className="text-center text-gray-400 py-3">등록된 작품이 없습니다.</div>
+                  ) : (
+                    receiptData.items.map((item, idx) => (
+                      <div key={item.id} className="flex justify-between items-baseline gap-1.5 border-b border-gray-100 pb-1 text-xs">
+                        <div className="break-keep flex-1 leading-snug">
+                          <span className="font-medium text-gray-900">
+                            {idx + 1}. {item.title}
+                            {item.is_favorite ? "👑" : ""}
+                            {item.is_revisit ? "🔁" : ""}
+                          </span>{" "}
+                          <span className="text-[11px] text-gray-500">({item.genre})</span>
+                        </div>
+                        <span className="font-bold shrink-0 text-right whitespace-nowrap text-amber-700">{item.rating}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
+
+                {(() => {
+                  const total = receiptData.items.length;
+                  const dropped = receiptData.items.filter((i) => i.rating === "중도하차").length;
+                  const completed = total - dropped;
+                  const favoriteCount = receiptData.items.filter((i) => i.is_favorite).length;
+                  const revisitCount = receiptData.items.filter((i) => i.is_revisit).length;
+                  const userAvg = getAverageRating(receiptData.user) || "0.0";
+
+                  return (
+                    <div className="mt-3 pt-2 border-t-2 border-dashed border-gray-400 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">총 정산 작품수:</span>
+                        <span className="font-bold">{total} 편</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">감상 완료:</span>
+                        <span className="font-bold">{completed} 편</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">중도하차:</span>
+                        <span className="font-bold text-red-600">{dropped} 편</span>
+                      </div>
+                      <div className="flex justify-between text-amber-900">
+                        <span>👑 인생작 선정:</span>
+                        <span className="font-bold">{favoriteCount} 편</span>
+                      </div>
+                      <div className="flex justify-between text-sky-900">
+                        <span>🔁 재주행 작품:</span>
+                        <span className="font-bold">{revisitCount} 편</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-gray-200 font-bold text-xs">
+                        <span>평균 평점:</span>
+                        <span className="text-amber-800">★ {userAvg}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
-
+            
             <div className="text-center pt-3 border-t-2 border-dashed border-gray-400">
               <div className="text-lg tracking-[2px] font-serif select-none text-gray-800 whitespace-nowrap overflow-hidden">
                 |||| || ||||| ||| ||||||| || ||||
