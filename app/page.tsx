@@ -170,7 +170,7 @@ function buildReviewQuiz(rows: BookReview[], groupName: string): ReviewQuizQuest
   if (eligible.length < 10) return [];
   return shuffleQuizItems(eligible).slice(0, 10).map((row) => {
     const answer = row.title.trim();
-    const alternatives = [...titlesByUser.get(row.user_name)!].filter((title) => title !== answer);
+    const alternatives = Array.from(titlesByUser.get(row.user_name)!).filter((title) => title !== answer);
     return {
       id: row.id,
       text: row.review.replace(/\(스포일러\)/g, "").trim(),
