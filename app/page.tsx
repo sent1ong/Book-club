@@ -1179,7 +1179,9 @@ function BookClubContent() {
       }
     });
     // 많이 언급된 순서대로 정렬
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return Object.entries(counts).sort(
+  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko")
+);
   }, [reviews]);
 
   // 선택된 태그가 포함된 리뷰 목록
@@ -2661,7 +2663,7 @@ function BookClubContent() {
                             (예: #후회공, #구원서사, #재주행필수 등)
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-2 items-center justify-center p-4">
+                          <div className="flex flex-wrap gap-2 content-start items-center justify-start p-4">
                             {tagCounts.map(([tag, count]) => {
                                 const fontSizeClass =
                                 count >= 5 ? "text-base font-black text-teal-900" :
@@ -2674,7 +2676,7 @@ function BookClubContent() {
                                     key={tag}
                                     type="button"
                                     onClick={() => setSelectedTag(tag)}
-                                    className={`win-btn px-2.5 py-1 flex items-center gap-1 active:scale-95 transition-transform ${fontSizeClass}`}
+                                    className={`win-btn px-2.5 py-1 flex items-center gap-1 shrink-0 whitespace-nowrap ${fontSizeClass}`}
                                   >
                                     <span>{tag}</span>
                                     <span className="text-[10px] bg-teal-100 text-teal-800 px-1 rounded-full font-mono">
