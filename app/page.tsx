@@ -178,6 +178,135 @@ function BookClubContent() {
     return reviews.filter((r) => r.review && r.review.includes(selectedTag));
   }, [reviews, selectedTag]);
 
+  {/* 📊 장르 분석 / 편식 진단기 (GENRE_DIAG.exe) */}
+      {openWindow === "genre" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-lg bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-blue-900 to-indigo-700 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>📊</span>
+                <span>GENRE_DIAG.exe - 장르 편식 진단기</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 안내 */}
+            <div className="p-3 bg-gray-100 border-b border-gray-300 text-xs text-gray-700 flex justify-between items-center">
+              <div>
+                <p className="font-bold text-gray-900">🧬 덕질 영양소 & 편식 분석</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  기록된 작품들의 장르 소비 밸런스를 측정합니다.
+                </p>
+              </div>
+              <span className="bg-blue-900 text-white px-2 py-0.5 rounded text-[11px] font-mono">
+                총 {genreStats.total}편 분석
+              </span>
+            </div>
+
+            {/* 본문 차트 및 진단 */}
+            <div className="p-4 overflow-y-auto flex-1 bg-white space-y-4">
+              {genreStats.total === 0 ? (
+                <div className="py-16 text-center text-gray-400 text-xs font-mono">
+                  분석할 감상 기록이 없습니다.
+                </div>
+              ) : (
+                <>
+                  {/* 진단 결과 카드 */}
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <p className="font-bold text-blue-900 mb-1">
+                      🩺 진단 소견:
+                      {genreStats.dominant && genreStats.dominant.percent >= 60 ? (
+                        <span className="text-red-600 ml-1">심각한 '{genreStats.dominant.genre}' 편식 상태!</span>
+                      ) : genreStats.dominant && genreStats.dominant.percent >= 40 ? (
+                        <span className="text-amber-700 ml-1">안정적인 '{genreStats.dominant.genre}' 중심 성향</span>
+                      ) : (
+                        <span className="text-emerald-700 ml-1">골고루 즐기는 잡식형 독서가</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-blue-800 leading-relaxed">
+                      가장 애호하는 장르는 <strong>{genreStats.dominant?.genre}</strong>(
+                      {genreStats.dominant?.percent}%)이며, 총 {genreStats.items.length}개의 장르를 소비 중입니다.
+                    </p>
+                  </div>
+
+                  {/* CSS 도넛 차트 영역 */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
+                    <div
+                      className="w-32 h-32 rounded-full relative flex items-center justify-center shadow-inner border border-gray-300"
+                      style={{ background: genreStats.conicStyle }}
+                    >
+                      {/* 도넛 가운데 홀 (Windows 98 스타일 중앙 캡슐) */}
+                      <div className="w-16 h-16 rounded-full bg-white flex flex-col items-center justify-center shadow">
+                        <span className="text-[10px] text-gray-400 font-bold">TOTAL</span>
+                        <span className="text-xs font-black text-gray-800">{genreStats.total}</span>
+                      </div>
+                    </div>
+
+                    {/* 범례 리스트 */}
+                    <div className="space-y-1.5 text-xs w-full sm:w-auto">
+                      {genreStats.items.map((item) => (
+                        <div key={item.genre} className="flex items-center gap-2">
+                          <span
+                            className="w-3 h-3 rounded-sm inline-block shadow-sm"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="font-medium text-gray-700 w-24 truncate">{item.genre}</span>
+                          <span className="font-bold text-gray-900">{item.count}편</span>
+                          <span className="text-gray-400 font-mono text-[11px]">({item.percent}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 장르별 비율 프로그레스 바 목록 */}
+                  <div className="space-y-2.5 pt-2 border-t border-gray-200 text-xs">
+                    <div className="font-bold text-gray-700 mb-1">상세 점유율</div>
+                    {genreStats.items.map((item) => (
+                      <div key={item.genre} className="space-y-1">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-bold text-gray-800">{item.genre}</span>
+                          <span className="font-mono text-gray-500">
+                            {item.count}편 / {item.percent}%
+                          </span>
+                        </div>
+                        {/* 윈도우 스타일 음각 인셋 게이지 바 */}
+                        <div className="w-full bg-gray-200 border border-gray-400 h-3 rounded-none overflow-hidden p-[1px]">
+                          <div
+                            className="h-full transition-all duration-500"
+                            style={{
+                              width: `${item.percent}%`,
+                              backgroundColor: item.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
   // 윈도우 98 쉘 상태
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [openWindow, setOpenWindow] = useState<string | null>(null);
