@@ -61,7 +61,6 @@ const APP_LIST: AppItem[] = [
   { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
   { id: "graveyard", name: "하차작 묘지", icon: "/icons/graveyard.png" },
   { id: "sales", name: "강제 영업소", icon: "/icons/sales.png" },
-  { id: "ticker", name: "실시간 속보", icon: "/icons/ticker.png" },
   { id: "gossip", name: "익명 대나무숲", icon: "/icons/gossip.png" },
   { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
   { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
@@ -479,6 +478,19 @@ function BookClubContent() {
     });
 
     return userPaces.sort((a, b) => b.speed - a.speed);
+  }, [reviews]);
+
+  // 📡 실시간 속보 전광판 데이터 (최신 리뷰 상위 5건)
+  const tickerText = React.useMemo(() => {
+    if (!reviews || reviews.length === 0) {
+      return "속보: 현재 서재가 평화롭습니다. 첫 번째 독서 기록을 등록해 보세요! 📢";
+    }
+    const recentItems = reviews.slice(0, 5).map((r) => {
+      const cleanReview = r.review ? r.review.replace("(스포일러)", "").trim() : "감상 등록 완료";
+      const shortReview = cleanReview.length > 25 ? `${cleanReview.slice(0, 25)}...` : cleanReview;
+      return `[NEW] ${r.user_name}님이 《${r.title}》에 평점 ${r.rating}을 남겼습니다: "${shortReview}"`;
+    });
+    return recentItems.join("   ◆   ");
   }, [reviews]);
   
   // 키워드 자판기 작동 함수
@@ -1520,6 +1532,24 @@ function BookClubContent() {
           </div>
         </div>
       </div>
+
+      {/* 📟 실시간 속보 LED 전광판 바 */}
+        <div className="mt-3 win-box bg-[#c0c0c0] p-1 shadow-md">
+          <div className="bg-black border-2 border-gray-600 rounded-xs px-2.5 py-1.5 flex items-center gap-2 win-inset overflow-hidden">
+            {/* 좌측 레트로 속보 뱃지 */}
+            <div className="flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-xs shrink-0 tracking-wider animate-pulse">
+              <span>●</span>
+              <span>속보 TICKER</span>
+            </div>
+
+            {/* 우측 롤링 전광판 텍스트 */}
+            <div className="flex-1 overflow-hidden whitespace-nowrap">
+              <div className="inline-block animate-marquee text-xs font-mono font-bold text-yellow-300 tracking-wide">
+                {tickerText}
+              </div>
+            </div>
+          </div>
+        </div>
 
       {/* --- 모달 창들 --- */}
 
