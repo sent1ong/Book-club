@@ -1914,7 +1914,7 @@ function BookClubContent() {
 
                 {vendingStatus === "result" && (
                   <div className="space-y-2.5 w-full">
-                    <span className="text-[10px] bg-amber-900/80 text-amber-300 px-2 py-0.5 rounded font-mono border border-amber-600">
+                    <span className="text-sm font-black bg-amber-900/90 text-amber-300 px-3 py-1 rounded font-mono border border-amber-500 shadow">
                       ★ 럭키 키워드 당첨 ★
                     </span>
                     <div className="flex flex-wrap gap-1.5 justify-center">
@@ -1953,10 +1953,7 @@ function BookClubContent() {
                 )}
 
                 {/* 동전 투입 / 레버 조작 버튼 */}
-                <div className="flex w-full justify-between items-center gap-2 pt-1">
-                  <div className="text-[11px] font-mono text-gray-600 font-bold">
-                    CAPSULE VENDING UNIT
-                  </div>
+                <div className="flex w-full justify-end items-center pt-1">
                   <button
                     type="button"
                     onClick={runVendingMachine}
