@@ -898,8 +898,8 @@ function BookClubContent() {
         className="flex-1 overflow-y-auto p-3 pb-16 space-y-4"
         onClick={() => setStartMenuOpen(false)}
       >
-        {/* 20대 기능 아이콘 모바일 2열 / PC 5열 그리드 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-6 max-w-4xl mx-auto">
+        {/* 20대 기능 아이콘 모바일 4열 / PC 5열 그리드 */}
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3 pt-4 sm:pt-6 max-w-4xl mx-auto">
           {APP_LIST.map((app) => (
             <button
               key={app.id}
@@ -907,9 +907,9 @@ function BookClubContent() {
                 e.stopPropagation();
                 handleAppClick(app.id);
               }}
-              className="flex flex-col items-center justify-center p-2 rounded hover:bg-[#000080]/30 active:bg-[#000080]/50 transition-colors group"
+              className="flex flex-col items-center justify-center p-1 sm:p-2 rounded hover:bg-[#000080]/30 active:bg-[#000080]/50 transition-colors group"
             >
-              <div className="relative w-11 h-11 mb-1 drop-shadow">
+              <div className="relative w-8 h-8 sm:w-11 sm:h-11 mb-1 drop-shadow">
                 <Image
                   src={app.icon}
                   alt={app.name}
@@ -918,7 +918,7 @@ function BookClubContent() {
                   className="object-contain"
                 />
               </div>
-              <span className="text-white text-xs px-1 text-center font-bold tracking-tight bg-[#008080] group-hover:bg-[#000080] rounded">
+              <span className="text-white text-[10px] sm:text-xs px-1 text-center font-bold tracking-tight bg-[#008080] group-hover:bg-[#000080] rounded line-clamp-1 w-full break-keep">
                 {app.name}
               </span>
             </button>
