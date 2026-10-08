@@ -296,6 +296,114 @@ function BookClubContent() {
     return topControversial;
   }, [reviews]);
 
+  // 🏆 연간/분기 어워즈 부문별 수상자 자동 산출
+  const awardsData = React.useMemo(() => {
+    if (!reviews || reviews.length === 0) return null;
+
+    const userStats: {
+      [name: string]: {
+        total: number;
+        dropped: number;
+        totalLength: number;
+        genreCounts: { [genre: string]: number };
+        favoriteCount: number;
+      };
+    } = {};
+
+    reviews.forEach((r) => {
+      if (!r.user_name) return;
+      if (!userStats[r.user_name]) {
+        userStats[r.user_name] = {
+          total: 0,
+          dropped: 0,
+          totalLength: 0,
+          genreCounts: {},
+          favoriteCount: 0,
+        };
+      }
+
+      const s = userStats[r.user_name];
+      s.total += 1;
+      if (r.rating === "중도하차") s.dropped += 1;
+      if (r.is_favorite) s.favoriteCount += 1;
+      if (r.review) s.totalLength += r.review.length;
+
+      const g = r.genre || "기타";
+      s.genreCounts[g] = (s.genreCounts[g] || 0) + 1;
+    });
+
+    const users = Object.entries(userStats);
+    if (users.length === 0) return null;
+
+    // 1. 📚 다독왕: 총 완독(등록) 권수가 가장 많은 회원
+    const sortedByTotal = [...users].sort((a, b) => b[1].total - a[1].total);
+    const readKing = {
+      user: sortedByTotal[0][0],
+      score: `${sortedByTotal[0][1].total}권 완독`,
+      desc: "지치지 않는 학구열과 페이지 넘김으로 서재를 가득 채운 독서 거장",
+    };
+
+    // 2. 🪦 하차왕: '중도하차' 기록이 가장 많은 회원
+    const sortedByDropped = [...users].sort((a, b) => b[1].dropped - a[1].dropped);
+    const dropKing =
+      sortedByDropped[0][1].dropped > 0
+        ? {
+            user: sortedByDropped[0][0],
+            score: `${sortedByDropped[0][1].dropped}편 영면`,
+            desc: "단호한 결단력과 냉철한 시간 절약으로 단두대를 운영한 결단왕",
+          }
+        : {
+            user: "없음",
+            score: "0편",
+            desc: "현재 모든 회원이 끝까지 완주 중입니다!",
+          };
+
+    // 3. ✍️ 주접상: 리뷰 글자수 총합이 가장 긴 회원
+    const sortedByWords = [...users].sort((a, b) => b[1].totalLength - a[1].totalLength);
+    const fangirlKing = {
+      user: sortedByWords[0][0],
+      score: `총 ${sortedByWords[0][1].totalLength.toLocaleString()}자 집필`,
+      desc: "한줄평 칸이 모자랄 정도로 심장을 울리는 과몰입 명문을 쏟아낸 작가님",
+    };
+
+    // 4. 🧬 편식왕: 한 장르 몰두 비율(최소 3권 이상 기록자 중)이 가장 높은 회원
+    let topDietUser = "없음";
+    let maxDietPercent = 0;
+    let dominantGenre = "기타";
+
+    users.forEach(([name, stat]) => {
+      if (stat.total < 2) return;
+      Object.entries(stat.genreCounts).forEach(([genre, count]) => {
+        const percent = Math.round((count / stat.total) * 100);
+        if (percent > maxDietPercent) {
+          maxDietPercent = percent;
+          topDietUser = name;
+          dominantGenre = genre;
+        }
+      });
+    });
+
+    const dietKing =
+      topDietUser !== "없음"
+        ? {
+            user: topDietUser,
+            score: `${dominantGenre} 올인 (${maxDietPercent}%)`,
+            desc: "한 우물만 끝까지 파는 확고하고 타협 없는 외길 취향의 소유자",
+          }
+        : {
+            user: users[0][0],
+            score: "골고루 섭취 중",
+            desc: "다양한 장르를 균형 있게 즐기는 잡식형 독서가",
+          };
+
+    return [
+      { id: "read", title: "명예의 다독왕", icon: "👑", ...readKing, color: "border-amber-400 bg-amber-50" },
+      { id: "drop", title: "칼같은 하차왕", icon: "⚰️", ...dropKing, color: "border-gray-500 bg-gray-100" },
+      { id: "fangirl", title: "불꽃의 주접상", icon: "🔥", ...fangirlKing, color: "border-rose-400 bg-rose-50" },
+      { id: "diet", title: "외길의 편식왕", icon: "🧬", ...dietKing, color: "border-indigo-400 bg-indigo-50" },
+    ];
+  }, [reviews]);
+
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -1612,7 +1720,7 @@ function BookClubContent() {
       )}
 
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -2399,6 +2507,101 @@ function BookClubContent() {
                     ))}
                   </div>
                 </>
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏆 명예의 전당 / 레트로 어워즈 (AWARDS.exe) */}
+      {openWindow === "awards" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[88vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-900 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>🏆</span>
+                <span>AWARDS.exe - 정기 결산 명예의 전당</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 헤더 안내문 */}
+            <div className="p-2.5 bg-yellow-50 border-b border-yellow-200 text-xs flex justify-between items-center">
+              <div>
+                <p className="font-bold text-amber-950">📜 {groupName} 정기 명예 결산</p>
+                <p className="text-[11px] text-amber-800">모임원들의 감상 기록을 자동 통계 처리하여 레트로 상장을 수여합니다.</p>
+              </div>
+              <span className="bg-amber-700 text-white px-2 py-0.5 rounded text-[11px] font-mono font-bold">
+                CLASS OF 98
+              </span>
+            </div>
+
+            {/* 본문 상장 그리드 */}
+            <div className="p-3 bg-white flex-1 overflow-y-auto">
+              {!awardsData ? (
+                <div className="py-16 text-center text-gray-400 font-mono text-xs">
+                  아직 수여할 감상 기록이 충분하지 않습니다.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {awardsData.map((award) => (
+                    <div
+                      key={award.id}
+                      className={`p-3 rounded border-2 ${award.color} relative flex flex-col justify-between shadow-xs win-outset`}
+                    >
+                      {/* 상장 헤더 */}
+                      <div>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest font-mono">
+                            CERTIFICATE
+                          </span>
+                          <span className="text-xl">{award.icon}</span>
+                        </div>
+                        <h4 className="font-black text-sm text-gray-900 tracking-tight">
+                          {award.title}
+                        </h4>
+                        <div className="my-2 bg-white/80 p-2 rounded border border-dashed border-gray-300">
+                          <div className="text-[11px] text-gray-600">수여자:</div>
+                          <div className="text-base font-extrabold text-[#000080]">
+                            {award.user} 님
+                          </div>
+                          <div className="text-[11px] font-mono font-bold text-amber-700 mt-0.5">
+                            기록: {award.score}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 상장 본문 사유 */}
+                      <div>
+                        <p className="text-[11px] text-gray-700 leading-relaxed break-keep border-t border-gray-200 pt-1.5 italic">
+                          "{award.desc}"
+                        </p>
+                        <div className="mt-2 flex justify-between items-center text-[10px] text-gray-400 font-mono">
+                          <span>{groupName} 북클럽</span>
+                          <span>직인생략 [인]</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
