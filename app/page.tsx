@@ -539,7 +539,6 @@ function BookClubContent() {
 
   // 개별 칸 토글 함수
   const toggleBingoCell = (id: number) => {
-    if (id === 5) return; // FREE칸은 고정
     setUserBingoData((prev) => {
       const userList = prev[selectedBingoUser] || [5];
       const nextList = userList.includes(id)
