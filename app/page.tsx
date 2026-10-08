@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -39,6 +40,35 @@ interface Comment {
   content: string;
   created_at: string;
 }
+
+interface AppItem {
+  id: string;
+  name: string;
+  icon: string;
+}
+
+const APP_LIST: AppItem[] = [
+  { id: "book-add", name: "새 도서 등록", icon: "/icons/book-add.png" },
+  { id: "receipt", name: "독서 영수증", icon: "/icons/receipt.png" },
+  { id: "stats", name: "STATS.exe", icon: "/icons/stats.png" },
+  { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
+  { id: "curation", name: "취향 메이트", icon: "/icons/curation.png" },
+  { id: "tags", name: "태그 클라우드", icon: "/icons/tags.png" },
+  { id: "chart-pie", name: "편식 지표", icon: "/icons/chart-pie.png" },
+  { id: "vending", name: "키워드 자판기", icon: "/icons/vending.png" },
+  { id: "awards", name: "결산 어워즈", icon: "/icons/awards.png" },
+  { id: "versus", name: "논쟁작 배틀", icon: "/icons/versus.png" },
+  { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
+  { id: "graveyard", name: "하차작 묘지", icon: "/icons/graveyard.png" },
+  { id: "sales", name: "강제 영업소", icon: "/icons/sales.png" },
+  { id: "ticker", name: "속보 티커", icon: "/icons/ticker.png" },
+  { id: "gossip", name: "익명 대나무숲", icon: "/icons/gossip.png" },
+  { id: "bingo", name: "덕질 빙고", icon: "/icons/bingo.png" },
+  { id: "quiz", name: "리뷰 퀴즈", icon: "/icons/quiz.png" },
+  { id: "fever", name: "과몰입 체온계", icon: "/icons/fever.png" },
+  { id: "collector", name: "포토카드 도감", icon: "/icons/collector.png" },
+  { id: "motto", name: "덕질 가훈", icon: "/icons/motto.png" },
+];
 
 function isValidGroup(name: string | null) {
   if (!name) return false;
@@ -112,12 +142,16 @@ function BookClubContent() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isRevisit, setIsRevisit] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState<number[]>([]);
-  const [showStats, setShowStats] = useState(false);
   const [revealedComments, setRevealedComments] = useState<{ [key: number]: boolean }>({});
   const [selectedGenre, setSelectedGenre] = useState("전체");
   const [filterType, setFilterType] = useState<"all" | "dropped" | "favorite" | "revisit">("all");
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
   const [randomBook, setRandomBook] = useState<BookReview | null>(null);
+
+  // 윈도우 98 쉘 상태
+  const [startMenuOpen, setStartMenuOpen] = useState(false);
+  const [openWindow, setOpenWindow] = useState<string | null>(null);
+  const [time, setTime] = useState<string>("");
 
   const [receiptData, setReceiptData] = useState<{
     type: "single" | "list";
@@ -127,6 +161,16 @@ function BookClubContent() {
   } | null>(null);
 
   const [readCommentIds, setReadCommentIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+    };
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     try {
@@ -155,14 +199,13 @@ function BookClubContent() {
 
   if (!isAllowedGroup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white p-6 rounded-lg shadow-md max-w-sm w-full text-center border border-gray-200">
+      <div className="min-h-screen flex items-center justify-center bg-[#008080] p-4 select-none">
+        <div className="bg-[#c0c0c0] win-outset p-4 max-w-sm w-full text-center">
+          <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold text-left mb-3">SYSTEM ERROR</div>
           <div className="text-3xl mb-2">🔒</div>
-          <h2 className="text-base font-bold text-gray-800 mb-1">접근이 제한된 모임방입니다</h2>
-          <p className="text-xs text-gray-500 leading-relaxed mb-4">
-            존재하지 않거나 비공개된 방입니다.
-            <br />
-            올바른 주소로 접속해 주세요.
+          <h2 className="text-sm font-bold text-black mb-1">접근이 제한된 모임방입니다</h2>
+          <p className="text-xs text-gray-700 leading-relaxed mb-4">
+            존재하지 않거나 비공개된 방입니다.<br />올바른 주소로 접속해 주세요.
           </p>
         </div>
       </div>
@@ -170,7 +213,6 @@ function BookClubContent() {
   }
 
   const handleRandomRecommend = () => {
-    // 중도하차를 제외한 모든 작품 대상
     const validBooks = reviews.filter((b) => b.rating !== "중도하차");
     if (validBooks.length === 0) {
       alert("추천할 수 있는 감상 완료 작품이 아직 없어요!");
@@ -368,6 +410,7 @@ function BookClubContent() {
         alert("기록이 수정되었습니다!");
         setEditingId(null);
         resetForm();
+        setOpenWindow(null);
         fetchReviews();
       }
     } else {
@@ -399,6 +442,7 @@ function BookClubContent() {
         setIsSpoiler(false);
         setIsFavorite(false);
         setIsRevisit(false);
+        setOpenWindow(null);
         fetchReviews();
       }
     }
@@ -546,12 +590,13 @@ function BookClubContent() {
     setIsSpoiler(book.review ? book.review.includes("(스포일러)") : false);
     setIsFavorite(!!book.is_favorite);
     setIsRevisit(!!book.is_revisit);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setOpenWindow("book-add");
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     resetForm();
+    setOpenWindow(null);
   };
 
   const handleDelete = async (id: number, title: string) => {
@@ -592,216 +637,100 @@ function BookClubContent() {
 
   const todayStr = new Date().toISOString().split("T")[0];
 
+  const handleAppClick = (appId: string) => {
+    setStartMenuOpen(false);
+    if (appId === "receipt") {
+      setReceiptData({
+        type: "list",
+        user: selectedUser === "전체" ? (reviews[0]?.user_name || "회원") : selectedUser,
+        items: selectedUser === "전체" ? reviews : reviews.filter((r) => r.user_name === selectedUser),
+      });
+      return;
+    }
+    if (appId === "curation") {
+      handleRandomRecommend();
+      return;
+    }
+    setOpenWindow(appId);
+  };
+
   return (
-    <main className="min-h-screen bg-[#396f7c] p-3 md:p-6 flex flex-col items-center select-none pb-12">
-      <div className="w-full max-w-4xl mb-2 text-right">
-        <span className="bg-[#1f4e5b] text-white text-xs px-2.5 py-1 border border-white font-bold shadow">
-          모임: {groupName}
+    <main className="relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
+      {/* 상단 현재 모임 뱃지 */}
+      <div className="absolute top-2 right-3 z-20">
+        <span className="win-outset bg-[#c0c0c0] text-black text-[11px] px-2 py-0.5 font-bold shadow">
+          🖥️ 모임: {groupName}
         </span>
       </div>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-        {/* 왼쪽 영역: 독서 기록창 & 서재 목록 창 */}
-        <div className="space-y-4">
-          <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-            <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-              <span>{editingId ? "EDITING_BOOK.exe" : "활자먹음이.exe"}</span>
-              <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
+      {/* 바탕화면 메인 스크롤 영역 */}
+      <div
+        className="flex-1 overflow-y-auto p-3 pb-16 space-y-4"
+        onClick={() => setStartMenuOpen(false)}
+      >
+        {/* 20대 기능 아이콘 모바일 2열 / PC 5열 그리드 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-6 max-w-4xl mx-auto">
+          {APP_LIST.map((app) => (
+            <button
+              key={app.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAppClick(app.id);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded hover:bg-[#000080]/30 active:bg-[#000080]/50 transition-colors group"
+            >
+              <div className="relative w-11 h-11 mb-1 drop-shadow">
+                <Image
+                  src={app.icon}
+                  alt={app.name}
+                  fill
+                  sizes="44px"
+                  className="object-contain"
+                />
+              </div>
+              <span className="text-white text-xs px-1 text-center font-bold tracking-tight bg-[#008080] group-hover:bg-[#000080] rounded">
+                {app.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
+        <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
+          <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
+            <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOpenWindow("stats")}
+                className="win-btn text-black px-1.5 py-0.5 text-[10px] font-bold"
+              >
+                📊 STATS
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  fetchReviews();
+                  fetchComments();
+                }}
+                className="text-xs underline hover:text-amber-200"
+              >
+                새로고침
+              </button>
             </div>
-
-            <div className="text-center py-1 text-xs font-bold text-[#1f4e5b]">
-              {editingId ? "기존 독서 기록 수정 중..." : "구매비덕질을 타파하자!"}
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-2 space-y-2.5 bg-[#d4d8dc] border border-[#808080]">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">NAME (내 이름)</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.user_name}
-                  onChange={(e) => setFormData({ ...formData, user_name: e.target.value })}
-                  className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  placeholder="예: 지은"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">TITLE (제목)</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  placeholder="제목 입력"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">AUTHOR (작가)</label>
-                <input
-                  type="text"
-                  value={formData.author}
-                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                  className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  placeholder="작가 이름"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-800 mb-0.5">GENRE (장르)</label>
-                  <select
-                    value={formData.genre}
-                    onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                    className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white"
-                  >
-                    <option>소설</option>
-                    <option>시</option>
-                    <option>만화</option>
-                    <option>웹툰</option>
-                    <option>오디오드라마</option>
-                    <option>수필</option>
-                    <option>사회/과학</option>
-                    <option>철학</option>
-                    <option>실용</option>
-                    <option>에세이</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-800 mb-0.5">평점</label>
-                  <select
-                    value={formData.rating}
-                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                    className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white"
-                  >
-                    <option value="★★★★★">★★★★★ (5.0)</option>
-                    <option value="★★★★☆">★★★★☆ (4.5)</option>
-                    <option value="★★★★">★★★★ (4.0)</option>
-                    <option value="★★★☆">★★★☆ (3.5)</option>
-                    <option value="★★★">★★★ (3.0)</option>
-                    <option value="★★☆">★★☆ (2.5)</option>
-                    <option value="★★">★★ (2.0)</option>
-                    <option value="★☆">★☆ (1.5)</option>
-                    <option value="★">★ (1.0)</option>
-                    <option value="☆">☆ (0.5)</option>
-                    <option value="중도하차">중도하차</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">REVIEW (한줄평)</label>
-                <textarea
-                  rows={2}
-                  value={formData.review}
-                  onChange={(e) => setFormData({ ...formData, review: e.target.value })}
-                  className="w-full p-1.5 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none resize-none"
-                  placeholder="감상이나 리뷰를 적어주세요"
-                />
-                {/* 체크박스 가로 3개 나란히 배치 */}
-                <div className="flex flex-wrap items-center gap-3 mt-1.5 pt-0.5 text-[11px] text-gray-700 select-none">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isSpoiler}
-                      onChange={(e) => setIsSpoiler(e.target.checked)}
-                      className="accent-amber-600"
-                    />
-                    <span>⚠️ 스포일러</span>
-                  </label>
-
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isFavorite}
-                      onChange={(e) => setIsFavorite(e.target.checked)}
-                      className="accent-amber-500"
-                    />
-                    <span>👑 인생작</span>
-                  </label>
-
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isRevisit}
-                      onChange={(e) => setIsRevisit(e.target.checked)}
-                      className="accent-sky-600"
-                    />
-                    <span>🔁 재주행</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-1 pt-1">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 py-1.5 bg-[#c3c7cb] text-xs font-bold border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-b-[#ffffff] active:border-r-[#ffffff]"
-                >
-                  {loading ? "처리 중..." : editingId ? "수정 완료" : "입력 완료"}
-                </button>
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    className="px-3 py-1.5 bg-[#c3c7cb] text-xs font-bold border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040]"
-                  >
-                    취소
-                  </button>
-                )}
-              </div>
-            </form>
           </div>
 
-          <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-            <div className="bg-[#1f4e5b] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
-              <span>📚 서재 목록 ({displayedReviews.length}권)</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowStats(true)}
-                  className="bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black text-[10px] font-bold active:border-t-black active:border-l-black"
-                >
-                  📊 STATS.exe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    fetchReviews();
-                    fetchComments();
-                  }}
-                  className="text-xs underline"
-                >
-                  새로고침
-                </button>
-              </div>
-            </div>
+          <div className="p-2 space-y-2 bg-[#d4d8dc]">
+            <input
+              type="text"
+              placeholder="🔍 제목 또는 작가 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full text-xs p-1.5 win-inset bg-white focus:outline-none placeholder-gray-500"
+            />
 
-            <div className="mb-2">
-              <input
-                type="text"
-                placeholder="🔍 제목 또는 작가 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs p-1.5 border border-gray-400 bg-white focus:outline-none placeholder-gray-500"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleRandomRecommend}
-              className="w-full py-2 px-3 mb-3 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors select-none active:scale-95 shadow-sm"
-            >
-              <span>🎲</span>
-              <span>오늘 뭐 보지?</span>
-            </button>
-
-            {/* 장르 및 특수 필터 (좌측 정렬 2줄) */}
-            <div className="space-y-1.5 mb-3">
-              {/* 1번째 줄: 기본 장르 탭 (좌측 정렬) */}
+            {/* 필터 탭 */}
+            <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-1">
                 {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
                   const isSelected = filterType === "all" && selectedGenre === genre;
@@ -813,10 +742,8 @@ function BookClubContent() {
                         setFilterType("all");
                         setSelectedGenre(genre);
                       }}
-                      className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 ${
-                        isSelected
-                          ? "bg-[#1f4e5b] text-white border-[#1f4e5b] font-bold"
-                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                      className={`px-2 py-0.5 text-xs win-btn ${
+                        isSelected ? "win-inset bg-[#dfdfdf] font-bold" : ""
                       }`}
                     >
                       {genre}
@@ -825,50 +752,39 @@ function BookClubContent() {
                 })}
               </div>
 
-              {/* 2번째 줄: 특수 필터 3종 (좌측 정렬) */}
               <div className="flex flex-wrap items-center gap-1">
-                {/* 👑 인생작 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "favorite" ? "all" : "favorite")}
-                  className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
-                    filterType === "favorite"
-                      ? "bg-amber-500 text-amber-950 border-amber-600 font-bold shadow-inner"
-                      : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
+                  className={`px-2 py-0.5 text-xs win-btn ${
+                    filterType === "favorite" ? "win-inset bg-amber-200 font-bold" : ""
                   }`}
                 >
-                  <span>👑</span> <span>인생작</span>
+                  👑 인생작
                 </button>
-
-                {/* 🔁 재주행 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "revisit" ? "all" : "revisit")}
-                  className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
-                    filterType === "revisit"
-                      ? "bg-sky-600 text-white border-sky-700 font-bold shadow-inner"
-                      : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
+                  className={`px-2 py-0.5 text-xs win-btn ${
+                    filterType === "revisit" ? "win-inset bg-sky-200 font-bold" : ""
                   }`}
                 >
-                  <span>🔁</span> <span>재주행</span>
+                  🔁 재주행
                 </button>
-
-                {/* 💔 중도하차 */}
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === "dropped" ? "all" : "dropped")}
-                  className={`px-2 py-0.5 text-xs border rounded transition-colors active:scale-95 flex items-center gap-1 ${
-                    filterType === "dropped"
-                      ? "bg-red-950 text-white border-red-500 font-bold shadow-inner"
-                      : "bg-[#2a2d30] text-gray-100 border-[#1f2124] hover:bg-[#383c40]"
+                  className={`px-2 py-0.5 text-xs win-btn ${
+                    filterType === "dropped" ? "win-inset bg-red-200 font-bold" : ""
                   }`}
                 >
-                  <span>💔</span> <span>중도하차</span>
+                  💔 중도하차
                 </button>
               </div>
             </div>
 
-            <div className="py-1.5 px-0.5 border-b border-gray-400 flex flex-wrap justify-between items-center gap-1.5">
+            {/* 회원 선택 및 영수증 */}
+            <div className="py-1 border-t border-gray-400 flex flex-wrap justify-between items-center gap-1">
               <div className="flex gap-1 overflow-x-auto items-center">
                 {userList.map((user) => {
                   const unreadCount = getUnreadCommentCount(user);
@@ -876,15 +792,13 @@ function BookClubContent() {
                     <button
                       key={user}
                       onClick={() => handleSelectUser(user)}
-                      className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold border transition-colors ${
-                        selectedUser === user
-                          ? "bg-[#1f4e5b] text-white border-black"
-                          : "bg-[#d4d8dc] text-gray-800 border-white hover:bg-gray-300"
+                      className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn ${
+                        selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
                       }`}
                     >
                       {user}
                       {unreadCount > 0 && (
-                        <span className="ml-1 inline-flex items-center justify-center bg-red-600 text-white text-[10px] font-extrabold px-1 min-w-[15px] h-[15px] rounded-full shadow border border-white leading-none animate-pulse">
+                        <span className="ml-1 inline-flex items-center justify-center bg-red-600 text-white text-[10px] font-extrabold px-1 min-w-[15px] h-[15px] rounded-full">
                           {unreadCount}
                         </span>
                       )}
@@ -903,30 +817,29 @@ function BookClubContent() {
                         items: userItems,
                       });
                     }}
-                    className="ml-1 px-2.5 py-1 text-xs font-bold bg-white text-gray-900 border border-gray-400 rounded hover:bg-gray-100 shadow-sm whitespace-nowrap active:scale-95"
+                    className="ml-1 px-2 py-0.5 text-xs font-bold win-btn"
                   >
                     🧾 {selectedUser} 영수증
                   </button>
                 )}
               </div>
 
-              <div className="flex items-center gap-1 ml-auto">
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="bg-white text-[11px] font-bold p-0.5 border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none cursor-pointer"
-                >
-                  <option value="최신순">최신순</option>
-                  <option value="오래된순">오래된순</option>
-                  <option value="높은 평점순">높은 평점순</option>
-                  <option value="낮은 평점순">낮은 평점순</option>
-                </select>
-              </div>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="bg-white text-[11px] font-bold p-0.5 win-inset outline-none"
+              >
+                <option value="최신순">최신순</option>
+                <option value="오래된순">오래된순</option>
+                <option value="높은 평점순">높은 평점순</option>
+                <option value="낮은 평점순">낮은 평점순</option>
+              </select>
             </div>
 
-            <div className="mt-2 space-y-2 max-h-96 overflow-y-auto pr-0.5">
+            {/* 카드 목록 */}
+            <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080]">
               {displayedReviews.length === 0 ? (
-                <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
+                <div className="bg-white p-4 text-center text-xs text-gray-500">
                   해당하는 독서 기록이 없습니다.
                 </div>
               ) : (
@@ -935,10 +848,10 @@ function BookClubContent() {
                   const isOpen = openCommentBookId === book.id;
 
                   return (
-                    <div key={book.id} id={"review-" + book.id} className="bg-white p-2.5 border border-gray-400 text-xs">
+                    <div key={book.id} id={"review-" + book.id} className="bg-white p-2.5 win-outset text-xs">
                       <div className="flex justify-between items-start gap-1 mb-1">
                         <div className="flex flex-wrap items-center gap-1">
-                          <span className="font-bold text-[#1f4e5b] text-sm">
+                          <span className="font-bold text-[#000080] text-sm">
                             {book.genre === "웹툰"
                               ? "📱 "
                               : book.genre === "만화"
@@ -948,19 +861,20 @@ function BookClubContent() {
                               : "📖 "}
                             {book.title}
                           </span>
-                          {/* 목록 카드 뱃지 표시 (글씨 크기 확대 및 여백 개선) */}
                           {book.is_favorite && (
-                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1.5 py-0.5 rounded shadow-sm">
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
                               👑 인생작
                             </span>
                           )}
                           {book.is_revisit && (
-                            <span className="bg-sky-100 text-sky-900 border border-sky-300 font-bold text-xs px-1.5 py-0.5 rounded shadow-sm">
+                            <span className="bg-sky-100 text-sky-900 border border-sky-300 font-bold text-xs px-1 rounded">
                               🔁 재주행
                             </span>
                           )}
                         </div>
-                        <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">{book.rating}</span>
+                        <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">
+                          {book.rating}
+                        </span>
                       </div>
 
                       <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
@@ -971,19 +885,20 @@ function BookClubContent() {
                         book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
                           <div
                             onClick={() => setRevealedSpoilers([...revealedSpoilers, book.id])}
-                            className="bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between select-none"
+                            className="bg-amber-50 border border-dashed border-amber-400 p-2 mt-1 rounded text-xs text-amber-800 cursor-pointer hover:bg-amber-100 flex items-center justify-between"
                           >
                             <span>⚠️ 스포일러가 포함된 감상평입니다.</span>
-                            <span className="text-xs underline font-bold text-amber-900 ml-2 shrink-0">클릭하여 보기</span>
+                            <span className="text-xs underline font-bold text-amber-900 ml-2 shrink-0">보기</span>
                           </div>
                         ) : (
-                          <p className="text-gray-800 bg-gray-50 p-2 rounded border border-gray-200 mt-1 break-all text-xs leading-normal">
+                          <p className="text-gray-800 bg-gray-50 p-2 rounded win-inset mt-1 break-all text-xs leading-normal">
                             {book.review.replace("(스포일러)", "")}
                           </p>
                         )
                       )}
 
-                      <div className="flex flex-wrap items-center gap-1.5 my-2 pt-2 border-t border-dashed border-gray-200">
+                      {/* 이모지 반응 */}
+                      <div className="flex flex-wrap items-center gap-1.5 my-2 pt-1 border-t border-dashed border-gray-200">
                         {["❤️", "📌", "😭", "😡", "👏"].map((emoji) => {
                           const count = (reactions[book.id] && reactions[book.id][emoji]) || 0;
                           return (
@@ -994,7 +909,7 @@ function BookClubContent() {
                                 e.stopPropagation();
                                 handleReactionClick(book.id, emoji);
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-300 rounded-full transition-colors select-none active:scale-95"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs win-btn"
                             >
                               <span>{emoji}</span>
                               {count > 0 && <span className="text-[11px] font-bold text-gray-700">{count}</span>}
@@ -1008,7 +923,7 @@ function BookClubContent() {
                           onClick={() => setOpenCommentBookId(isOpen ? null : book.id)}
                           className="font-bold text-gray-700 hover:text-black flex items-center gap-1"
                         >
-                          💬 댓글 <span className="text-[#1f4e5b] underline">({bookComments.length})</span>
+                          💬 댓글 <span className="text-[#000080] underline">({bookComments.length})</span>
                         </button>
                         <div className="flex items-center gap-2">
                           <button
@@ -1020,29 +935,23 @@ function BookClubContent() {
                                 singleItem: book,
                               })
                             }
-                            className="text-gray-700 hover:text-black hover:underline font-bold"
+                            className="text-gray-700 hover:underline font-bold"
                           >
                             🖨️ 영수증
                           </button>
                           <span className="text-gray-300">|</span>
-                          <button
-                            onClick={() => handleEdit(book)}
-                            className="text-blue-600 hover:underline font-bold"
-                          >
+                          <button onClick={() => handleEdit(book)} className="text-blue-600 hover:underline font-bold">
                             수정
                           </button>
                           <span className="text-gray-300">|</span>
-                          <button
-                            onClick={() => handleDelete(book.id, book.title)}
-                            className="text-red-500 hover:underline font-bold"
-                          >
+                          <button onClick={() => handleDelete(book.id, book.title)} className="text-red-500 hover:underline font-bold">
                             삭제
                           </button>
                         </div>
                       </div>
 
                       {isOpen && (
-                        <div className="mt-2 pt-2 border-t border-dashed border-gray-300 bg-[#f4f6f7] p-2">
+                        <div className="mt-2 pt-2 border-t border-dashed border-gray-300 bg-[#f4f6f7] p-2 win-inset">
                           <div className="space-y-1.5 mb-2">
                             {bookComments.length === 0 ? (
                               <div className="text-xs text-gray-400 text-center py-1">첫 번째 댓글을 남겨보세요!</div>
@@ -1052,42 +961,13 @@ function BookClubContent() {
                                   <div className="flex justify-between items-center text-gray-500 text-xs mb-1">
                                     <span className="font-bold text-gray-800">{c.user_name}</span>
                                     <div className="flex gap-1.5">
-                                      <button
-                                        onClick={() => handleEditComment(c.id, c.content)}
-                                        className="text-blue-600 hover:underline font-bold"
-                                      >
-                                        수정
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteComment(c.id)}
-                                        className="text-red-500 hover:underline font-bold"
-                                      >
-                                        삭제
-                                      </button>
+                                      <button onClick={() => handleEditComment(c.id, c.content)} className="text-blue-600 hover:underline font-bold">수정</button>
+                                      <button onClick={() => handleDeleteComment(c.id)} className="text-red-500 hover:underline font-bold">삭제</button>
                                     </div>
                                   </div>
-                                  {(() => {
-                                    const isSp = c.content.startsWith("(스포일러)");
-                                    const isOpened = revealedComments[c.id];
-
-                                    if (isSp && !isOpened) {
-                                      return (
-                                        <div
-                                          onClick={() => setRevealedComments({ ...revealedComments, [c.id]: true })}
-                                          className="bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
-                                        >
-                                          <span>⚠️ 스포일러가 포함된 댓글입니다.</span>
-                                          <span className="underline text-[10px] font-bold">내용 보기</span>
-                                        </div>
-                                      );
-                                    }
-
-                                    return (
-                                      <div className="text-gray-800 break-all text-xs leading-relaxed">
-                                        {isSp ? c.content.replace("(스포일러)", "").trim() : c.content}
-                                      </div>
-                                    );
-                                  })()}
+                                  <div className="text-gray-800 break-all text-xs leading-relaxed">
+                                    {c.content.replace("(스포일러)", "").trim()}
+                                  </div>
                                 </div>
                               ))
                             )}
@@ -1101,7 +981,7 @@ function BookClubContent() {
                                 placeholder="닉네임"
                                 value={commentForm.user_name}
                                 onChange={(e) => setCommentForm({ ...commentForm, user_name: e.target.value })}
-                                className="p-1 text-xs bg-white border border-gray-400 outline-none"
+                                className="p-1 text-xs bg-white win-inset outline-none"
                               />
                               <input
                                 type="password"
@@ -1110,17 +990,9 @@ function BookClubContent() {
                                 placeholder="숫자 4자리"
                                 value={commentForm.password}
                                 onChange={(e) => setCommentForm({ ...commentForm, password: e.target.value })}
-                                className="p-1 text-xs bg-white border border-gray-400 outline-none"
+                                className="p-1 text-xs bg-white win-inset outline-none"
                               />
                             </div>
-                            <label className="flex items-center gap-1 mb-1 text-xs text-gray-700 select-none cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={commentForm.is_spoiler || false}
-                                onChange={(e) => setCommentForm({ ...commentForm, is_spoiler: e.target.checked })}
-                              />
-                              <span>⚠️ 스포일러 포함</span>
-                            </label>
                             <div className="flex gap-1">
                               <input
                                 type="text"
@@ -1128,12 +1000,9 @@ function BookClubContent() {
                                 placeholder="댓글을 입력하세요..."
                                 value={commentForm.content}
                                 onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-                                className="flex-1 p-1 text-xs bg-white border border-gray-400 outline-none"
+                                className="flex-1 p-1 text-xs bg-white win-inset outline-none"
                               />
-                              <button
-                                type="submit"
-                                className="px-2.5 py-1 bg-[#c3c7cb] text-xs font-bold border border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
-                              >
+                              <button type="submit" className="win-btn px-2.5 py-1 text-xs font-bold">
                                 등록
                               </button>
                             </div>
@@ -1147,445 +1016,138 @@ function BookClubContent() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* 오른쪽 영역: 목표 현황판 & 전체 댓글 창 */}
-        <div className="space-y-4">
-          <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl">
-            <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-              <span>🎯 GOALS_TRACKER.exe</span>
-              <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
+      {/* --- 모달 창들 --- */}
+
+      {/* 1. 도서 등록 모달 (book-add) */}
+      {openWindow === "book-add" && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+              <span>{editingId ? "EDITING_BOOK.exe" : "ADD_BOOK.exe"}</span>
+              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
             </div>
-
-            <form onSubmit={handleGoalSubmit} className="p-2 space-y-2 bg-[#d4d8dc] border border-[#808080] mb-3 text-xs">
-              <div className="font-bold text-[#1f4e5b] text-[11px] border-b border-gray-400 pb-1">
-                내 목표 설정/수정
+            <form onSubmit={handleSubmit} className="p-3 space-y-2.5 bg-[#d4d8dc] win-inset overflow-y-auto m-1">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">NAME (내 이름)</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.user_name}
+                  onChange={(e) => setFormData({ ...formData, user_name: e.target.value })}
+                  className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+                  placeholder="예: 지은"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">TITLE (제목)</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+                  placeholder="제목 입력"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">AUTHOR (작가)</label>
+                <input
+                  type="text"
+                  value={formData.author}
+                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                  className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+                  placeholder="작가 이름"
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-700 mb-0.5">닉네임</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="예: 지은"
-                    value={goalForm.user_name}
-                    onChange={(e) => setGoalForm({ ...goalForm, user_name: e.target.value })}
-                    className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  />
+                  <label className="block text-[11px] font-bold text-gray-800 mb-0.5">GENRE (장르)</label>
+                  <select
+                    value={formData.genre}
+                    onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
+                    className="w-full p-1 text-xs bg-white win-inset"
+                  >
+                    <option>소설</option>
+                    <option>시</option>
+                    <option>만화</option>
+                    <option>웹툰</option>
+                    <option>오디오드라마</option>
+                    <option>수필</option>
+                    <option>사회/과학</option>
+                    <option>철학</option>
+                    <option>실용</option>
+                    <option>에세이</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-700 mb-0.5">목표 권수</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="권수 입력"
-                    value={goalForm.target_count}
-                    onChange={(e) => setGoalForm({ ...goalForm, target_count: e.target.value })}
-                    className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
-                  />
+                  <label className="block text-[11px] font-bold text-gray-800 mb-0.5">평점</label>
+                  <select
+                    value={formData.rating}
+                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+                    className="w-full p-1 text-xs bg-white win-inset"
+                  >
+                    <option value="★★★★★">★★★★★ (5.0)</option>
+                    <option value="★★★★☆">★★★★☆ (4.5)</option>
+                    <option value="★★★★">★★★★ (4.0)</option>
+                    <option value="★★★☆">★★★☆ (3.5)</option>
+                    <option value="★★★">★★★ (3.0)</option>
+                    <option value="★★☆">★★☆ (2.5)</option>
+                    <option value="★★">★★ (2.0)</option>
+                    <option value="★☆">★☆ (1.5)</option>
+                    <option value="★">★ (1.0)</option>
+                    <option value="☆">☆ (0.5)</option>
+                    <option value="중도하차">중도하차</option>
+                  </select>
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-700 mb-0.5">목표 한마디</label>
-                <input
-                  type="text"
-                  placeholder="예: 올해는 완독왕!"
-                  value={goalForm.message}
-                  onChange={(e) => setGoalForm({ ...goalForm, message: e.target.value })}
-                  className="w-full p-1 text-xs bg-white border border-t-gray-600 border-l-gray-600 border-b-white border-r-white outline-none"
+                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">REVIEW (한줄평)</label>
+                <textarea
+                  rows={2}
+                  value={formData.review}
+                  onChange={(e) => setFormData({ ...formData, review: e.target.value })}
+                  className="w-full p-1.5 text-xs bg-white win-inset outline-none resize-none"
+                  placeholder="감상이나 리뷰를 적어주세요"
                 />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-1 bg-[#c3c7cb] text-xs font-bold border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] active:border-t-[#404040] active:border-l-[#404040]"
-              >
-                목표 저장
-              </button>
-            </form>
-
-            <div className="space-y-2">
-              {sortedGoals.length === 0 ? (
-                <div className="bg-white p-4 text-center text-xs text-gray-500 border border-gray-400">
-                  등록된 목표가 없습니다. 위에서 목표를 먼저 세워보세요!
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-[11px] text-gray-700">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} />
+                    <span>⚠️ 스포일러</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={isFavorite} onChange={(e) => setIsFavorite(e.target.checked)} />
+                    <span>👑 인생작</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" checked={isRevisit} onChange={(e) => setIsRevisit(e.target.checked)} />
+                    <span>🔁 재주행</span>
+                  </label>
                 </div>
-              ) : (
-                sortedGoals.map((g) => {
-                  const readCount = getReadCount(g.user_name);
-                  const actualPercent = Math.round((readCount / g.target_count) * 100);
-                  const barPercent = Math.min(100, actualPercent);
-                  const userAvg = getAverageRating(g.user_name);
-
-                  const counts = Array.from(
-                    new Set(
-                      sortedGoals
-                        .map((item) => getReadCount(item.user_name))
-                        .filter((cnt) => cnt > 0)
-                    )
-                  ).sort((a, b) => b - a);
-
-                  let medalBadge = null;
-                  if (readCount > 0) {
-                    if (readCount === counts[0]) medalBadge = "🥇";
-                    else if (readCount === counts[1]) medalBadge = "🥈";
-                    else if (readCount === counts[2]) medalBadge = "🥉";
-                  }
-
-                  return (
-                    <div key={g.id} className="bg-white p-2 border border-gray-400 text-xs">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <div className="flex items-center gap-1.5">
-                          {medalBadge && (
-                            <span className="text-sm select-none leading-none">
-                              {medalBadge}
-                            </span>
-                          )}
-                          <span className="font-bold text-[#1f4e5b] text-[13px]">{g.user_name}</span>
-                          {actualPercent >= 100 && (
-                            <span className="text-xs bg-yellow-300 text-yellow-900 font-bold px-1 py-0.5 border border-yellow-500 shadow-sm">
-                              🏆 달성
-                            </span>
-                          )}
-                          {userAvg && (
-                            <span className="text-xs text-amber-700 font-bold bg-amber-50 px-1 py-0.5 border border-amber-200">
-                              ★ {userAvg}
-                            </span>
-                          )}
-                        </div>
-                        <span className="font-bold text-xs text-gray-700">
-                          {readCount} / {g.target_count}권 ({actualPercent}%)
-                        </span>
-                      </div>
-
-                      <div className="w-full bg-[#808080] p-[2px] border border-t-[#404040] border-l-[#404040] border-b-[#ffffff] border-r-[#ffffff] mb-1">
-                        <div
-                          className="bg-[#1f4e5b] h-2.5 transition-all duration-300"
-                          style={{ width: `${barPercent}%` }}
-                        />
-                      </div>
-
-                      {g.message && (
-                        <div className="text-[11px] text-gray-600 bg-gray-50 p-1 border border-gray-200">
-                          💬 "{g.message}"
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="bg-[#c3c7cb] border-2 border-t-[#ffffff] border-l-[#ffffff] border-b-[#404040] border-r-[#404040] p-1.5 shadow-xl mt-4">
-              <div className="bg-[#1f4e5b] text-white px-2 py-1 flex justify-between items-center text-xs font-bold tracking-wider mb-2">
-                <span>💬 COMMENTS.exe</span>
-                <span className="bg-[#c3c7cb] text-black px-1 border border-t-white border-l-white border-b-black border-r-black">✕</span>
               </div>
-
-              <div className="space-y-1.5 max-h-96 overflow-y-auto pr-0.5">
-                {comments.length === 0 ? (
-                  <div className="bg-white p-3 text-center text-xs text-gray-500 border border-gray-400">
-                    아직 작성된 댓글이 없습니다.
-                  </div>
-                ) : (
-                  [...comments].reverse().map((c) => {
-                    const targetBook = reviews.find((r) => r.id === c.book_id);
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => {
-                          const el = document.getElementById("review-" + c.book_id);
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "center" });
-                          }
-                          setOpenCommentBookId(c.book_id);
-                        }}
-                        className="bg-white p-2 border border-gray-400 text-xs cursor-pointer hover:bg-yellow-50 transition-colors"
-                      >
-                        <div className="flex justify-between items-baseline mb-1 text-xs text-gray-600">
-                          <span className="font-bold text-gray-800">{c.user_name}</span>
-                          <span className="text-[#1f4e5b] font-bold truncate max-w-[150px]">
-                            {targetBook?.genre === "웹툰"
-                              ? "📱 "
-                              : targetBook?.genre === "만화"
-                              ? "💭 "
-                              : targetBook?.genre === "오디오드라마"
-                              ? "🎧 "
-                              : "📖 "}
-                            {targetBook ? targetBook.title : "삭제된 책"}
-                          </span>
-                        </div>
-                        {(() => {
-                          const isSp = c.content.startsWith("(스포일러)") || c.content.startsWith("[스포일러]");
-                          const isOpened = revealedComments[c.id];
-
-                          if (isSp && !isOpened) {
-                            return (
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRevealedComments({ ...revealedComments, [c.id]: true });
-                                }}
-                                className="bg-red-50 border border-red-200 text-red-600 p-1.5 rounded text-xs cursor-pointer hover:bg-red-100 flex items-center justify-between select-none"
-                              >
-                                <span>⚠️ 스포일러가 포함된 댓글입니다.</span>
-                                <span className="underline text-[10px] font-bold">내용 보기</span>
-                              </div>
-                            );
-                          }
-
-                          const cleanText = c.content.replace("(스포일러)", "").replace("[스포일러]", "").trim();
-
-                          return (
-                            <p className="text-gray-800 bg-gray-50 p-1.5 rounded border border-gray-200 text-xs leading-relaxed break-all">
-                              {cleanText}
-                            </p>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {randomBook && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-            onClick={() => setRandomBook(null)}
-          >
-            <div
-              className="bg-white rounded-xl shadow-xl max-w-xs w-full p-5 border border-amber-200 text-center select-none animate-in fade-in zoom-in duration-150 max-h-[85vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-
-              <div className="shrink-0">
-                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-block">
-                  🎲 오늘의 랜덤 추천작
-                </span>
-              </div>
-              <h3 className="text-base font-bold text-gray-900 mt-2.5 break-keep shrink-0">
-                {randomBook.title}
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5 shrink-0">
-                {randomBook.author || "작자 미상"} · {randomBook.genre || "장르 미분류"}
-              </p>
-              <p className="text-[11px] text-gray-400 mt-0.5 shrink-0">
-                작성자: {(randomBook as any).user_name || (randomBook as any).user || (randomBook as any).userName || "익명"}
-              </p>
-              {/* 실제 해당 책의 별점/평점이 그대로 나오도록 변경 */}
-              <div className="text-amber-500 font-bold text-xs my-2 tracking-wider shrink-0">
-                {randomBook.rating}
-              </div>
-
-              {randomBook.review && (
-                <div className="text-xs text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 text-left leading-relaxed my-2 overflow-y-auto max-h-48 break-words">
-                  "{randomBook.review.replace("(스포일러)", "")}"
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-3 pt-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleRandomRecommend}
-                  className="flex-1 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 active:scale-95 rounded-md transition-all"
-                >
-                  다시 뽑기
+              <div className="flex gap-1 pt-2">
+                <button type="submit" disabled={loading} className="flex-1 py-1.5 win-btn font-bold text-xs">
+                  {loading ? "처리 중..." : editingId ? "수정 완료" : "입력 완료"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRandomBook(null)}
-                  className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-md transition-all"
-                >
+                <button type="button" onClick={cancelEdit} className="px-3 py-1.5 win-btn text-xs font-bold">
                   닫기
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 🖨️ 영수증 출력 팝업 모달 */}
-      {receiptData && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={() => setReceiptData(null)}
-        >
-          <div
-            className="w-full max-w-[360px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 닫기 버튼 */}
-            <button
-              type="button"
-              onClick={() => setReceiptData(null)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-black font-bold text-sm select-none"
-            >
-              ✕
-            </button>
-
-            {/* 영수증 상단 헤더 */}
-            <div className="text-center pb-2 border-b-2 border-dashed border-gray-400">
-              <div className="text-base font-extrabold tracking-widest">RECEIPT_PRINT.exe</div>
-              <div className="text-[10px] text-gray-500 mt-0.5">================================</div>
-              <div className="flex justify-between text-[11px] text-gray-600 mt-1">
-                <span>발급일자: {todayStr}</span>
-                <span>모임: {groupName}</span>
-              </div>
-              <div className="text-left text-xs font-bold mt-1">
-                고객명: {receiptData.user} 님
-              </div>
-            </div>
-            
-            {/* 단일 작품 모드 */}
-            {receiptData.type === "single" && receiptData.singleItem && (
-              <div className="py-3 space-y-2 text-xs">
-                <div className="font-bold border-b border-gray-300 pb-1 text-gray-700">[작품 정보]</div>
-                <div className="space-y-1">
-                  <div className="flex">
-                    <span className="w-14 text-gray-500 shrink-0">제  목:</span>
-                    {/* 제목 옆 이모지 제거 */}
-                    <span className="font-bold break-keep">
-                      {receiptData.singleItem.title}
-                    </span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-14 text-gray-500 shrink-0">작  가:</span>
-                    <span>{receiptData.singleItem.author || "미상"}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-14 text-gray-500 shrink-0">장  르:</span>
-                    <span>{receiptData.singleItem.genre}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-14 text-gray-500 shrink-0">평  점:</span>
-                    <span className="font-bold text-gray-900">{receiptData.singleItem.rating}</span>
-                  </div>
-                </div>
-
-                <div className="font-bold border-b border-gray-300 pb-1 text-gray-700 pt-2">[감상평]</div>
-                <div className="bg-gray-50 p-2.5 rounded border border-dashed border-gray-300 text-gray-800 leading-relaxed text-xs break-words whitespace-pre-wrap not-italic">
-                  "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "등록된 한줄평이 없습니다."}"
-                </div>
-
-                <div className="pt-2 flex justify-between border-t border-dashed border-gray-300 text-xs font-bold">
-                  <span>상  태:</span>
-                  {/* 이모지 없이 텍스트로만 출력 */}
-                  <span>
-                    {receiptData.singleItem.rating === "중도하차"
-                      ? "💔 중도하차"
-                      : `감상 완료${
-                          receiptData.singleItem.is_favorite && receiptData.singleItem.is_revisit
-                            ? " (인생작/재주행)"
-                            : receiptData.singleItem.is_favorite
-                            ? " (인생작)"
-                            : receiptData.singleItem.is_revisit
-                            ? " (재주행)"
-                            : ""
-                        }`}
-                  </span>
-                </div>
-              </div>
-            )}
-            
-            {/* 목록 정산 모드 */}
-            {receiptData.type === "list" && receiptData.items && (
-              <div className="py-3 text-xs">
-                <div className="flex justify-between font-bold border-b border-gray-400 pb-1 text-gray-700 mb-2">
-                  <span>[품목 / 장르]</span>
-                  <span>[평점]</span>
-                </div>
-
-                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                  {receiptData.items.length === 0 ? (
-                    <div className="text-center text-gray-400 py-3">등록된 작품이 없습니다.</div>
-                  ) : (
-                    receiptData.items.map((item, idx) => (
-                      <div key={item.id} className="flex justify-between items-baseline gap-1.5 border-b border-gray-100 pb-1 text-xs">
-                        <div className="break-keep flex-1 leading-snug">
-                          <span className="font-medium text-gray-900">
-                            {idx + 1}. {item.title}
-                            {item.is_favorite ? "👑" : ""}
-                            {item.is_revisit ? "🔁" : ""}
-                          </span>{" "}
-                          <span className="text-[11px] text-gray-500">({item.genre})</span>
-                        </div>
-                        <span className="font-bold shrink-0 text-right whitespace-nowrap text-amber-700">{item.rating}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {(() => {
-                  const total = receiptData.items.length;
-                  const dropped = receiptData.items.filter((i) => i.rating === "중도하차").length;
-                  const completed = total - dropped;
-                  const favoriteCount = receiptData.items.filter((i) => i.is_favorite).length;
-                  const revisitCount = receiptData.items.filter((i) => i.is_revisit).length;
-                  const userAvg = getAverageRating(receiptData.user) || "0.0";
-
-                  return (
-                    <div className="mt-3 pt-2 border-t-2 border-dashed border-gray-400 space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">총 정산 작품수:</span>
-                        <span className="font-bold">{total} 편</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">감상 완료:</span>
-                        <span className="font-bold">{completed} 편</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">중도하차:</span>
-                        <span className="font-bold text-red-600">{dropped} 편</span>
-                      </div>
-                      <div className="flex justify-between text-amber-900">
-                        <span>👑 인생작 선정:</span>
-                        <span className="font-bold">{favoriteCount} 편</span>
-                      </div>
-                      <div className="flex justify-between text-sky-900">
-                        <span>🔁 재주행 작품:</span>
-                        <span className="font-bold">{revisitCount} 편</span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t border-gray-200 font-bold text-xs">
-                        <span>평균 평점:</span>
-                        <span className="text-amber-800">★ {userAvg}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* 영수증 하단: 바코드 1줄 고정 + 슬로건 */}
-            <div className="text-center pt-3 border-t-2 border-dashed border-gray-400">
-              <div className="text-lg tracking-[2px] font-serif select-none text-gray-800 whitespace-nowrap overflow-hidden">
-                |||| || ||||| ||| ||||||| || ||||
-              </div>
-              <div className="text-xs font-black tracking-tight mt-1 text-black">
-                *** 구매비덕질을 타파하자! ***
-              </div>
-              <div className="text-[11px] text-gray-500 mt-2 select-none">
-                화면을 캡처하여 단톡방에 공유해보세요!
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {showStats && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black p-1 shadow-2xl font-mono text-xs text-black">
-            <div className="bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center select-none">
+      {/* 2. 통계 창 (stats) */}
+      {openWindow === "stats" && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl font-mono text-xs text-black">
+            <div className="bg-[#000080] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>STATS.exe</span>
-              <button
-                type="button"
-                onClick={() => setShowStats(false)}
-                className="bg-[#c0c0c0] text-black px-1.5 py-0.5 border border-t-white border-l-white border-b-black border-r-black font-bold text-[10px]"
-              >
-                X
-              </button>
+              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
             </div>
-            <div className="p-3 space-y-3 bg-white mt-1 border-2 border-t-gray-600 border-l-gray-600 border-b-white border-r-white max-h-[70vh] overflow-y-auto">
+            <div className="p-3 space-y-3 bg-white mt-1 win-inset max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-2 bg-gray-100 p-2 border border-gray-300">
                 <div>
                   <div className="text-gray-600 text-xs font-bold">총 등록 작품</div>
@@ -1626,17 +1188,310 @@ function BookClubContent() {
               </div>
             </div>
             <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowStats(false)}
-                className="px-4 py-1 bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black font-bold"
-              >
-                확인
-              </button>
+              <button onClick={() => setOpenWindow(null)} className="win-btn px-4 py-1 text-xs font-bold">확인</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 3. 목표 트래커 (goals) */}
+      {openWindow === "goals" && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+              <span>🎯 GOALS_TRACKER.exe</span>
+              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
+            </div>
+            <div className="p-3 bg-[#d4d8dc] win-inset m-1 overflow-y-auto space-y-3">
+              <form onSubmit={handleGoalSubmit} className="space-y-2 text-xs bg-white p-2 win-inset">
+                <div className="font-bold text-[#000080] border-b pb-1">내 목표 설정/수정</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="닉네임"
+                    value={goalForm.user_name}
+                    onChange={(e) => setGoalForm({ ...goalForm, user_name: e.target.value })}
+                    className="p-1 win-inset text-xs outline-none"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    placeholder="목표 권수"
+                    value={goalForm.target_count}
+                    onChange={(e) => setGoalForm({ ...goalForm, target_count: e.target.value })}
+                    className="p-1 win-inset text-xs outline-none"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="목표 한마디 (예: 완독왕!)"
+                  value={goalForm.message}
+                  onChange={(e) => setGoalForm({ ...goalForm, message: e.target.value })}
+                  className="w-full p-1 win-inset text-xs outline-none"
+                />
+                <button type="submit" className="w-full py-1 win-btn text-xs font-bold">목표 저장</button>
+              </form>
+
+              <div className="space-y-1.5">
+                {sortedGoals.map((g) => {
+                  const readCount = getReadCount(g.user_name);
+                  const actualPercent = Math.round((readCount / g.target_count) * 100);
+                  const barPercent = Math.min(100, actualPercent);
+                  return (
+                    <div key={g.id} className="bg-white p-2 win-outset text-xs">
+                      <div className="flex justify-between font-bold mb-1">
+                        <span>{g.user_name}</span>
+                        <span>{readCount} / {g.target_count}권 ({actualPercent}%)</span>
+                      </div>
+                      <div className="w-full bg-gray-300 win-inset h-3 p-0.5">
+                        <div className="bg-[#000080] h-full" style={{ width: `${barPercent}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. 익명 대나무숲 & 전체 댓글 (gossip) */}
+      {openWindow === "gossip" && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+              <span>💬 COMMENTS_BOARD.exe</span>
+              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
+            </div>
+            <div className="p-2 bg-white win-inset m-1 overflow-y-auto space-y-1.5">
+              {comments.length === 0 ? (
+                <div className="text-center text-xs text-gray-500 py-4">아직 작성된 댓글이 없습니다.</div>
+              ) : (
+                [...comments].reverse().map((c) => {
+                  const targetBook = reviews.find((r) => r.id === c.book_id);
+                  return (
+                    <div key={c.id} className="bg-gray-50 p-2 border border-gray-200 text-xs">
+                      <div className="flex justify-between font-bold text-gray-800 mb-0.5">
+                        <span>{c.user_name}</span>
+                        <span className="text-[#000080] truncate max-w-[150px]">{targetBook ? targetBook.title : "삭제된 도서"}</span>
+                      </div>
+                      <p className="text-gray-700">{c.content.replace("(스포일러)", "").trim()}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
+      {openWindow && !["book-add", "stats", "goals", "gossip"].includes(openWindow) && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
+            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+              <span>{APP_LIST.find((a) => a.id === openWindow)?.name}.exe</span>
+              <button onClick={() => setOpenWindow(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
+            </div>
+            <div className="bg-white win-inset p-6 my-2 text-xs flex flex-col items-center justify-center text-center space-y-2">
+              <div className="relative w-12 h-12">
+                <Image
+                  src={APP_LIST.find((a) => a.id === openWindow)?.icon || "/icons/start-logo.png"}
+                  alt=""
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <p className="font-bold text-sm">{APP_LIST.find((a) => a.id === openWindow)?.name}</p>
+              <p className="text-gray-600">이 기능의 세부 모듈 화면을 준비 중입니다!</p>
+            </div>
+            <div className="flex justify-end p-1">
+              <button onClick={() => setOpenWindow(null)} className="win-btn px-4 py-1 text-xs font-bold">닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 영수증 모달 */}
+      {receiptData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setReceiptData(null)}
+        >
+          <div
+            className="w-full max-w-[360px] bg-white text-black p-5 font-mono text-xs shadow-2xl relative select-text border-t-8 border-b-8 border-dashed border-gray-300 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setReceiptData(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-black font-bold text-sm select-none"
+            >
+              ✕
+            </button>
+            <div className="text-center pb-2 border-b-2 border-dashed border-gray-400">
+              <div className="text-base font-extrabold tracking-widest">RECEIPT_PRINT.exe</div>
+              <div className="text-[10px] text-gray-500 mt-0.5">================================</div>
+              <div className="flex justify-between text-[11px] text-gray-600 mt-1">
+                <span>발급일자: {todayStr}</span>
+                <span>모임: {groupName}</span>
+              </div>
+              <div className="text-left text-xs font-bold mt-1">
+                고객명: {receiptData.user} 님
+              </div>
+            </div>
+
+            {receiptData.type === "single" && receiptData.singleItem && (
+              <div className="py-3 space-y-2 text-xs">
+                <div className="font-bold border-b border-gray-300 pb-1 text-gray-700">[작품 정보]</div>
+                <div className="space-y-1">
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">제  목:</span>
+                    <span className="font-bold break-keep">{receiptData.singleItem.title}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">작  가:</span>
+                    <span>{receiptData.singleItem.author || "미상"}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">장  르:</span>
+                    <span>{receiptData.singleItem.genre}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-14 text-gray-500 shrink-0">평  점:</span>
+                    <span className="font-bold text-gray-900">{receiptData.singleItem.rating}</span>
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-2.5 rounded border border-dashed border-gray-300 text-gray-800 text-xs">
+                  "{receiptData.singleItem.review ? receiptData.singleItem.review.replace("(스포일러)", "") : "감상평 없음"}"
+                </div>
+              </div>
+            )}
+
+            {receiptData.type === "list" && receiptData.items && (
+              <div className="py-3 text-xs">
+                <div className="flex justify-between font-bold border-b border-gray-400 pb-1 text-gray-700 mb-2">
+                  <span>[품목 / 장르]</span>
+                  <span>[평점]</span>
+                </div>
+                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                  {receiptData.items.map((item, idx) => (
+                    <div key={item.id} className="flex justify-between items-baseline border-b border-gray-100 pb-1 text-xs">
+                      <span className="truncate flex-1">{idx + 1}. {item.title}</span>
+                      <span className="font-bold shrink-0 text-amber-700">{item.rating}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="text-center pt-3 border-t-2 border-dashed border-gray-400">
+              <div className="text-lg tracking-[2px] font-serif select-none text-gray-800 whitespace-nowrap overflow-hidden">
+                |||| || ||||| ||| ||||||| || ||||
+              </div>
+              <div className="text-xs font-black tracking-tight mt-1 text-black">
+                *** 구매비덕질을 타파하자! ***
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 랜덤 추천 팝업 (curation) */}
+      {randomBook && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setRandomBook(null)}
+        >
+          <div
+            className="bg-[#c0c0c0] win-outset max-w-xs w-full p-1 text-center select-none shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold mb-2">
+              <span>RANDOM_PICK.exe</span>
+              <button onClick={() => setRandomBook(null)} className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
+            </div>
+            <div className="bg-white win-inset p-3 m-1 text-xs space-y-2">
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                🎲 오늘의 추천작
+              </span>
+              <h3 className="text-base font-bold text-gray-900 mt-1">{randomBook.title}</h3>
+              <p className="text-xs text-gray-600">{randomBook.author || "작자 미상"} · {randomBook.genre}</p>
+              <div className="text-amber-500 font-bold">{randomBook.rating}</div>
+              {randomBook.review && (
+                <div className="bg-gray-50 p-2 text-xs text-gray-700 win-inset break-words">
+                  "{randomBook.review.replace("(스포일러)", "")}"
+                </div>
+              )}
+            </div>
+            <div className="flex gap-1 p-2">
+              <button onClick={handleRandomRecommend} className="flex-1 py-1 win-btn text-xs font-bold">다시 뽑기</button>
+              <button onClick={() => setRandomBook(null)} className="flex-1 py-1 win-btn text-xs font-bold">닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 시작 메뉴 팝업 */}
+      {startMenuOpen && (
+        <div
+          className="absolute bottom-10 left-0 z-50 w-60 bg-[#c0c0c0] win-outset flex shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 bg-[#808080] flex items-end justify-center pb-2">
+            <span className="text-white text-xs font-bold -rotate-90 origin-center whitespace-nowrap tracking-wider">
+              BOOK CLUB 98
+            </span>
+          </div>
+          <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs max-h-[350px] overflow-y-auto">
+            {APP_LIST.map((app) => (
+              <button
+                key={app.id}
+                onClick={() => handleAppClick(app.id)}
+                className="flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors"
+              >
+                <div className="relative w-5 h-5 flex-shrink-0">
+                  <Image
+                    src={app.icon}
+                    alt=""
+                    fill
+                    sizes="20px"
+                    className="object-contain"
+                  />
+                </div>
+                <span className="truncate">{app.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 하단 윈도우 98 작업표시줄 */}
+      <footer className="h-10 bg-[#c0c0c0] win-outset z-40 flex items-center justify-between px-1 absolute bottom-0 inset-x-0">
+        <button
+          onClick={() => setStartMenuOpen(!startMenuOpen)}
+          className={`flex items-center space-x-1.5 px-2 py-1 win-btn text-xs font-bold ${
+            startMenuOpen ? "win-inset bg-[#dfdfdf]" : ""
+          }`}
+        >
+          <div className="relative w-4 h-4">
+            <Image
+              src="/icons/start-logo.png"
+              alt="Start"
+              fill
+              sizes="16px"
+              className="object-contain"
+            />
+          </div>
+          <span>시작</span>
+        </button>
+
+        <div className="win-inset px-2 py-0.5 text-[11px] font-mono bg-[#c0c0c0] min-w-[65px] text-center">
+          {time}
+        </div>
+      </footer>
     </main>
   );
 }
