@@ -885,14 +885,14 @@ function BookClubContent() {
       link.href = dataUrl;
       link.download = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
       link.click();
-    } catch (err) {
+      } catch (err) {
       alert("이미지 저장 중 오류가 발생했습니다.");
     } finally {
       setDownloadingReceipt(false);
     }
   };
-  
-const handleAppClick = (appId: string) => {
+
+  const handleAppClick = (appId: string) => {
     setStartMenuOpen(false);
     if (appId === "receipt") {
       setReceiptData({
