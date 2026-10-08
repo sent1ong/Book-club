@@ -3076,7 +3076,6 @@ function BookClubContent() {
               <div className="grid grid-cols-3 gap-1.5 bg-[#808080] p-1.5 win-inset">
                 {BINGO_CELLS_DEFAULT.map((cell) => {
                   const isChecked = currentChecked.includes(cell.id);
-                  const isFree = cell.id === 5;
 
                   return (
                     <button
@@ -3098,7 +3097,7 @@ function BookClubContent() {
                         </div>
                       )}
 
-                      <span className={`text-xs font-bold leading-tight ${isFree ? "text-purple-800" : "text-gray-900"}`}>
+                      <span className="text-xs font-bold leading-tight text-gray-900">
                         {cell.title}
                       </span>
                       <span className="text-xs leading-3 text-gray-600 break-keep">
