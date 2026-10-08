@@ -3093,7 +3093,7 @@ function BookClubContent() {
                       {isChecked && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-85">
                           <span className="border-2 border-red-600 text-red-600 font-black text-sm px-2 py-0.5 rounded-full transform -rotate-12 tracking-wider">
-                            {isFree ? "PASS" : "CLEAR"}
+                            CLEAR
                           </span>
                         </div>
                       )}
