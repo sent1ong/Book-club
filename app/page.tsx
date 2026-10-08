@@ -907,12 +907,6 @@ function BookClubContent() {
 
   return (
     <main className="relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
-      {/* 상단 현재 모임 뱃지 */}
-      <div className="absolute top-2 right-3 z-20">
-        <span className="win-outset bg-[#c0c0c0] text-black text-[11px] px-2 py-0.5 font-bold shadow">
-          🖥️ 모임: {groupName}
-        </span>
-      </div>
 
       {/* 바탕화면 메인 스크롤 영역 */}
       <div
@@ -2447,13 +2441,17 @@ function BookClubContent() {
           <span>시작</span>
         </button>
 
-        <div className="win-inset px-2 py-0.5 text-[11px] font-mono bg-[#c0c0c0] min-w-[65px] text-center">
-          {time}
+        {/* 우측 시스템 트레이 영역 (모임 뱃지 + 시계) */}
+        <div className="flex items-center gap-1.5">
+          <div className="win-inset bg-[#c0c0c0] px-2 py-0.5 flex items-center gap-1 text-[11px] font-bold text-gray-800 select-none max-w-[130px] truncate">
+            <span>🖥️</span>
+            <span className="truncate">{groupName}</span>
+          </div>
+          <div className="win-inset px-2 py-0.5 text-[11px] font-mono bg-[#c0c0c0] min-w-[65px] text-center">
+            {time}
+          </div>
         </div>
       </footer>
-    </main>
-  );
-}
 
 export default function Home() {
   return (
