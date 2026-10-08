@@ -217,6 +217,66 @@ function BookClubContent() {
     };
   }, [reviews, mateTargetUser]);
 
+  // ⚔️ 호불호 논쟁작 배틀 데이터 분석 (평점 편차 기반)
+  const battleData = React.useMemo(() => {
+    // 1. 도서 제목별로 리뷰 모으기
+    const bookGroups: { [title: string]: BookReview[] } = {};
+    reviews.forEach((r) => {
+      if (!r.title) return;
+      if (!bookGroups[r.title]) bookGroups[r.title] = [];
+      bookGroups[r.title].push(r);
+    });
+
+    let topControversial: {
+      title: string;
+      author: string;
+      genre: string;
+      reviews: BookReview[];
+      variance: number;
+      proReviews: BookReview[];
+      conReviews: BookReview[];
+      avgScore: number;
+    } | null = null;
+
+    let maxVariance = -1;
+
+    // 2. 2명 이상 평가한 작품 중 별점 편차가 가장 큰 작품 산출
+    Object.entries(bookGroups).forEach(([title, bookReviews]) => {
+      if (bookReviews.length < 2) return; // 최소 2명 이상 평가 필요
+
+      const scores = bookReviews.map((r) => scoreMap[r.rating] ?? 2.5);
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      // 분산 계산
+      const variance =
+        scores.reduce((acc, score) => acc + Math.pow(score - mean, 2), 0) / scores.length;
+
+      // 극호(3.5점 이상) vs 불호/하차(3.0점 이하 및 중도하차) 분리
+      const pro = bookReviews.filter(
+        (r) => (scoreMap[r.rating] ?? 0) >= 4.0 || r.rating === "★★★★★" || r.is_favorite
+      );
+      const con = bookReviews.filter(
+        (r) => (scoreMap[r.rating] ?? 0) <= 2.5 || r.rating === "중도하차"
+      );
+
+      // 분산이 가장 높고 찬반 양쪽 의견이 모두 존재하는 작품 우선
+      if (variance > maxVariance && (pro.length > 0 || con.length > 0)) {
+        maxVariance = variance;
+        topControversial = {
+          title,
+          author: bookReviews[0].author,
+          genre: bookReviews[0].genre,
+          reviews: bookReviews,
+          variance,
+          proReviews: pro,
+          conReviews: con,
+          avgScore: Number(mean.toFixed(1)),
+        };
+      }
+    });
+
+    return topControversial;
+  }, [reviews]);
+
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -1533,7 +1593,7 @@ function BookClubContent() {
       )}
 
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "gossip"].includes(openWindow) && (
+      {openWindow && !["book-add", "stats", "goals", "gossip", "graveyard", "tags", "genre", "vending", "curation", "versus"].includes(openWindow) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
             <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
@@ -2151,6 +2211,148 @@ function BookClubContent() {
                         ))}
                       </div>
                     )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚔️ 희대의 논쟁작 배틀 (BATTLE.exe) */}
+      {openWindow === "versus" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[88vh] shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-red-800 via-purple-900 to-blue-900 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>⚔️</span>
+                <span>BATTLE.exe - 희대의 호불호 논쟁작 매치</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 헤더 안내 */}
+            <div className="p-2.5 bg-gray-100 border-b border-gray-300 text-xs flex justify-between items-center">
+              <div>
+                <p className="font-bold text-gray-900">🥊 극과 극 취향 대격돌 존</p>
+                <p className="text-[11px] text-gray-500">모임원 간 평점 편차가 가장 큰 뜨거운 감자를 소환했습니다.</p>
+              </div>
+              {battleData && (
+                <span className="bg-red-800 text-white px-2 py-0.5 rounded text-[11px] font-mono font-bold animate-pulse">
+                  HOT TOPIC
+                </span>
+              )}
+            </div>
+
+            {/* 배틀 본문 */}
+            <div className="p-3 bg-white flex-1 overflow-y-auto space-y-3">
+              {!battleData ? (
+                <div className="py-16 text-center text-gray-400 font-mono text-xs">
+                  현재 2명 이상 평가가 엇갈린 논쟁작이 없습니다.<br />
+                  (다양한 작품에 호불호 리뷰가 쌓이면 배틀이 열립니다!)
+                </div>
+              ) : (
+                <>
+                  {/* 중앙 매치 타이틀 보드 */}
+                  <div className="bg-[#1a1a2e] text-white p-3 rounded win-outset text-center relative overflow-hidden">
+                    <div className="text-[10px] text-yellow-400 font-mono tracking-widest uppercase">
+                      ★ THIS WEEK'S CONTROVERSY ★
+                    </div>
+                    <h3 className="text-base font-black text-white mt-0.5">
+                      {battleData.title}
+                    </h3>
+                    <div className="text-[11px] text-gray-300 mt-0.5">
+                      {battleData.author || "미상"} · {battleData.genre} | 평균 ★ {battleData.avgScore}
+                    </div>
+
+                    <div className="mt-2 inline-flex items-center gap-3 bg-black/40 px-3 py-1 rounded-full text-xs font-bold border border-gray-700">
+                      <span className="text-rose-400">극호 진영 {battleData.proReviews.length}명</span>
+                      <span className="text-yellow-400 font-black">VS</span>
+                      <span className="text-sky-400">불호 진영 {battleData.conReviews.length}명</span>
+                    </div>
+                  </div>
+
+                  {/* 1:1 진영 코멘트 대결 그리드 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* 🔴 찬성(극호) 진영 */}
+                    <div className="bg-rose-50 border-2 border-rose-300 p-2.5 rounded flex flex-col shadow-sm">
+                      <div className="flex justify-between items-center pb-1.5 border-b border-rose-200 mb-2 font-bold text-rose-800">
+                        <span>🔥 극호 진영 (인생작/찬양)</span>
+                        <span className="text-[11px] font-mono">{battleData.proReviews.length}건</span>
+                      </div>
+                      
+                      <div className="space-y-2 flex-1 overflow-y-auto max-h-[220px] pr-1">
+                        {battleData.proReviews.length === 0 ? (
+                          <p className="text-[11px] text-gray-400 py-4 text-center">찬양파가 침묵 중입니다.</p>
+                        ) : (
+                          battleData.proReviews.map((r) => (
+                            <div key={r.id} className="bg-white p-2 rounded border border-rose-200 shadow-xs">
+                              <div className="flex justify-between text-[11px] mb-1 font-bold">
+                                <span className="text-rose-900">{r.user_name}</span>
+                                <span className="text-amber-600">{r.rating}</span>
+                              </div>
+                              <p className="text-gray-800 text-[11px] leading-snug break-keep">
+                                "{r.review ? r.review.replace("(스포일러)", "") : "말이 필요 없는 명작"}"
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 🔵 반대(불호) 진영 */}
+                    <div className="bg-sky-50 border-2 border-sky-300 p-2.5 rounded flex flex-col shadow-sm">
+                      <div className="flex justify-between items-center pb-1.5 border-b border-sky-200 mb-2 font-bold text-sky-800">
+                        <span>❄️ 불호 진영 (하차/의문)</span>
+                        <span className="text-[11px] font-mono">{battleData.conReviews.length}건</span>
+                      </div>
+
+                      <div className="space-y-2 flex-1 overflow-y-auto max-h-[220px] pr-1">
+                        {battleData.conReviews.length === 0 ? (
+                          <p className="text-[11px] text-gray-400 py-4 text-center">불호파가 침묵 중입니다.</p>
+                        ) : (
+                          battleData.conReviews.map((r) => (
+                            <div key={r.id} className="bg-white p-2 rounded border border-sky-200 shadow-xs">
+                              <div className="flex justify-between text-[11px] mb-1 font-bold">
+                                <span className="text-sky-900">{r.user_name}</span>
+                                <span className="text-gray-600">{r.rating}</span>
+                              </div>
+                              <p className="text-gray-800 text-[11px] leading-snug break-keep">
+                                "{r.review ? r.review.replace("(스포일러)", "") : "저와는 맞지 않았습니다..."}"
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 하단 전체 평가자 리스트 */}
+                  <div className="p-2 bg-gray-50 border border-gray-200 rounded text-[11px] text-gray-600">
+                    <span className="font-bold text-gray-800 mr-2">📌 전체 참여자 별점:</span>
+                    {battleData.reviews.map((r) => (
+                      <span key={r.id} className="inline-block mr-2">
+                        {r.user_name}({r.rating})
+                      </span>
+                    ))}
                   </div>
                 </>
               )}
