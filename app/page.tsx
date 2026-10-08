@@ -892,7 +892,7 @@ function BookClubContent() {
     }
   };
   
-  const handleAppClick = (appId: string) => {
+const handleAppClick = (appId: string) => {
     setStartMenuOpen(false);
     if (appId === "receipt") {
       setReceiptData({
