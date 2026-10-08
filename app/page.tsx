@@ -217,12 +217,28 @@ function BookClubContent() {
     };
   }, [reviews, mateTargetUser]);
 
-  // ⚔️ 호불호 논쟁작 배틀 데이터 분석 (평점 편차 기반)
+  // ⚔️ 호불호 논쟁작 배틀 데이터 분석 (런타임 에러 방지 안전 버전)
   const battleData = React.useMemo(() => {
-    // 1. 도서 제목별로 리뷰 모으기
+    if (!reviews || reviews.length === 0) return null;
+
+    // 안전한 내부 점수 매핑 (외부 scoreMap 위치 무관)
+    const localScoreMap: Record<string, number> = {
+      "★★★★★": 5.0,
+      "★★★★☆": 4.5,
+      "★★★★": 4.0,
+      "★★★☆": 3.5,
+      "★★★": 3.0,
+      "★★☆": 2.5,
+      "★★": 2.0,
+      "★☆": 1.5,
+      "★": 1.0,
+      "☆": 0.5,
+      중도하차: 0,
+    };
+
     const bookGroups: { [title: string]: BookReview[] } = {};
     reviews.forEach((r) => {
-      if (!r.title) return;
+      if (!r || !r.title) return;
       if (!bookGroups[r.title]) bookGroups[r.title] = [];
       bookGroups[r.title].push(r);
     });
@@ -240,31 +256,27 @@ function BookClubContent() {
 
     let maxVariance = -1;
 
-    // 2. 2명 이상 평가한 작품 중 별점 편차가 가장 큰 작품 산출
     Object.entries(bookGroups).forEach(([title, bookReviews]) => {
-      if (bookReviews.length < 2) return; // 최소 2명 이상 평가 필요
+      if (!bookReviews || bookReviews.length < 2) return;
 
-      const scores = bookReviews.map((r) => scoreMap[r.rating] ?? 2.5);
+      const scores = bookReviews.map((r) => localScoreMap[r.rating] ?? 2.5);
       const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
-      // 분산 계산
       const variance =
         scores.reduce((acc, score) => acc + Math.pow(score - mean, 2), 0) / scores.length;
 
-      // 극호(3.5점 이상) vs 불호/하차(3.0점 이하 및 중도하차) 분리
       const pro = bookReviews.filter(
-        (r) => (scoreMap[r.rating] ?? 0) >= 4.0 || r.rating === "★★★★★" || r.is_favorite
+        (r) => (localScoreMap[r.rating] ?? 0) >= 4.0 || r.rating === "★★★★★" || r.is_favorite
       );
       const con = bookReviews.filter(
-        (r) => (scoreMap[r.rating] ?? 0) <= 2.5 || r.rating === "중도하차"
+        (r) => (localScoreMap[r.rating] ?? 0) <= 2.5 || r.rating === "중도하차"
       );
 
-      // 분산이 가장 높고 찬반 양쪽 의견이 모두 존재하는 작품 우선
       if (variance > maxVariance && (pro.length > 0 || con.length > 0)) {
         maxVariance = variance;
         topControversial = {
           title,
-          author: bookReviews[0].author,
-          genre: bookReviews[0].genre,
+          author: bookReviews[0]?.author || "미상",
+          genre: bookReviews[0]?.genre || "기타",
           reviews: bookReviews,
           variance,
           proReviews: pro,
