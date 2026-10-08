@@ -650,9 +650,7 @@ function BookClubContent() {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
-        // 고정 높이를 주지 않고 복제본 스타일을 먼저 펼치도록 처리
         onclone: (clonedDoc) => {
-          // 1. 스크롤 박스 및 겉 박스 높이 제한 완전히 해제
           const element = clonedDoc.querySelector("[data-receipt-box]") as HTMLElement;
           if (element) {
             element.style.maxHeight = "none";
@@ -666,7 +664,6 @@ function BookClubContent() {
             listScroll.style.overflow = "visible";
           }
 
-          // 2. 글자 쪼개짐/자모 분리 방지 (고딕 폰트 강제 적용)
           const allTexts = clonedDoc.querySelectorAll("*");
           allTexts.forEach((el) => {
             const htmlEl = el as HTMLElement;
@@ -676,18 +673,6 @@ function BookClubContent() {
         },
       });
 
-      const dataUrl = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
-      link.click();
-    } catch (err) {
-      alert("이미지 저장 중 오류가 발생했습니다.");
-    } finally {
-      setDownloadingReceipt(false);
-    }
-  };
-  
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = dataUrl;
