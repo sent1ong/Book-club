@@ -6,6 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import html2canvas from "html2canvas";
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      marquee: any;
+    }
+  }
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -1529,19 +1537,26 @@ function BookClubContent() {
                 })
               )}
             </div>
-            {/* 📟 실시간 속보 LED 전광판 (서재 창 내부 도킹) */}
+           {/* 📟 실시간 속보 LED 전광판 (서재 창 내부 도킹) */}
           <div className="mt-2 bg-black border-2 border-gray-600 rounded px-2.5 py-1.5 flex items-center gap-2 win-inset overflow-hidden shrink-0">
             {/* 좌측 레트로 속보 뱃지 */}
-            <div className="flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded shrink-0 tracking-wider animate-pulse">
+            <div className="flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded shrink-0 tracking-wider animate-pulse select-none">
               <span>●</span>
-              <span>속보 TICKER</span>
+              <span>속보</span>
             </div>
 
-            {/* 우측 롤링 전광판 텍스트 */}
-            <div className="flex-1 overflow-hidden whitespace-nowrap">
-              <div className="inline-block animate-marquee text-xs font-mono font-bold text-yellow-300 tracking-wide">
+            {/* 우측 전광판 롤링 텍스트 (marquee 사용) */}
+            <div className="flex-1 overflow-hidden min-w-0">
+              <marquee
+                behavior="scroll"
+                direction="left"
+                scrollamount="4"
+                className="text-xs font-mono font-bold text-yellow-300 tracking-wide block"
+                onMouseOver={(e) => (e.currentTarget as any).stop()}
+                onMouseOut={(e) => (e.currentTarget as any).start()}
+              >
                 {tickerText}
-              </div>
+              </marquee>
             </div>
           </div>
           </div>
