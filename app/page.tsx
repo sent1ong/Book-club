@@ -1712,11 +1712,84 @@ function BookClubContent() {
           },
         });
 
-      const dataUrl = canvas.toDataURL("image/png");
+            const fileName = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) resolve(result);
+          else reject(new Error("PNG 이미지 생성 실패"));
+        }, "image/png");
+      });
+
+      const file = new File([blob], fileName, {
+        type: "image/png",
+      });
+
+      // 아이폰 및 아이패드 확인
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (isIOS) {
+        // iOS에서 이미지 공유 기능 사용
+        if (
+          navigator.share &&
+          navigator.canShare?.({ files: [file] })
+        ) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: "BOOK CLUB 98 영수증",
+            });
+            return;
+          } catch (shareError) {
+            if (
+              shareError instanceof DOMException &&
+              shareError.name === "AbortError"
+            ) {
+              return;
+            }
+          }
+        }
+
+        // 공유 기능이 동작하지 않을 때 이미지 미리보기
+        const imageUrl = URL.createObjectURL(blob);
+        const previewWindow = window.open("", "_blank");
+
+        if (previewWindow) {
+          previewWindow.document.title = fileName;
+
+          const image = previewWindow.document.createElement("img");
+          image.src = imageUrl;
+          image.alt = "BOOK CLUB 98 영수증";
+          image.style.maxWidth = "100%";
+          image.style.height = "auto";
+
+          previewWindow.document.body.style.margin = "0";
+          previewWindow.document.body.style.padding = "16px";
+          previewWindow.document.body.style.background = "#eeeeee";
+          previewWindow.document.body.appendChild(image);
+        } else {
+          alert("이미지 미리보기를 열 수 없습니다. Safari에서 다시 시도해 주세요.");
+          URL.revokeObjectURL(imageUrl);
+        }
+
+        return;
+      }
+
+      // PC 및 안드로이드 기존 다운로드 유지
+      const imageUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `영수증_${receiptData?.user || "기록"}_${todayStr}.png`;
+
+      link.href = imageUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(imageUrl);
+      }, 60000);
     } catch (err) {
       alert("이미지 저장 중 오류가 발생했습니다.");
     } finally {
