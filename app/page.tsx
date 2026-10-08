@@ -159,6 +159,64 @@ function BookClubContent() {
   const [vendingTags, setVendingTags] = useState<string[]>([]);
   const [vendingBook, setVendingBook] = useState<(typeof reviews)[number] | null>(null);
 
+  // 취향 도플갱어 모달 전용 상태
+  const [mateTargetUser, setMateTargetUser] = useState<string>("");
+
+  // 모임원 간 5점 만점 / 별점 일치도 기반 취향 도플갱어 분석
+  const soulmateData = React.useMemo(() => {
+    // 모든 고유 유저 목록
+    const allUsers = Array.from(new Set(reviews.map((r) => r.user_name))).filter(Boolean);
+    if (allUsers.length < 2) return null;
+
+    // 기준 유저 (선택된 유저가 없으면 첫 번째 유저)
+    const currentUser = mateTargetUser || allUsers[0];
+
+    // 기준 유저가 5점(★★★★★)을 준 작품 제목 목록
+    const myHighRated = reviews.filter(
+      (r) => r.user_name === currentUser && (r.rating === "★★★★★" || r.rating === "5")
+    );
+    const myTitles = new Set(myHighRated.map((r) => r.title));
+
+    let bestMate = "";
+    let maxMatchCount = -1;
+    let commonWorks: string[] = [];
+    let matchRate = 0;
+
+    // 다른 유저들과의 공통 5점 작품 비교
+    allUsers.forEach((otherUser) => {
+      if (otherUser === currentUser) return;
+
+      const otherHighRated = reviews.filter(
+        (r) => r.user_name === otherUser && (r.rating === "★★★★★" || r.rating === "5")
+      );
+      
+      const shared = otherHighRated
+        .map((r) => r.title)
+        .filter((title) => myTitles.has(title));
+
+      if (shared.length > maxMatchCount) {
+        maxMatchCount = shared.length;
+        bestMate = otherUser;
+        commonWorks = shared;
+      }
+    });
+
+    // 일치율 계산 (기준 유저 5점 작품 수 대비)
+    if (myHighRated.length > 0 && maxMatchCount > 0) {
+      matchRate = Math.min(100, Math.round((maxMatchCount / myHighRated.length) * 100));
+    }
+
+    return {
+      currentUser,
+      bestMate: bestMate || allUsers.find((u) => u !== currentUser) || "없음",
+      matchCount: maxMatchCount > 0 ? maxMatchCount : 0,
+      matchRate: maxMatchCount > 0 ? matchRate : 0,
+      commonWorks,
+      myFiveStarCount: myHighRated.length,
+      allUsers,
+    };
+  }, [reviews, mateTargetUser]);
+
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
     if (vendingStatus === "spinning" || vendingStatus === "inserting") return;
@@ -821,10 +879,6 @@ function BookClubContent() {
         user: selectedUser === "전체" ? (reviews[0]?.user_name || "회원") : selectedUser,
         items: selectedUser === "전체" ? reviews : reviews.filter((r) => r.user_name === selectedUser),
       });
-      return;
-    }
-    if (appId === "curation") {
-      handleRandomRecommend();
       return;
     }
     setOpenWindow(appId);
@@ -1974,6 +2028,124 @@ function BookClubContent() {
                   setOpenWindow(null);
                   setVendingStatus("idle");
                 }}
+                className="win-btn px-4 py-1 font-bold text-xs"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💖 취향 도플갱어 매칭기 (SOULMATE.exe) */}
+      {openWindow === "curation" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="win-box w-full max-w-md bg-[#c0c0c0] p-1 flex flex-col shadow-2xl">
+            {/* 타이틀 바 */}
+            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-pink-900 to-rose-700 text-white font-bold text-xs select-none">
+              <span className="flex items-center gap-1.5">
+                <span>💘</span>
+                <span>SOULMATE.exe - 취향 도플갱어 탐색기</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
+                className="win-btn px-1.5 py-0.5 text-black font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 제어 패널 */}
+            <div className="p-3 bg-gray-100 border-b border-gray-300 text-xs flex justify-between items-center">
+              <div>
+                <p className="font-bold text-gray-900">🧬 5점 만점 싱크로율 분석</p>
+                <p className="text-[11px] text-gray-500">인생작이 겹치는 영혼의 메이트를 찾습니다.</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-bold text-gray-600">기준:</span>
+                <select
+                  value={mateTargetUser || (soulmateData?.currentUser ?? "")}
+                  onChange={(e) => setMateTargetUser(e.target.value)}
+                  className="win-inset bg-white text-xs px-2 py-0.5 font-bold outline-none cursor-pointer"
+                >
+                  {soulmateData?.allUsers.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 분석 본문 영역 */}
+            <div className="p-4 bg-white flex flex-col items-center gap-4 text-xs">
+              {!soulmateData || soulmateData.allUsers.length < 2 ? (
+                <div className="py-12 text-center text-gray-400 font-mono">
+                  모임원이 2명 이상 등록되어야 매칭할 수 있습니다.
+                </div>
+              ) : (
+                <>
+                  {/* 매칭 결과 카드 */}
+                  <div className="w-full bg-rose-50 border-2 border-rose-300 p-4 rounded-lg flex flex-col items-center text-center shadow-inner">
+                    <span className="text-[11px] bg-rose-200 text-rose-800 font-bold px-2 py-0.5 rounded-full mb-2">
+                      취향 일치도 {soulmateData.matchRate}%
+                    </span>
+
+                    <div className="flex items-center justify-center gap-3 my-1">
+                      <span className="text-base font-black text-gray-900 bg-white px-3 py-1 rounded border shadow-sm">
+                        {soulmateData.currentUser}
+                      </span>
+                      <span className="text-xl animate-pulse">💞</span>
+                      <span className="text-base font-black text-rose-700 bg-white px-3 py-1 rounded border border-rose-300 shadow-sm">
+                        {soulmateData.bestMate}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-700 mt-2 font-medium">
+                      <strong>{soulmateData.currentUser}</strong> 님의 최애 인생작을 가장 많이 공유한 메이트는{" "}
+                      <strong className="text-rose-700">{soulmateData.bestMate}</strong> 님입니다!
+                    </p>
+                  </div>
+
+                  {/* 함께 5점을 준 작품 리스트 */}
+                  <div className="w-full bg-gray-50 border border-gray-300 p-3 rounded">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-gray-800">
+                        ✨ 함께 5점(★★★★★)을 준 인생작
+                      </span>
+                      <span className="text-[11px] font-mono text-rose-600 font-bold">
+                        {soulmateData.matchCount}편
+                      </span>
+                    </div>
+
+                    {soulmateData.commonWorks.length === 0 ? (
+                      <p className="text-[11px] text-gray-400 py-3 text-center">
+                        아직 완벽하게 겹치는 5점 만점 작품이 없습니다.<br />
+                        (서로 다른 취향의 보완재 관계일 수도 있어요!)
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {soulmateData.commonWorks.map((work) => (
+                          <span
+                            key={work}
+                            className="bg-white border border-rose-300 text-rose-900 px-2 py-1 rounded text-xs font-semibold shadow-sm"
+                          >
+                            📖 {work}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 하단 닫기 바 */}
+            <div className="p-2 bg-[#c0c0c0] border-t border-white flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenWindow(null)}
                 className="win-btn px-4 py-1 font-bold text-xs"
               >
                 닫기
