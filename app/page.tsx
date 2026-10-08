@@ -1529,15 +1529,10 @@ function BookClubContent() {
                 })
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 📟 실시간 속보 LED 전광판 바 */}
-        <div className="mt-3 win-box bg-[#c0c0c0] p-1 shadow-md">
-          <div className="bg-black border-2 border-gray-600 rounded-xs px-2.5 py-1.5 flex items-center gap-2 win-inset overflow-hidden">
+            {/* 📟 실시간 속보 LED 전광판 (서재 창 내부 도킹) */}
+          <div className="mt-2 bg-black border-2 border-gray-600 rounded px-2.5 py-1.5 flex items-center gap-2 win-inset overflow-hidden shrink-0">
             {/* 좌측 레트로 속보 뱃지 */}
-            <div className="flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-xs shrink-0 tracking-wider animate-pulse">
+            <div className="flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded shrink-0 tracking-wider animate-pulse">
               <span>●</span>
               <span>속보 TICKER</span>
             </div>
@@ -1549,7 +1544,9 @@ function BookClubContent() {
               </div>
             </div>
           </div>
+          </div>
         </div>
+      </div>
 
       {/* --- 모달 창들 --- */}
 
