@@ -1791,11 +1791,11 @@ function BookClubContent() {
 
       {/* 바탕화면 메인 스크롤 영역 */}
       <div
-        className="flex-1 overflow-y-auto p-3 pb-16 space-y-4"
+        className="flex-1 overflow-y-auto p-3 pb-16 space-y-4 lg:pt-10"
         onClick={() => setStartMenuOpen(false)}
       >
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
-        <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
+        <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
           <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
             <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
             <div className="flex items-center gap-2">
@@ -1812,7 +1812,7 @@ function BookClubContent() {
             </div>
           </div>
 
-          <div className="p-2 space-y-2 bg-[#d4d8dc]">
+          <div className="p-2 space-y-2 bg-[#d4d8dc] lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
             <input
               type="text"
               placeholder="🔍 제목 또는 작가 검색..."
@@ -1929,7 +1929,7 @@ function BookClubContent() {
             </div>
 
             {/* 카드 목록 */}
-            <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080]">
+            <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080] lg:max-h-none lg:flex-1 lg:min-h-0">
               {displayedReviews.length === 0 ? (
                   <div className="bg-white p-4 text-center text-xs text-gray-500">
                     해당하는 독서 기록이 없습니다.
