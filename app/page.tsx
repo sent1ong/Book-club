@@ -1661,11 +1661,11 @@ function BookClubContent() {
       {openWindow === "genre" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-lg bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
-            {/* 타이틀 바 */}
+            {/* 타이틀 바: 장르 분석으로 변경 */}
             <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-blue-900 to-indigo-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>📊</span>
-                <span>GENRE_DIAG.exe - 장르 편식 진단기</span>
+                <span>GENRE_DIAG.exe - 장르 분석</span>
               </span>
               <button
                 type="button"
@@ -1676,10 +1676,10 @@ function BookClubContent() {
               </button>
             </div>
 
-            {/* 본문 안내 */}
+            {/* 본문 안내 헤더 */}
             <div className="p-3 bg-gray-100 border-b border-gray-300 text-xs text-gray-700 flex justify-between items-center">
               <div>
-                <p className="font-bold text-gray-900">🧬 덕질 영양소 & 편식 분석</p>
+                <p className="font-bold text-gray-900">📊 장르 소비 비율 분석</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">
                   기록된 작품들의 장르 소비 밸런스를 측정합니다.
                 </p>
