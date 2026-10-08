@@ -157,7 +157,7 @@ function BookClubContent() {
   // 키워드 자판기 상태 관리
   const [vendingStatus, setVendingStatus] = useState<"idle" | "inserting" | "spinning" | "result">("idle");
   const [vendingTags, setVendingTags] = useState<string[]>([]);
-  const [vendingBook, setVendingBook] = useState<Review | null>(null);
+  const [vendingBook, setVendingBook] = useState<(typeof reviews)[number] | null>(null);
 
   // 키워드 자판기 작동 함수
   const runVendingMachine = () => {
