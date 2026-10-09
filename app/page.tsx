@@ -2037,7 +2037,7 @@ function BookClubContent() {
                 </button>
               </div>
             </div>
-
+            
             {/* 회원 선택 및 영수증 */}
             <div className="py-1 border-t border-gray-400 flex flex-wrap justify-between items-center gap-1">
               <div className="flex gap-1 overflow-x-auto items-center">
