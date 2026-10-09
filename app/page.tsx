@@ -27,6 +27,7 @@ interface BookReview {
   genre: string;
   rating: string;
   group_name: string;
+  target_member?: string | null;
   is_favorite?: boolean;
   is_revisit?: boolean;
   created_at?: string;
@@ -48,6 +49,18 @@ interface Comment {
   password?: string;
   content: string;
   created_at: string;
+}
+
+interface MailNotification {
+  id: number;
+  recipient: string;
+  kind: "comment" | "mention";
+  book_id: number;
+  sender: string;
+  book_title: string;
+  preview: string;
+  created_at: string;
+  read_at: string | null;
 }
 
 interface AppItem {
@@ -754,7 +767,13 @@ function BookClubContent() {
     items?: BookReview[];
     singleItem?: BookReview;
   } | null>(null);
-  const [readCommentIds, setReadCommentIds] = useState<number[]>([]);
+  const [mail, setMail] = useState<MailNotification[]>([]);
+  const [mailStatus, setMailStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [mailFilter, setMailFilter] = useState<"all" | "comment" | "mention">("all");
+  const [mailSort, setMailSort] = useState<"newest" | "oldest">("newest");
+  const [mailBusy, setMailBusy] = useState<number | null>(null);
+  const [mailReload, setMailReload] = useState(0);
+  const [targetMember, setTargetMember] = useState("");
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
   const [revealedCommentSpoilers, setRevealedCommentSpoilers] = useState<number[]>([]);
   const [commentForm, setCommentForm] = useState<{
@@ -1271,27 +1290,51 @@ function BookClubContent() {
     }
   }, []);
 
+  const handleSelectUser = (user: string) => setSelectedUser(user);
+
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`read_comments_${groupName}`);
-      if (saved) {
-        setReadCommentIds(JSON.parse(saved));
+    let cancelled = false;
+    const load = async () => {
+      setMail([]);
+      setMailStatus("loading");
+      if (selectedUser === "전체" || !isValidGroup(groupName)) return;
+      try {
+        const rows: MailNotification[] = [];
+        for (let offset = 0; ; offset += 200) {
+          const { data, error } = await supabase.from("mailbox_notifications").select("*")
+            .eq("group_name", groupName).eq("recipient", selectedUser)
+            .order("id", { ascending: true }).range(offset, offset + 199);
+          if (error) throw error;
+          if (cancelled) return;
+          rows.push(...(data || []));
+          if (!data || data.length < 200) break;
+        }
+        setMail(rows);
+        setMailStatus("ready");
+      } catch {
+        if (!cancelled) setMailStatus("error");
       }
-    } catch (e) {}
-  }, [groupName]);
+    };
+    void load();
+    const refresh = () => setMailReload((value) => value + 1);
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [groupName, selectedUser, mailReload]);
 
-  const handleSelectUser = (user: string) => {
-    setSelectedUser(user);
-    if (user === "전체") return;
-
-    const targetBookIds = new Set(reviews.filter((r) => r.user_name === user).map((r) => r.id));
-    const targetComments = comments.filter((c) => targetBookIds.has(c.book_id));
-    const newReadIds = Array.from(new Set([...readCommentIds, ...targetComments.map((c) => c.id)]));
-
-    setReadCommentIds(newReadIds);
-    try {
-      localStorage.setItem(`read_comments_${groupName}`, JSON.stringify(newReadIds));
-    } catch (e) {}
+  const openMail = async (item: MailNotification) => {
+    if (mailBusy !== null) return;
+    if (!item.read_at) {
+      setMailBusy(item.id);
+      const readAt = new Date().toISOString();
+      const { data, error } = await supabase.from("mailbox_notifications")
+        .update({ read_at: readAt }).eq("id", item.id)
+        .eq("group_name", groupName).eq("recipient", selectedUser).select("id,read_at").single();
+      setMailBusy(null);
+      if (error || !data) { alert("읽음 저장에 실패했습니다. 다시 시도해 주세요."); return; }
+      setMail((previous) => previous.map((row) => row.id === item.id ? { ...row, read_at: data.read_at } : row));
+    }
+    jumpToReview(item.book_id);
   };
 
   const handleRandomRecommend = () => {
@@ -1327,15 +1370,15 @@ function BookClubContent() {
   };
 
   const fetchReviews = async () => {
-    const { data, error } = await supabase
-      .from("books")
-      .select("*")
-      .eq("group_name", groupName)
-      .order("id", { ascending: false });
-
-    if (!error && data) {
-      setReviews(data);
+    const rows: BookReview[] = [];
+    for (let offset = 0; ; offset += 200) {
+      const { data, error } = await supabase.from("books").select("*")
+        .eq("group_name", groupName).order("id", { ascending: false }).range(offset, offset + 199);
+      if (error) { alert("리뷰를 불러오지 못했습니다: " + error.message); return; }
+      rows.push(...(data || []));
+      if (!data || data.length < 200) break;
     }
+    setReviews(rows);
   };
 
   const fetchGoals = async () => {
@@ -1350,15 +1393,15 @@ function BookClubContent() {
   };
 
   const fetchComments = async () => {
-    const { data, error } = await supabase
-      .from("book_comments")
-      .select("*")
-      .eq("group_name", groupName)
-      .order("id", { ascending: true });
-
-    if (!error && data) {
-      setComments(data);
+    const rows: Comment[] = [];
+    for (let offset = 0; ; offset += 200) {
+      const { data, error } = await supabase.from("book_comments").select("*")
+        .eq("group_name", groupName).order("id", { ascending: true }).range(offset, offset + 199);
+      if (error) { alert("댓글을 불러오지 못했습니다: " + error.message); return; }
+      rows.push(...(data || []));
+      if (!data || data.length < 200) break;
     }
+    setComments(rows);
   };
 
   useEffect(() => {
@@ -1366,21 +1409,18 @@ function BookClubContent() {
       fetchReviews();
       fetchGoals();
       fetchComments();
+      setMailReload((value) => value + 1);
     }
   }, [groupName]);
 
   const userList = ["전체", ...Array.from(new Set(reviews.map((r) => r.user_name).filter(Boolean)))];
 
-  const getUnreadCommentCount = (userName: string) => {
-    if (userName === "전체") return 0;
-    const userBookIds = new Set(reviews.filter((r) => r.user_name === userName).map((r) => r.id));
-    if (userBookIds.size === 0) return 0;
-
-    const unread = comments.filter(
-      (c) => userBookIds.has(c.book_id) && c.user_name !== userName && !readCommentIds.includes(c.id)
-    );
-    return unread.length;
-  };
+  const unreadMailCount = mail.filter((item) => !item.read_at).length;
+  const visibleMail = mail.filter((item) => mailFilter === "all" || item.kind === mailFilter)
+    .slice().sort((a, b) => {
+      const delta = Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id;
+      return mailSort === "oldest" ? delta : -delta;
+    });
 
   const filteredReviews = reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
@@ -1425,6 +1465,7 @@ function BookClubContent() {
     if (!formData.title) return alert("제목을 입력해주세요!");
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
+    if (targetMember && !userList.includes(targetMember)) return alert("기존 멤버를 선택해주세요!");
     setLoading(true);
     const finalReview = serializeReview(formData.review || "", isSpoiler);
 
@@ -1434,6 +1475,7 @@ function BookClubContent() {
         .update({
         ...formData,
         review: finalReview,
+        target_member: targetMember || null,
         is_favorite: isFavorite,
         is_revisit: isRevisit,
       })
@@ -1449,12 +1491,14 @@ function BookClubContent() {
         resetForm();
         setOpenWindow(null);
         fetchReviews();
+        setMailReload((value) => value + 1);
       }
     } else {
       const { error } = await supabase.from("books").insert([
         {
           ...formData,
           review: finalReview,
+        target_member: targetMember || null,
           group_name: groupName,
           is_favorite: isFavorite,
           is_revisit: isRevisit,
@@ -1481,6 +1525,7 @@ function BookClubContent() {
         setIsRevisit(false);
         setOpenWindow(null);
         fetchReviews();
+        setMailReload((value) => value + 1);
       }
     }
     setLoading(false);
@@ -1541,6 +1586,7 @@ function BookClubContent() {
         is_spoiler: false,
       });
       fetchComments();
+      setMailReload((value) => value + 1);
     }
   };
 
@@ -1568,6 +1614,7 @@ function BookClubContent() {
     } else {
       alert("댓글이 삭제되었습니다.");
       fetchComments();
+      setMailReload((value) => value + 1);
     }
   };
 
@@ -1602,10 +1649,12 @@ function BookClubContent() {
     } else {
       alert("댓글이 수정되었습니다.");
       fetchComments();
+      setMailReload((value) => value + 1);
     }
   };
 
   const resetForm = () => {
+    setTargetMember("");
     setFormData({
       user_name: formData.user_name,
       title: "",
@@ -1621,6 +1670,7 @@ function BookClubContent() {
 
   const handleEdit = (book: BookReview) => {
     setEditingId(book.id);
+    setTargetMember(book.target_member || "");
     setFormData({
       user_name: book.user_name,
       title: book.title,
@@ -1652,6 +1702,7 @@ function BookClubContent() {
       if (editingId === id) cancelEdit();
       fetchReviews();
       fetchComments();
+      setMailReload((value) => value + 1);
     }
   };
 
@@ -1960,7 +2011,6 @@ function BookClubContent() {
             <div className="py-1 border-t border-gray-400 flex flex-wrap justify-between items-center gap-1">
               <div className="flex gap-1 overflow-x-auto items-center">
                 {userList.map((user) => {
-                    const unreadCount = getUnreadCommentCount(user);
                     return (
                       <button
                         key={user}
@@ -1970,16 +2020,13 @@ function BookClubContent() {
                       }`}
                       >
                         {user}
-                        {unreadCount > 0 && (
-                            <span className="ml-1 inline-flex items-center justify-center bg-red-600 text-white text-[10px] font-extrabold px-1 min-w-[15px] h-[15px] rounded-full">
-                              {unreadCount}
-                            </span>
-                          )}
+
                       </button>
                     );
                   })}
 
                 {selectedUser !== "전체" && (
+                  <>
                     <button
                       type="button"
                       onClick={() => {
@@ -1994,6 +2041,12 @@ function BookClubContent() {
                     >
                       🧾 {selectedUser} 영수증
                     </button>
+                    <button type="button" onClick={() => { setOpenWindow("mailbox"); setMailReload((value) => value + 1); }}
+                      className="px-2 py-0.5 text-xs font-bold win-btn whitespace-nowrap">
+                      ✉️ {selectedUser}의 우편함
+                      {mailStatus === "ready" && unreadMailCount > 0 && <span className="ml-1 bg-red-600 text-white px-1 rounded-full">{unreadMailCount}</span>}
+                    </button>
+                  </>
                   )}
               </div>
 
@@ -2054,6 +2107,7 @@ function BookClubContent() {
                           {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                         </div>
 
+                        {book.target_member && <div className="mt-1 mb-1.5"><span className="bg-[#800080] text-white font-bold px-2 py-0.5">@{book.target_member}</span></div>}
                         {book.review && (
                             book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
                               <div
@@ -2375,6 +2429,13 @@ function BookClubContent() {
                     </label>
                   </div>
                 </div>
+                <div>
+                  <label htmlFor="target-member" className="block text-[11px] font-bold mb-0.5">영업하기</label>
+                  <select id="target-member" value={targetMember} onChange={(e) => setTargetMember(e.target.value)} className="w-full bg-white win-inset p-1.5 text-xs">
+                    <option value="">선택 안 함</option>
+                    {userList.filter((user) => user !== "전체").map((user) => <option key={user} value={user}>{user}</option>)}
+                  </select>
+                </div>
                 <div className="flex gap-1 pt-2">
                   <button type="submit" disabled={loading} className="flex-1 py-1.5 win-btn font-bold text-xs">
                     {loading ? "처리 중..." : editingId ? "수정 완료" : "입력 완료"}
@@ -2453,6 +2514,37 @@ function BookClubContent() {
             </div>
           </div>
         )}
+
+      {openWindow === "mailbox" && selectedUser !== "전체" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+          <div role="dialog" aria-modal="true" aria-labelledby="mailbox-title" className="w-full max-w-lg bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85dvh] text-black">
+            <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+              <span id="mailbox-title">BOOK CLUB 98 MAILBOX.exe</span>
+              <button type="button" aria-label="우편함 닫기" onClick={() => setOpenWindow(null)} className="win-btn text-black px-1">✕</button>
+            </div>
+            <div className="p-2 text-xs flex flex-wrap gap-2 items-center">
+              <strong>{selectedUser}의 우편함 {mailStatus === "ready" && `(안 읽음 ${unreadMailCount})`}</strong>
+              <select aria-label="알림 종류" value={mailFilter} onChange={(e) => setMailFilter(e.target.value as typeof mailFilter)} className="bg-white win-inset p-1">
+                <option value="all">전체</option><option value="comment">댓글</option><option value="mention">멘션</option>
+              </select>
+              <select aria-label="알림 정렬" value={mailSort} onChange={(e) => setMailSort(e.target.value as typeof mailSort)} className="bg-white win-inset p-1">
+                <option value="newest">최신순</option><option value="oldest">오래된순</option>
+              </select>
+            </div>
+            <div className="bg-white win-inset m-1 p-2 overflow-y-auto min-h-0 space-y-2 text-xs" aria-live="polite">
+              {mailStatus === "loading" ? <p>우편함을 불러오는 중...</p> : mailStatus === "error" ? <div><p role="alert">우편함을 불러오지 못했습니다.</p><button className="win-btn px-2 py-1 mt-2" onClick={() => setMailReload((value) => value + 1)}>다시 불러오기</button></div> : visibleMail.length === 0 ? <p className="py-4 text-center text-gray-600">알림이 없습니다.</p> : visibleMail.map((item) => (
+                <button key={item.id} type="button" disabled={mailBusy !== null} onClick={() => void openMail(item)} className={`w-full text-left p-2 win-inset break-words disabled:opacity-50 ${item.read_at ? "bg-gray-100 text-gray-700" : "bg-[#ffffe1] text-black"}`}>
+                  <div className="flex justify-between gap-2"><strong>{item.kind === "comment" ? "💬 댓글" : "✉️ 영업 멘션"} · {item.sender}</strong><span>{item.read_at ? "읽음" : "안 읽음"}</span></div>
+                  <p className="font-bold text-[#000080] mt-1">{item.book_title}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{item.preview.includes("(스포일러)") ? "🔒 스포일러가 포함되어 있습니다. 원본에서 확인하세요." : item.preview}</p>
+                  <time className="block mt-1 text-gray-600">{new Date(item.created_at).toLocaleString("ko-KR")}</time>
+                </button>
+              ))}
+            </div>
+            <div className="p-2 text-[11px] text-gray-700">알림을 누르면 읽음 처리되고 원본 리뷰가 열립니다. 읽은 알림도 보관됩니다.</div>
+          </div>
+        </div>
+      )}
 
       {/* 4. 전체 댓글 (comments) */}
       {openWindow === "comments" && (
@@ -2537,7 +2629,7 @@ function BookClubContent() {
           />
         )}
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
+      {openWindow && !["mailbox", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
             <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
               <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
