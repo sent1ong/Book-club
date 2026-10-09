@@ -1880,17 +1880,15 @@ function BookClubContent() {
       key={symbol}
       className="win-btn w-5 h-5 p-0 inline-flex items-center justify-center text-black font-bold select-none"
     >
-      <span
-        className={`block text-center leading-none ${
-          symbol === "×"
-            ? "text-[18px]"
-            : symbol === "□"
-            ? "text-[14px]"
-            : "text-[14px]"
-        }`}
-      >
-        {symbol}
-      </span>
+      <span className="flex items-center justify-center w-full h-full">
+  {symbol === "─" ? (
+    <span className="block w-[11px] h-[3px] bg-black self-end mb-[4px]" />
+  ) : symbol === "□" ? (
+    <span className="block w-[12px] h-[11px] border-[3px] border-black" />
+  ) : (
+    <span className="text-[18px] font-bold leading-none">×</span>
+  )}
+</span>
     </span>
   ))}
 </div>
