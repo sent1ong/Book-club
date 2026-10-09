@@ -2068,12 +2068,12 @@ function BookClubContent() {
                             items: userItems,
                           });
                         }}
-                      className="ml-1 px-2 py-0.5 text-xs font-bold win-btn"
+                      className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
                     >
                       🧾 {selectedUser} 영수증
                     </button>
                     <button type="button" onClick={() => { setOpenWindow("mailbox"); setMailReload((value) => value + 1); }}
-                      className="px-2 py-0.5 text-xs font-bold win-btn whitespace-nowrap">
+                      className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold">
                       ✉️ {selectedUser}의 우편함
                       {mailStatus === "ready" && unreadMailCount > 0 && <span className="ml-1 bg-red-600 text-white px-1 rounded-full">{unreadMailCount}</span>}
                     </button>
