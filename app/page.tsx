@@ -2037,9 +2037,9 @@ function BookClubContent() {
                 </button>
               </div>
             </div>
-            
+                        
             {/* 회원 선택 및 영수증 */}
-            <div className="py-1 border-t border-gray-400 flex flex-wrap justify-between items-center gap-1">
+            <div className="py-1 border-t border-gray-400 flex flex-col gap-2 w-full min-w-0">
               <div className="flex gap-1 overflow-x-auto items-center">
                 {userList.map((user) => {
                     return (
@@ -2092,7 +2092,7 @@ function BookClubContent() {
                 <option value="낮은 평점순">낮은 평점순</option>
               </select>
             </div>
-
+            
             {/* 카드 목록 */}
             <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080] lg:max-h-none lg:flex-1 lg:min-h-0">
               {displayedReviews.length === 0 ? (
