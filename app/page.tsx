@@ -1871,20 +1871,35 @@ function BookClubContent() {
       >
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
-          <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
-            <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                    fetchReviews();
-                    fetchComments();
-                  }}
-                className="text-xs underline hover:text-amber-200"
-              >
-                새로고침
-              </button>
-            </div>
+          <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+  <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
+
+  <div className="flex items-center gap-[2px]">
+    <button
+      type="button"
+      className="win-btn w-5 h-5 flex items-center justify-center text-black font-bold leading-none"
+      title="최소화"
+    >
+      ─
+    </button>
+
+    <button
+      type="button"
+      className="win-btn w-5 h-5 flex items-center justify-center text-black font-bold leading-none"
+      title="최대화"
+    >
+      □
+    </button>
+
+    <button
+      type="button"
+      className="win-btn w-5 h-5 flex items-center justify-center text-black font-bold leading-none"
+      title="닫기"
+    >
+      ✕
+    </button>
+  </div>
+</div>
           </div>
 
           <div className="p-2 space-y-2 bg-[#d4d8dc] lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
