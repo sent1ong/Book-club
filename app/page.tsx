@@ -1885,8 +1885,8 @@ function BookClubContent() {
           symbol === "×"
             ? "text-[18px]"
             : symbol === "□"
-            ? "text-[15px]"
-            : "text-[16px]"
+            ? "text-[14px]"
+            : "text-[14px]"
         }`}
       >
         {symbol}
