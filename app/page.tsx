@@ -1337,6 +1337,37 @@ function BookClubContent() {
     jumpToReview(item.book_id);
   };
 
+  const markAllMailRead = async () => {
+  if (mailBusy !== null || mailStatus !== "ready" || selectedUser === "전체") return;
+  if (!mail.some((item) => !item.read_at)) return;
+
+  const lastId = mail.reduce((max, item) => Math.max(max, item.id), 0);
+  const readAt = new Date().toISOString();
+  setMailBusy(-1);
+
+  try {
+    const { error } = await supabase.from("mailbox_notifications")
+      .update({ read_at: readAt })
+      .eq("group_name", groupName)
+      .eq("recipient", selectedUser)
+      .is("read_at", null)
+      .lte("id", lastId);
+
+    if (error) throw error;
+
+    setMail((previous) => previous.map((item) =>
+      !item.read_at && item.id <= lastId
+        ? { ...item, read_at: readAt }
+        : item
+    ));
+  } catch {
+    alert("전체 읽음 저장에 실패했습니다. 다시 시도해 주세요.");
+  } finally {
+    setMailBusy(null);
+    setMailReload((value) => value + 1);
+  }
+};
+
   const handleRandomRecommend = () => {
     const validBooks = reviews.filter((b) => b.rating !== "중도하차");
     if (validBooks.length === 0) {
@@ -2530,6 +2561,18 @@ function BookClubContent() {
               <select aria-label="알림 정렬" value={mailSort} onChange={(e) => setMailSort(e.target.value as typeof mailSort)} className="bg-white win-inset p-1">
                 <option value="newest">최신순</option><option value="oldest">오래된순</option>
               </select>
+              <button
+  type="button"
+  onClick={() => void markAllMailRead()}
+  disabled={
+    mailStatus !== "ready" ||
+    mailBusy !== null ||
+    unreadMailCount === 0
+  }
+  className="ml-auto win-btn px-2 py-1 whitespace-nowrap disabled:opacity-50"
+>
+  {mailBusy === -1 ? "처리 중..." : "알림 전부 읽기"}
+</button>
             </div>
             <div className="bg-white win-inset m-1 p-2 overflow-y-auto min-h-0 space-y-2 text-xs" aria-live="polite">
               {mailStatus === "loading" ? <p>우편함을 불러오는 중...</p> : mailStatus === "error" ? <div><p role="alert">우편함을 불러오지 못했습니다.</p><button className="win-btn px-2 py-1 mt-2" onClick={() => setMailReload((value) => value + 1)}>다시 불러오기</button></div> : visibleMail.length === 0 ? <p className="py-4 text-center text-gray-600">알림이 없습니다.</p> : visibleMail.map((item) => (
