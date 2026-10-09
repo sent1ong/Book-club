@@ -1873,17 +1873,27 @@ function BookClubContent() {
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
           <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
   <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
-
-  <div className="flex items-center gap-[2px]">
-    {["─", "□", "×"].map((symbol) => (
+            
+            <div className="flex items-center gap-[2px]">
+  {["─", "□", "×"].map((symbol) => (
+    <span
+      key={symbol}
+      className="win-btn w-5 h-5 p-0 inline-flex items-center justify-center text-black font-bold select-none"
+    >
       <span
-        key={symbol}
-        className="win-btn w-5 h-5 flex items-center justify-center text-black text-xs font-bold leading-none select-none"
+        className={`block text-center leading-none ${
+          symbol === "×"
+            ? "text-[18px]"
+            : symbol === "□"
+            ? "text-[15px]"
+            : "text-[16px]"
+        }`}
       >
         {symbol}
       </span>
-    ))}
-  </div>
+    </span>
+  ))}
+</div>
 </div>
           <div className="p-2 space-y-2 bg-[#d4d8dc] lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
             <input
