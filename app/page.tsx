@@ -2037,61 +2037,78 @@ function BookClubContent() {
                 </button>
               </div>
             </div>
-                        
+
             {/* 회원 선택 및 영수증 */}
-            <div className="py-1 border-t border-gray-400 flex flex-col gap-2 w-full min-w-0">
-              <div className="flex gap-1 overflow-x-auto items-center">
-                {userList.map((user) => {
-                    return (
-                      <button
-                        key={user}
-                        onClick={() => handleSelectUser(user)}
-                        className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn ${
-                        selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
-                      }`}
-                      >
-                        {user}
+<div className="py-1 border-t border-gray-400 flex flex-col gap-2 w-full min-w-0">
 
-                      </button>
-                    );
-                  })}
+  {/* 첫 번째 줄: 회원 선택 */}
+  <div className="flex flex-wrap gap-1 items-center w-full min-w-0">
+    {userList.map((user) => (
+      <button
+        key={user}
+        onClick={() => handleSelectUser(user)}
+        className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
+          selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
+        }`}
+      >
+        {user}
+      </button>
+    ))}
+  </div>
 
-                {selectedUser !== "전체" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                          const userItems = reviews.filter((r) => r.user_name === selectedUser);
-                          setReceiptData({
-                            type: "list",
-                            user: selectedUser,
-                            items: userItems,
-                          });
-                        }}
-                      className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
-                    >
-                      🧾 {selectedUser} 영수증
-                    </button>
-                    <button type="button" onClick={() => { setOpenWindow("mailbox"); setMailReload((value) => value + 1); }}
-                      className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold">
-                      ✉️ {selectedUser}의 우편함
-                      {mailStatus === "ready" && unreadMailCount > 0 && <span className="ml-1 bg-red-600 text-white px-1 rounded-full">{unreadMailCount}</span>}
-                    </button>
-                  </>
-                  )}
-              </div>
+  {/* 두 번째 줄: 영수증과 우편함 */}
+  {selectedUser !== "전체" && (
+    <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+      <button
+        type="button"
+        onClick={() => {
+          const userItems = reviews.filter(
+            (r) => r.user_name === selectedUser
+          );
+          setReceiptData({
+            type: "list",
+            user: selectedUser,
+            items: userItems,
+          });
+        }}
+        className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
+      >
+        🧾 {selectedUser} 영수증
+      </button>
 
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="bg-white text-[11px] font-bold p-0.5 win-inset outline-none"
-              >
-                <option value="최신순">최신순</option>
-                <option value="오래된순">오래된순</option>
-                <option value="높은 평점순">높은 평점순</option>
-                <option value="낮은 평점순">낮은 평점순</option>
-              </select>
-            </div>
+      <button
+        type="button"
+        onClick={() => {
+          setOpenWindow("mailbox");
+          setMailReload((value) => value + 1);
+        }}
+        className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
+      >
+        ✉️ {selectedUser}의 우편함
+        {mailStatus === "ready" && unreadMailCount > 0 && (
+          <span className="ml-1 bg-red-600 text-white px-1 rounded-full">
+            {unreadMailCount}
+          </span>
+        )}
+      </button>
+    </div>
+  )}
+
+  {/* 세 번째 줄: 정렬 */}
+  <div className="flex justify-start">
+    <select
+      value={sortOrder}
+      onChange={(e) => setSortOrder(e.target.value)}
+      className="bg-white text-[11px] font-bold p-0.5 win-inset outline-none"
+    >
+      <option value="최신순">최신순</option>
+      <option value="오래된순">오래된순</option>
+      <option value="높은 평점순">높은 평점순</option>
+      <option value="낮은 평점순">낮은 평점순</option>
+    </select>
+  </div>
+
+</div>
             
             {/* 카드 목록 */}
             <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080] lg:max-h-none lg:flex-1 lg:min-h-0">
