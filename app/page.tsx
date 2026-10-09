@@ -2095,7 +2095,7 @@ function BookClubContent() {
   )}
 
   {/* 세 번째 줄: 정렬 */}
-  <div className="flex justify-start">
+  <div className="flex justify-end w-full">
     <select
       value={sortOrder}
       onChange={(e) => setSortOrder(e.target.value)}
