@@ -837,6 +837,11 @@ function BookClubContent() {
   const [openWindow, setOpenWindow] = useState<string | null>(null);
   // 🐾 PET.exe 상태
 const [currentPet, setCurrentPet] = useState<PetGeneration | null>(null);
+  // 🪦 역대 펫 기록
+const [petHistory, setPetHistory] = useState<PetGeneration[]>([]);
+const [petHistoryLoading, setPetHistoryLoading] = useState(false);
+const [petHistoryError, setPetHistoryError] = useState("");
+  
 const [petLoading, setPetLoading] = useState(true);
 const [petError, setPetError] = useState("");
 const [petAdopting, setPetAdopting] = useState(false);
@@ -852,7 +857,6 @@ const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const petNamingPreview = false; // 🧪 이름 짓기 화면 테스트
   // ✨ 펫 성장 반짝임 연출
 const [petGrowthEffect, setPetGrowthEffect] = useState(false);
-const [petGrowthTest, setPetGrowthTest] = useState(true);
 const previousPetStage = React.useRef<{
   id: number;
   stage: string;
@@ -945,6 +949,41 @@ useEffect(() => {
     window.clearInterval(timer);
   };
 }, [groupName, petReload]);
+
+// 🪦 역대 펫 기록 불러오기
+useEffect(() => {
+  if (openWindow !== "pets") return;
+
+  let cancelled = false;
+
+  const loadPetHistory = async () => {
+    setPetHistoryLoading(true);
+    setPetHistoryError("");
+
+    const { data, error } = await supabase
+      .from("pet_generations")
+      .select("*")
+      .eq("group_name", groupName)
+      .not("died_at", "is", null)
+      .order("generation_number", { ascending: false });
+
+    if (cancelled) return;
+
+    if (error) {
+      setPetHistoryError("역대 펫 기록을 불러오지 못했어요.");
+    } else {
+      setPetHistory((data || []) as PetGeneration[]);
+    }
+
+    setPetHistoryLoading(false);
+  };
+
+  void loadPetHistory();
+
+  return () => {
+    cancelled = true;
+  };
+}, [openWindow, groupName, petReload]);
   
 // PET.exe 현재 세대 불러오기
 useEffect(() => {
@@ -3753,19 +3792,6 @@ return (
       )}
     </div>
   )}
-        {/* 🧪 성장 연출 테스트 */}
-{petGrowthTest && (
-  <button
-    type="button"
-    onClick={() => {
-      setPetGrowthEffect(false);
-      window.setTimeout(() => setPetGrowthEffect(true), 50);
-    }}
-    className="win-btn w-full py-2 text-xs font-bold"
-  >
-    ✨ 성장 반짝임 테스트
-  </button>
-)}
         
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
@@ -3895,15 +3921,89 @@ return (
           </div>
         </details>
 
-        {/* 역대 펫 기록 */}
-        <details className="bg-white win-inset p-2 text-xs">
-          <summary className="cursor-pointer font-bold">
-            🪦 역대 펫 기록
-          </summary>
-          <p className="mt-2 text-gray-600">
-            아직 기록된 이전 세대가 없어요.
-          </p>
-        </details>
+{/* 🪦 역대 펫 기록 */}
+<details className="bg-white win-inset p-2 text-xs">
+  <summary className="cursor-pointer font-bold">
+    🪦 역대 펫 기록
+    {petHistory.length > 0 && ` (${petHistory.length}마리)`}
+  </summary>
+
+  <div className="mt-3 space-y-3">
+    {petHistoryLoading ? (
+      <p className="text-gray-600">기록을 불러오는 중...</p>
+    ) : petHistoryError ? (
+      <p className="text-red-700">{petHistoryError}</p>
+    ) : petHistory.length === 0 ? (
+      <p className="text-gray-600">
+        아직 기록된 이전 세대가 없어요.
+      </p>
+    ) : (
+      petHistory.map((pet) => (
+        <div
+          key={pet.id}
+          className="bg-[#f5f0ff] win-inset p-3 space-y-2"
+        >
+          <div className="flex items-center gap-3">
+            <Image
+              src={`/pets/${pet.species}/adult.png`}
+              alt={pet.pet_name || "이전 세대 펫"}
+              width={65}
+              height={65}
+              className="object-contain shrink-0"
+              unoptimized
+            />
+
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="font-bold text-[#594173]">
+                {pet.generation_number}세대 ·{" "}
+                {pet.pet_name || "이름 없는 펫"}
+              </p>
+
+              <p className="text-gray-600">
+                {PET_SPECIES_NAMES[pet.species] || pet.species}
+              </p>
+
+              <p className="text-gray-600">
+                최종 경험치: {pet.xp} XP
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-[#d8c8e8] pt-2 space-y-1 text-gray-700">
+            <p>
+              🥚 태어난 날:{" "}
+              {new Date(pet.born_at).toLocaleDateString("ko-KR", {
+                timeZone: "Asia/Seoul",
+              })}
+            </p>
+
+            <p>
+              ✨ 성인이 된 날:{" "}
+              {pet.adult_at
+                ? new Date(pet.adult_at).toLocaleDateString("ko-KR", {
+                    timeZone: "Asia/Seoul",
+                  })
+                : "기록 없음"}
+            </p>
+
+            <p>
+              🪦 무지개다리를 건넌 날:{" "}
+              {pet.died_at
+                ? new Date(pet.died_at).toLocaleDateString("ko-KR", {
+                    timeZone: "Asia/Seoul",
+                  })
+                : "기록 없음"}
+            </p>
+
+            <p>
+              💗 이름 지은 사람: {pet.named_by || "기록 없음"}
+            </p>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+</details>
 
       </div>
     </div>
