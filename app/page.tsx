@@ -3745,21 +3745,30 @@ return (
         {/* 상태 정보 */}
         {currentPet && (
   <div className="bg-white win-inset p-3 text-xs space-y-2">
-    <div className="flex justify-between font-bold">
-      <span>
-        {currentPet.generation_number}세대 ·{" "}
-        {PET_SPECIES_NAMES[currentPet.species] || currentPet.species}
-      </span>
-      <span>
-        {{
-          egg: "🥚 알",
-          baby: "🐣 아기",
-          teen: "🌱 청소년",
-          adult: "✨ 성인",
-          dead: "🪦 무지개다리",
-        }[currentPet.stage]}
-      </span>
+    <div className="flex justify-between items-start font-bold">
+  <div className="min-w-0">
+    <div>
+      {currentPet.generation_number}세대 ·{" "}
+      {PET_SPECIES_NAMES[currentPet.species] || currentPet.species}
     </div>
+
+    {currentPet.pet_name && (
+      <div className="mt-1 text-sm text-[#800080] break-words">
+        💗 {currentPet.pet_name}
+      </div>
+    )}
+  </div>
+
+  <span className="shrink-0 ml-2">
+    {{
+      egg: "🥚 알",
+      baby: "🐣 아기",
+      teen: "🌱 청소년",
+      adult: "✨ 성인",
+      dead: "🪦 무지개다리",
+    }[currentPet.stage]}
+  </span>
+</div>
 
     {currentPet.stage !== "dead" ? (
       <>
