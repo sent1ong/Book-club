@@ -97,11 +97,6 @@ function PetSprite({
       ? `${visibleStage}_eat`
       : visibleStage;
 
-  const decoration =
-    visibleStage !== "egg" && pet.decoration
-      ? PET_DECORATIONS[pet.decoration]
-      : null;
-
   const colorFilter =
     PET_COLOR_FILTERS[pet.color_variant || "original"] || "none";
 
@@ -126,24 +121,6 @@ function PetSprite({
           filter: colorFilter,
         }}
       />
-
-      {decoration && (
-        <Image
-          src={decoration}
-          alt=""
-          aria-hidden="true"
-          width={Math.round(size * 0.27)}
-          height={Math.round(size * 0.27)}
-          unoptimized
-          className="absolute pointer-events-none object-contain"
-          style={{
-            width: size * 0.27,
-            height: size * 0.27,
-            right: size * 0.12,
-            bottom: size * 0.22,
-          }}
-        />
-      )}
     </span>
   );
 }
@@ -992,10 +969,6 @@ const [petCareLoading, setPetCareLoading] = useState(false);
 const [petCareBusy, setPetCareBusy] = useState(false);
 const [petCareAction, setPetCareAction] = useState<"feed" | "pet" | null>(null);
 const [petCareError, setPetCareError] = useState("");
-  // 🧪 펫 색상·장식 미리보기
-const [petStylePreviewSpecies, setPetStylePreviewSpecies] = useState("bogli");
-const [petStylePreviewColor, setPetStylePreviewColor] = useState("lavender");
-const [petStylePreviewDecoration, setPetStylePreviewDecoration] = useState("star_mark");
 
 // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
 useEffect(() => {
@@ -3879,119 +3852,6 @@ return (
       )}
     </div>
   )}
-        {/* 🧪 세대별 색상·장식 테스트 */}
-<details className="bg-white win-inset p-2 text-xs">
-  <summary className="cursor-pointer font-bold">
-    🧪 펫 색상·장식 미리보기
-  </summary>
-
-  <div className="mt-3 space-y-3">
-    <p className="text-gray-600">
-      7세대 이후 외형 테스트용이에요.
-      실제 펫의 모습이나 데이터는 변경되지 않아요.
-    </p>
-
-    {/* 종족 선택 */}
-    <div>
-      <label className="block font-bold mb-1">🐾 종족</label>
-      <select
-        value={petStylePreviewSpecies}
-        onChange={(e) => setPetStylePreviewSpecies(e.target.value)}
-        className="w-full bg-white win-inset p-2"
-      >
-        <option value="bogli">보글이</option>
-        <option value="byeolkongi">별콩이</option>
-        <option value="kongmongi">콩몽이</option>
-      </select>
-    </div>
-
-    {/* 색상 선택 */}
-    <div>
-      <label className="block font-bold mb-1">🎨 색상</label>
-      <select
-        value={petStylePreviewColor}
-        onChange={(e) => setPetStylePreviewColor(e.target.value)}
-        className="w-full bg-white win-inset p-2"
-      >
-        <option value="original">원본</option>
-        <option value="lavender">라벤더</option>
-        <option value="mint">민트</option>
-        <option value="peach">피치</option>
-        <option value="sky">스카이</option>
-        <option value="butter">버터</option>
-      </select>
-    </div>
-
-    {/* 장식 선택 */}
-    <div>
-      <label className="block font-bold mb-1">🎀 장식</label>
-      <select
-        value={petStylePreviewDecoration}
-        onChange={(e) => setPetStylePreviewDecoration(e.target.value)}
-        className="w-full bg-white win-inset p-2"
-      >
-        <option value="">장식 없음</option>
-        <option value="star_mark">별 무늬</option>
-        <option value="patch_heart">하트 무늬</option>
-        <option value="patch_dot">점 무늬</option>
-        <option value="sparkle">반짝이</option>
-      </select>
-    </div>
-
-    {/* 원본과 변형 비교 */}
-    <div className="grid grid-cols-2 gap-2">
-      <div className="bg-[#f5f0ff] win-inset p-2 flex flex-col items-center justify-center gap-2">
-        <PetSprite
-          pet={{
-            id: -1,
-            group_name: "preview",
-            generation_number: 1,
-            species: petStylePreviewSpecies,
-            pet_name: null,
-            named_by: null,
-            xp: 350,
-            stage: "adult",
-            color_variant: "original",
-            decoration: null,
-            born_at: "",
-            adult_at: null,
-            died_at: null,
-          }}
-          stage="adult"
-          size={110}
-        />
-        <span className="font-bold">원본</span>
-      </div>
-
-      <div className="bg-[#f5f0ff] win-inset p-2 flex flex-col items-center justify-center gap-2">
-        <PetSprite
-          pet={{
-            id: -2,
-            group_name: "preview",
-            generation_number: 7,
-            species: petStylePreviewSpecies,
-            pet_name: null,
-            named_by: null,
-            xp: 350,
-            stage: "adult",
-            color_variant: petStylePreviewColor,
-            decoration: petStylePreviewDecoration || null,
-            born_at: "",
-            adult_at: null,
-            died_at: null,
-          }}
-          stage="adult"
-          size={110}
-        />
-        <span className="font-bold">변형</span>
-      </div>
-    </div>
-
-    <p className="text-center text-gray-500">
-      왼쪽 원본 ↔ 오른쪽 변형
-    </p>
-  </div>
-</details>
         
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
