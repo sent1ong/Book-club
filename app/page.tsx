@@ -5360,14 +5360,23 @@ return (
     miniPet.stage !== "dead" &&
     !miniPet.pet_name)) && (
     <button
-      type="button"
-      onClick={() => setOpenWindow("pets")}
-      title="아기 이름을 지어주세요!"
-      aria-label="이름 없는 아기 펫 알림"
-      className="absolute -top-5 right-0 z-40 pointer-events-auto bg-[#ffffcc] win-outset px-2 py-1 text-xs font-bold text-black"
-    >
-      🔔 이름 지어주세요!
-    </button>
+  type="button"
+  onClick={() => setOpenWindow("pets")}
+  title="아기 이름을 지어주세요!"
+  aria-label="이름 없는 아기 펫 알림"
+  className="absolute -top-8 right-0 z-40 pointer-events-auto group"
+>
+  <span className="relative block whitespace-nowrap rounded-md border-2 border-black bg-[#fff9d7] px-3 py-2 text-xs font-bold text-black shadow-[2px_2px_0_#777]">
+    🔔 이름 지어주세요!
+{/* 말풍선 꼬리 — 테두리가 자연스럽게 연결되도록 */}
+<span className="absolute -bottom-[11px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[11px] border-t-black" />
+
+<span className="absolute -bottom-[8px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#fff9d7]" />
+
+{/* 꼬리 위쪽의 가로 테두리를 가리는 부분 */}
+<span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[18px] h-[3px] bg-[#fff9d7]" />
+  </span>
+</button>
   )}
 
     {miniPet.stage === "egg" && !miniPetPreview ? (
