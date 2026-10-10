@@ -2612,6 +2612,28 @@ const deleteReadingPlan = async (id: number) => {
   animation: miniPetHop 0.6s ease-in-out infinite;
 }
 
+/* 🐾 PET.exe 방 안에서 좌우로 돌아다니기 */
+@keyframes petRoomWalk {
+  0%, 5% {
+    left: 0;
+  }
+
+  45%, 55% {
+    left: calc(100% - 150px);
+  }
+
+  95%, 100% {
+    left: 0;
+  }
+}
+
+.pet-room-walk {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  animation: petRoomWalk 5s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mini-pet-walk,
   .mini-pet-hop {
@@ -3693,19 +3715,39 @@ return (
     </button>
   </div>
 ) : (
-  <div className="flex flex-col items-center gap-2">
-    <PetSprite
-  pet={currentPet}
-  size={150}
-  eating={petCareAction === "feed"}
+<div
   className={
     currentPet.stage === "egg"
-      ? petCareAction === "feed"
-        ? "pet-egg-excited"
-        : "pet-egg-bounce"
-      : "mini-pet-hop"
+      ? "flex flex-col items-center gap-2"
+      : "absolute inset-x-0 bottom-5 h-[170px] pointer-events-none"
   }
-/>
+>
+  {currentPet.stage === "egg" ? (
+    <PetSprite
+      pet={currentPet}
+      size={150}
+      className={
+        petCareAction === "feed"
+          ? "pet-egg-excited"
+          : "pet-egg-bounce"
+      }
+    />
+  ) : (
+    <div
+      className={
+        petCareAction
+          ? "absolute bottom-0 left-1/2 -translate-x-1/2"
+          : "pet-room-walk"
+      }
+    >
+      <PetSprite
+        pet={currentPet}
+        size={150}
+        eating={petCareAction === "feed"}
+        className={petCareAction ? "" : "mini-pet-hop"}
+      />
+    </div>
+  )}
 
     {petCareAction === "pet" && (
   <Image
