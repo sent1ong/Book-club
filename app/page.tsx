@@ -6501,7 +6501,7 @@ return (
 
         {/* 🎵 JUKEBOX.exe — 작업표시줄 한 줄 플레이어 */}
 {jukeboxSongs.length > 0 && (
-  <<div className="flex-1 min-w-0 mx-1 h-[30px] flex items-center gap-1 px-1">
+  <div className="flex-1 min-w-0 mx-1 h-[30px] flex items-center gap-1 px-1">
     {/* 곡 제목 — 클릭하면 주크박스 열기 */}
     <button
       type="button"
