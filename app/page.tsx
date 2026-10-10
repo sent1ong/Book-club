@@ -3718,7 +3718,7 @@ const deleteReadingPlan = async (id: number) => {
     className={
   openWindow === "jukebox"
     ? "w-full max-w-lg max-h-[70dvh] sm:max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
-    : "w-[200px] max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
+    : "w-[140px] max-w-[45vw] sm:w-[200px] sm:max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
 }
   >
     {/* 제목 표시줄 */}
