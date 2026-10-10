@@ -1326,11 +1326,8 @@ const fetchReadingPlans = async () => {
   setReadingPlans(data || []);
 };
 
-  // 📌 예고장 창을 열 때마다 목록 새로 불러오기
 useEffect(() => {
-  if (openWindow === "reading-plan") {
-    void fetchReadingPlans();
-  }
+  void fetchReadingPlans();
 }, [openWindow, groupName]);
 
   // 📌 독서 예고장 등록
@@ -2256,6 +2253,21 @@ const deleteReadingPlan = async (id: number) => {
                                   🔁 재주행
                                 </span>
                               )}
+                            {readingPlans.some((plan) => {
+                          const normalize = (value: string) =>
+                                value.normalize("NFC").replace(/\s+/g, "").toLowerCase();
+
+                          return (
+                                plan.user_name === book.user_name &&
+                                normalize(plan.title) === normalize(book.title) &&
+                                normalize(plan.author) === normalize(book.author || "") &&
+                                plan.genre === book.genre
+                            );
+                      }) && (
+                          <span className="bg-green-100 text-green-800 border border-green-400 font-bold text-xs px-1 rounded">
+                              📌 예고 이행!
+                            </span>
+                      )}
                           </div>
                           <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">
                             {book.rating}
