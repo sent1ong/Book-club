@@ -932,8 +932,6 @@ const adoptPetEgg = async () => {
     setPetError(error.message);
     return;
   }
-
-  setPetReload((value) => value + 1);
 };
 // 🐾 한국 날짜 기준 돌보기 횟수 조회
 useEffect(() => {
@@ -1025,7 +1023,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
     );
     } finally {
   const elapsed = Date.now() - careStartedAt;
-  const remaining = Math.max(0, 1200 - elapsed);
+  const remaining = Math.max(0, 1500 - elapsed);
 
   if (remaining > 0) {
     await new Promise<void>((resolve) => {
@@ -1035,6 +1033,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
 
   setPetCareBusy(false);
   setPetCareAction(null);
+  setPetReload((value) => value + 1);
 }
 };
   
@@ -3312,16 +3311,18 @@ return (
       unoptimized
     />
     <span className="text-xs font-bold text-[#594173]">
-  {petCareAction === "feed"
-    ? currentPet.stage === "egg"
-      ? "🥚 알을 보살피는 중..."
-      : "🍪 먹이를 주는 중..."
-    : petCareBusy && petCareAction === "pet"
-    ? "💗 쓰다듬는 중..."
-    : currentPet.stage === "egg"
+  {currentPet.stage === "egg"
     ? "🥚 새로운 생명을 기다리는 중..."
     : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
 </span>
+
+{petCareAction && (
+  <div className="text-xs font-bold text-[#9b477e]">
+    {petCareAction === "feed"
+      ? currentPet.stage === "egg"
+        ? "🥚 알을 보살피는 중..."
+        : "🍪 먹이를 주는 중..."
+      : "💗 쓰다듬는 중..."}
   </div>
 )}
         </div>
