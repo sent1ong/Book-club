@@ -842,6 +842,10 @@ const [petError, setPetError] = useState("");
 const [petAdopting, setPetAdopting] = useState(false);
 const [petReload, setPetReload] = useState(0);
 const [petCaretaker, setPetCaretaker] = useState("");
+  // 🐣 아기 펫 이름 짓기
+const [petNameInput, setPetNameInput] = useState("");
+const [petNamingBusy, setPetNamingBusy] = useState(false);
+const [petNamingError, setPetNamingError] = useState("");
   // 🐾 작업표시줄 위 미니 펫
 const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const miniPetPreview = false; // 테스트할 때만 true
@@ -1084,6 +1088,54 @@ const doPetCare = async (actionType: "feed" | "pet") => {
 
     // 돌보기 연출이 끝난 뒤 XP와 남은 횟수 갱신
     setPetReload((value) => value + 1);
+  }
+};
+
+  // 🐣 아기 이름 확정
+const nameBabyPet = async () => {
+  const name = petNameInput.trim();
+
+  if (
+    !currentPet ||
+    currentPet.stage === "egg" ||
+    currentPet.stage === "dead" ||
+    currentPet.pet_name ||
+    !name ||
+    !userList.includes(petCaretaker) ||
+    petNamingBusy
+  ) {
+    return;
+  }
+
+  setPetNamingBusy(true);
+  setPetNamingError("");
+
+  try {
+    const { data, error } = await supabase.rpc("pet_name_baby", {
+      p_generation_id: currentPet.id,
+      p_pet_name: name,
+      p_named_by: petCaretaker,
+    });
+
+    if (error) throw error;
+
+    if (data !== true) {
+      throw new Error(
+        "이미 다른 회원이 이름을 지었을 수 있어요. 다시 확인해 주세요."
+      );
+    }
+
+    setPetNameInput("");
+    setPetReload((value) => value + 1);
+  } catch (error) {
+    setPetNamingError(
+      error instanceof Error
+        ? error.message
+        : "이름을 저장하지 못했어요."
+    );
+    setPetReload((value) => value + 1);
+  } finally {
+    setPetNamingBusy(false);
   }
 };
   
@@ -3509,6 +3561,57 @@ return (
     )}
   </div>
 )}
+
+        {/* 🐣 이름이 없는 펫의 작명 요청 */}
+{currentPet &&
+  currentPet.stage !== "egg" &&
+  currentPet.stage !== "dead" &&
+  !currentPet.pet_name && (
+    <div className="bg-[#fff4d9] win-inset p-3 text-xs space-y-2">
+      <p className="font-bold text-[#7a4200]">
+        🔔 아기가 태어났어요! 이름을 지어주세요.
+      </p>
+
+      <p className="text-gray-700">
+        이름을 먼저 등록한 회원이 작명자가 돼요.
+      </p>
+
+      <input
+        type="text"
+        value={petNameInput}
+        onChange={(e) => setPetNameInput(e.target.value)}
+        maxLength={20}
+        placeholder="아기 이름을 입력해 주세요"
+        className="w-full bg-white win-inset p-2 text-xs"
+      />
+
+      <p className="text-gray-600">
+        작명자: {userList.includes(petCaretaker)
+          ? petCaretaker
+          : "아래에서 돌보는 사람을 선택해 주세요"}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => void nameBabyPet()}
+        disabled={
+          petNamingBusy ||
+          !petNameInput.trim() ||
+          !userList.includes(petCaretaker)
+        }
+        className="win-btn w-full py-2 font-bold disabled:opacity-50"
+      >
+        {petNamingBusy ? "이름 등록 중..." : "💗 이 이름으로 정하기"}
+      </button>
+
+      {petNamingError && (
+        <p role="alert" className="text-red-700">
+          {petNamingError}
+        </p>
+      )}
+    </div>
+  )}
+        
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
   <label
@@ -5248,6 +5351,21 @@ return (
       {/* 🐾 작업표시줄 위 상주 미니 펫 */}
 {miniPet && (
   <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
+
+    {/* 🐣 이름 없는 아기일 때만 표시되는 알림 */}
+{miniPet.stage !== "egg" &&
+  miniPet.stage !== "dead" &&
+  !miniPet.pet_name && (
+    <button
+      type="button"
+      onClick={() => setOpenWindow("pets")}
+      title="아기 이름을 지어주세요!"
+      aria-label="이름 없는 아기 펫 알림"
+      className="absolute -top-5 right-0 z-40 pointer-events-auto bg-[#ffffcc] win-outset px-2 py-1 text-xs font-bold text-black"
+    >
+      🔔 이름 지어주세요!
+    </button>
+  )}
 
     {miniPet.stage === "egg" && !miniPetPreview ? (
       <button
