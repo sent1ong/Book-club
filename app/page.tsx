@@ -3029,7 +3029,7 @@ const deleteReadingPlan = async (id: number) => {
                             )
                           )}
 
-                        {/* 🎵 JUKEBOX.exe — 이 책의 OST */}
+                        {/* 🎵 JUKEBOX.exe — 이 작품의 OST */}
 {book.ost_youtube_url && (
   <div className="mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs">
     <Image
