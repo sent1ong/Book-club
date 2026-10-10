@@ -2716,6 +2716,11 @@ const deleteReadingPlan = async (id: number) => {
                           <div className="w-full bg-gray-300 win-inset h-3 p-0.5">
                             <div className="bg-[#000080] h-full" style={{ width: `${barPercent}%` }} />
                           </div>
+                          {g.message && (
+                            <div className="mt-2 text-[11px] text-gray-600 italic break-words">
+                                  💬 {g.message}
+                              </div>
+                        )}
                         </div>
                       );
                     })}
