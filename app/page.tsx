@@ -849,7 +849,7 @@ const [petNamingError, setPetNamingError] = useState("");
   // 🐾 작업표시줄 위 미니 펫
 const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const miniPetPreview = false; // 테스트할 때만 true
-  const petNamingPreview = true; // 🧪 이름 짓기 화면 테스트
+  const petNamingPreview = false; // 🧪 이름 짓기 화면 테스트
   // 🐾 회원별 돌보기 횟수
 const [petCareCounts, setPetCareCounts] = useState({
   feed: 0,
