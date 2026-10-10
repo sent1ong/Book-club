@@ -117,6 +117,7 @@ const APP_LIST: AppItem[] = [
   { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
   { id: "comments", name: "댓글", icon: "/icons/comments.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
+  { id: "pets", name: "펫 돌보기", icon: "/icons/pets.png" },
   { id: "genre", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
   { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
@@ -3005,8 +3006,118 @@ return (
             onClose={() => setOpenWindow(null)}
           />
         )}
+
+      {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
+{openWindow === "pets" && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
+    <div className="w-full max-w-md max-h-[85dvh] bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col text-black">
+
+      {/* 제목 표시줄 */}
+      <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+        <span>🐾 PET.exe</span>
+        <button
+          type="button"
+          onClick={() => setOpenWindow(null)}
+          className="win-btn text-black w-5 h-5 flex items-center justify-center"
+          aria-label="펫 창 닫기"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="p-3 space-y-3 overflow-y-auto">
+
+        {/* 펫이 생활하는 방 */}
+        <div className="relative bg-[#f5f0ff] win-inset h-56 overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
+
+          <div className="relative z-10 flex flex-col items-center gap-2">
+            <Image
+              src="/pets/bogli/egg.png"
+              alt="펫 알"
+              width={150}
+              height={150}
+              className="object-contain"
+              unoptimized
+            />
+            <span className="text-xs font-bold text-[#594173]">
+              🥚 새로운 생명을 기다리는 중...
+            </span>
+          </div>
+        </div>
+
+        {/* 상태 정보 */}
+        <div className="bg-white win-inset p-3 text-xs space-y-2">
+          <div className="flex justify-between font-bold">
+            <span>1세대 · 보글이</span>
+            <span>🥚 알</span>
+          </div>
+
+          <div className="flex justify-between text-gray-700">
+            <span>성장 경험치</span>
+            <span>0 / 50 XP</span>
+          </div>
+
+          <div className="w-full h-4 bg-gray-200 win-inset p-0.5">
+            <div className="h-full bg-[#000080]" style={{ width: "0%" }} />
+          </div>
+        </div>
+
+        {/* 돌보기 버튼 — DB 연결 전 */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled
+            className="win-btn py-2 text-xs font-bold disabled:opacity-50"
+          >
+            🍪 먹이 주기
+          </button>
+          <button
+            type="button"
+            disabled
+            className="win-btn py-2 text-xs font-bold disabled:opacity-50"
+          >
+            💗 쓰다듬기
+          </button>
+        </div>
+
+        {/* 도움말 */}
+        <details className="bg-white win-inset p-2 text-xs">
+          <summary className="cursor-pointer font-bold">
+            📖 PET.exe 도움말
+          </summary>
+          <div className="mt-2 space-y-1 text-gray-700">
+            <p>리뷰 작성 +10 XP</p>
+            <p>댓글 작성 +3 XP</p>
+            <p>영업 멘션 +5 XP</p>
+            <p>독서 예고장 +3 XP</p>
+            <p>예고 이행 +15 XP</p>
+            <p>먹이 주기 +2 XP (하루 3회)</p>
+            <p>쓰다듬기 +1 XP (하루 5회)</p>
+            <p className="pt-1 border-t">
+              50 XP 아기 · 150 XP 청소년 · 350 XP 성인
+            </p>
+            <p>성인이 된 뒤 14일간 함께 생활해요.</p>
+          </div>
+        </details>
+
+        {/* 역대 펫 기록 */}
+        <details className="bg-white win-inset p-2 text-xs">
+          <summary className="cursor-pointer font-bold">
+            🪦 역대 펫 기록
+          </summary>
+          <p className="mt-2 text-gray-600">
+            아직 기록된 이전 세대가 없어요.
+          </p>
+        </details>
+
+      </div>
+    </div>
+  </div>
+)}
+      
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["mailbox", "reading-plan", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
+      {openWindow && !["mailbox", "reading-plan", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo", "pets"].includes(openWindow) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
             <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
               <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
