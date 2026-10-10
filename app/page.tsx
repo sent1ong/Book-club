@@ -842,6 +842,8 @@ const [petError, setPetError] = useState("");
 const [petAdopting, setPetAdopting] = useState(false);
 const [petReload, setPetReload] = useState(0);
 const [petCaretaker, setPetCaretaker] = useState("");
+  // 🐾 작업표시줄 위 미니 펫
+const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   // 🐾 회원별 돌보기 횟수
 const [petCareCounts, setPetCareCounts] = useState({
   feed: 0,
@@ -852,6 +854,53 @@ const [petCareBusy, setPetCareBusy] = useState(false);
 const [petCareAction, setPetCareAction] = useState<"feed" | "pet" | null>(null);
 const [petCareError, setPetCareError] = useState("");
 
+// 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
+useEffect(() => {
+  if (!isValidGroup(groupName)) {
+    setMiniPet(null);
+    return;
+  }
+
+  let cancelled = false;
+
+  setMiniPet(null);
+
+  const loadMiniPet = async () => {
+    if (document.visibilityState === "hidden") return;
+
+    // 성인 수명 확인
+    const lifecycle = await supabase.rpc("pet_check_lifecycle", {
+      p_group_name: groupName,
+    });
+
+    if (lifecycle.error || cancelled) return;
+
+    const { data, error } = await supabase
+      .from("pet_generations")
+      .select("*")
+      .eq("group_name", groupName)
+      .order("generation_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!cancelled && !error) {
+      setMiniPet(data as PetGeneration | null);
+    }
+  };
+
+  void loadMiniPet();
+
+  // 다른 회원이 돌보거나 성장시켜도 주기적으로 반영
+  const timer = window.setInterval(() => {
+    void loadMiniPet();
+  }, 12000);
+
+  return () => {
+    cancelled = true;
+    window.clearInterval(timer);
+  };
+}, [groupName, petReload]);
+  
 // PET.exe 현재 세대 불러오기
 useEffect(() => {
   if (openWindow !== "pets") return;
@@ -2333,6 +2382,43 @@ const deleteReadingPlan = async (id: number) => {
       animation: none;
     }
   }
+  /* 🐾 미니 펫: 정해진 구역 안에서 좌우 배회 */
+@keyframes miniPetWalk {
+  0%, 5% {
+    transform: translateX(0);
+  }
+  45%, 55% {
+    transform: translateX(90px);
+  }
+  95%, 100% {
+    transform: translateX(0);
+  }
+}
+
+/* 🐾 미니 펫: 걷는 동안 통통 뛰기 */
+@keyframes miniPetHop {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-12px);
+  }
+}
+
+.mini-pet-walk {
+  animation: miniPetWalk 4s linear infinite;
+}
+
+.mini-pet-hop {
+  animation: miniPetHop 0.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-pet-walk,
+  .mini-pet-hop {
+    animation: none;
+  }
+}
 `}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
@@ -5157,6 +5243,67 @@ return (
             </div>
           </div>
         )}
+
+      {/* 🐾 작업표시줄 위 상주 미니 펫 */}
+{miniPet && (
+  <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
+
+    {miniPet.stage === "egg" ? (
+      <button
+        type="button"
+        onClick={() => setOpenWindow("pets")}
+        title="PET.exe 열기"
+        aria-label="펫 돌보기 열기"
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-auto"
+      >
+        <Image
+          src={`/pets/${miniPet.species}/egg.png`}
+          alt="우리 모임의 알"
+          width={76}
+          height={76}
+          className="object-contain pet-egg-bounce"
+          unoptimized
+        />
+      </button>
+    ) : miniPet.stage === "dead" ? (
+      <button
+        type="button"
+        onClick={() => setOpenWindow("pets")}
+        title="PET.exe 열기"
+        aria-label="펫의 묘비 보기"
+        className="absolute bottom-0 right-3 pointer-events-auto"
+      >
+        <Image
+          src="/pets/deco/grave.png"
+          alt="펫의 묘비"
+          width={76}
+          height={76}
+          className="object-contain"
+          unoptimized
+        />
+      </button>
+    ) : (
+      <div className="absolute bottom-0 left-0 mini-pet-walk">
+        <button
+          type="button"
+          onClick={() => setOpenWindow("pets")}
+          title={`${miniPet.pet_name || "우리 펫"} · PET.exe 열기`}
+          aria-label="펫 돌보기 열기"
+          className="block pointer-events-auto mini-pet-hop"
+        >
+          <Image
+            src={`/pets/${miniPet.species}/${miniPet.stage}.png`}
+            alt={miniPet.pet_name || "우리 펫"}
+            width={70}
+            height={70}
+            className="object-contain"
+            unoptimized
+          />
+        </button>
+      </div>
+    )}
+  </div>
+)}
 
       {/* 하단 윈도우 98 작업표시줄 */}
       <footer className="h-10 bg-[#c0c0c0] win-outset z-40 flex items-center justify-between px-1 absolute bottom-0 inset-x-0">
