@@ -4022,7 +4022,7 @@ const deleteReadingPlan = async (id: number) => {
                     value={formData.review}
                     onChange={(e) => setFormData({ ...formData, review: e.target.value })}
                     className="w-full p-1.5 text-xs bg-white win-inset outline-none resize-none"
-                    placeholder="감상이나 리뷰를 적어주세요"
+                    placeholder="키워드는 리뷰 제일 뒤에 적어주세요. 키워드 구분은 스페이스로(※쉼표 사용 금지) ex) #연하공 #연상수"
                   />
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-[11px] text-gray-700">
                     <label className="flex items-center gap-1 cursor-pointer">
