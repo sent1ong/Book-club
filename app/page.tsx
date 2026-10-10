@@ -923,6 +923,8 @@ function BookClubContent() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isRevisit, setIsRevisit] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState<number[]>([]);
+  // 📚 같은 작품 리뷰 펼쳐보기
+const [expandedSameBookId, setExpandedSameBookId] = useState<number | null>(null);
   const [selectedGenre, setSelectedGenre] = useState("전체");
   const [filterType, setFilterType] = useState<"all" | "dropped" | "favorite" | "revisit">("all");
   const [reactions, setReactions] = useState<{ [bookId: number]: { [emoji: string]: number } }>({});
@@ -3217,9 +3219,20 @@ const deleteReadingPlan = async (id: number) => {
                     해당하는 독서 기록이 없습니다.
                   </div>
                 ) : (
-                  displayedReviews.map((book) => {
-                    const bookComments = comments.filter((c) => c.book_id === book.id);
-                    const isOpen = openCommentBookId === book.id;
+  displayedReviews.map((book) => {
+  const bookComments = comments.filter((c) => c.book_id === book.id);
+  const isOpen = openCommentBookId === book.id;
+
+  // 📚 같은 작품에 다른 모임원이 남긴 리뷰
+  const sameBookReviews = reviews.filter((other) =>
+    other.id !== book.id &&
+    other.group_name === book.group_name &&
+    other.user_name !== book.user_name &&
+    normalizeBookTitle(other.title) === normalizeBookTitle(book.title) &&
+    isSameAuthors(other.author, book.author)
+  );
+
+  const isSameBookExpanded = expandedSameBookId === book.id;
 
                     return (
                       <div key={book.id} id={"review-" + book.id} className="bg-white p-2.5 win-outset text-xs">
@@ -3339,6 +3352,106 @@ const deleteReadingPlan = async (id: number) => {
     >
       ▶
     </button>
+  </div>
+)}
+
+                        {/* 📚 같은 작품 리뷰 펼쳐보기 */}
+{sameBookReviews.length > 0 && (
+  <div className="mt-2 mb-2">
+
+    {/* 펼치기 / 접기 버튼 */}
+    <button
+      type="button"
+      onClick={() =>
+        setExpandedSameBookId(
+          isSameBookExpanded ? null : book.id
+        )
+      }
+      className="win-btn w-full px-3 py-2 text-xs font-bold text-left flex items-center justify-between gap-2"
+      aria-expanded={isSameBookExpanded}
+    >
+      <span>
+        📚 같은 작품의 다른 리뷰 {sameBookReviews.length}개
+      </span>
+      <span>{isSameBookExpanded ? "▲ 접기" : "▼ 펼쳐보기"}</span>
+    </button>
+
+    {/* 다른 모임원 리뷰 목록 */}
+    {isSameBookExpanded && (
+      <div className="mt-1 p-2 bg-[#f3f3f3] win-inset space-y-2">
+        {sameBookReviews.map((other) => (
+          <div
+            key={other.id}
+            className="bg-white border border-[#999] p-3 text-xs space-y-2"
+          >
+            <div className="flex justify-between items-start gap-2">
+              <span className="font-bold text-[#000080]">
+                ✍️ {other.user_name}
+              </span>
+
+              <span className="font-bold text-amber-700 shrink-0">
+                {other.rating}
+              </span>
+            </div>
+
+            <div className="text-[11px] text-gray-500 break-words">
+              📖 {other.title} · {other.author}
+            </div>
+
+            {/* 스포일러는 기존 컴포넌트로 가리기 */}
+            {other.review?.trim() ? (
+              <div className="text-xs text-gray-800 leading-relaxed break-words select-text">
+                <SpoilerReviewText text={other.review} />
+              </div>
+            ) : (
+              <p className="text-gray-400">
+                작성된 감상평이 없어요.
+              </p>
+            )}
+
+            {/* 다른 모임원이 등록한 OST */}
+            {other.ost_youtube_url &&
+              getJukeboxVideoId(other.ost_youtube_url) && (
+                <div className="flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] p-2">
+                  <Image
+                    src="/icons/music.png"
+                    alt=""
+                    width={20}
+                    height={20}
+                    unoptimized
+                    className="object-contain shrink-0"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold text-[#800080]">
+                      🎵 이 책의 OST
+                    </p>
+                    <p className="text-[11px] font-bold text-gray-800 break-words">
+                      {other.ost_title || "제목 없음"}
+                      {" — "}
+                      {other.ost_artist || "아티스트 미상"}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      jukeboxPlaySong(other);
+                      setOpenWindow("jukebox");
+                    }}
+                    className="win-btn shrink-0 w-7 h-7 flex items-center justify-center text-black text-sm"
+                    aria-label={`${other.ost_title || "OST"} 재생`}
+                    title="OST 재생"
+                  >
+                    ▶
+                  </button>
+                </div>
+              )}
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 )}
 
