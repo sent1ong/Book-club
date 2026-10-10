@@ -2304,6 +2304,36 @@ const deleteReadingPlan = async (id: number) => {
 
   return (
     <main className="relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
+      <style jsx global>{`
+  @keyframes petEggBounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    22% {
+      transform: translateY(-17px);
+    }
+    46% {
+      transform: translateY(0);
+    }
+    55% {
+      transform: translateY(-4px);
+    }
+    68%, 100% {
+      transform: translateY(0);
+    }
+  }
+
+  .pet-egg-bounce {
+    animation: petEggBounce 0.7s linear infinite;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pet-egg-bounce {
+      animation: none;
+    }
+  }
+`}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
       <div
@@ -3307,7 +3337,7 @@ return (
       alt={currentPet.pet_name || "우리 펫"}
       width={150}
       height={150}
-      className="object-contain"
+      className={`object-contain ${currentPet.stage === "egg" ? "pet-egg-bounce" : ""}`}
       unoptimized
     />
     <span className="text-xs font-bold text-[#594173]">
