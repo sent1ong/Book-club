@@ -3777,6 +3777,7 @@ return (
   )}
         </div>
 
+        {/* 🐾 성인 일차 계산: 성인이 된 순간부터 24시간 단위 */}
         {/* 상태 정보 */}
         {currentPet && (
   <div className="bg-white win-inset p-3 text-xs space-y-2">
@@ -3794,15 +3795,24 @@ return (
     )}
   </div>
 
-  <span className="shrink-0 ml-2">
-    {{
-      egg: "🥚 알",
-      baby: "🐣 아기",
-      teen: "🌱 청소년",
-      adult: "✨ 성인",
-      dead: "🪦 무지개다리",
-    }[currentPet.stage]}
-  </span>
+      <span className="shrink-0 ml-2">
+  {currentPet.stage === "adult" && currentPet.adult_at
+    ? `✨ 성인 ${Math.max(
+        1,
+        Math.floor(
+          (Date.now() - new Date(currentPet.adult_at).getTime()) /
+            (24 * 60 * 60 * 1000)
+        ) + 1
+      )}일차`
+    : {
+        egg: "🥚 알",
+        baby: "🐣 아기",
+        teen: "🌱 청소년",
+        adult: "✨ 성인",
+        dead: "🪦 무지개다리",
+      }[currentPet.stage]}
+</span>
+      
 </div>
 
     {currentPet.stage !== "dead" ? (
