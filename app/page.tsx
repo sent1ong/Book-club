@@ -858,13 +858,6 @@ const [petCareCounts, setPetCareCounts] = useState({
 const [petCareLoading, setPetCareLoading] = useState(false);
 const [petCareBusy, setPetCareBusy] = useState(false);
 const [petCareAction, setPetCareAction] = useState<"feed" | "pet" | null>(null);
-  // 🧪 성장 이미지 미리보기 (실제 펫 데이터 변경 없음)
-const [petPreviewStage, setPetPreviewStage] = useState<
-  "baby" | "teen" | "adult"
->("baby");
-
-const [petPreviewEating, setPetPreviewEating] = useState(false);
-const [showPetPreview, setShowPetPreview] = useState(false);
 const [petCareError, setPetCareError] = useState("");
 
 // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
@@ -3678,93 +3671,6 @@ return (
       )}
     </div>
   )}
-        {/* 🧪 성장 이미지 미리보기 — 실제 데이터와 무관 */}
-<details
-  className="bg-white win-inset p-2 text-xs"
-  open={showPetPreview}
-  onToggle={(e) => {
-    setShowPetPreview(e.currentTarget.open);
-  }}
->
-  <summary className="cursor-pointer font-bold">
-    🧪 성장 이미지 테스트
-  </summary>
-
-  <div className="mt-3 space-y-3">
-    <p className="text-gray-600">
-      화면 미리보기 전용이에요. 실제 XP와 성장 단계는 바뀌지 않아요.
-    </p>
-
-    <div className="grid grid-cols-3 gap-1">
-      {(["baby", "teen", "adult"] as const).map((stage) => (
-        <button
-          key={stage}
-          type="button"
-          onClick={() => {
-            setPetPreviewStage(stage);
-            setPetPreviewEating(false);
-          }}
-          className={`win-btn py-2 font-bold ${
-            petPreviewStage === stage
-              ? "bg-[#000080] text-white"
-              : ""
-          }`}
-        >
-          {stage === "baby"
-            ? "🐣 아기"
-            : stage === "teen"
-            ? "🌱 청소년"
-            : "✨ 성인"}
-        </button>
-      ))}
-    </div>
-
-    <div className="bg-[#f5f0ff] win-inset min-h-[190px] flex flex-col items-center justify-center gap-2 p-3">
-      <Image
-        src={`/pets/${
-          currentPet?.species || "bogli"
-        }/${
-          petPreviewStage
-        }${
-          petPreviewEating ? "_eat" : ""
-        }.png`}
-        alt="펫 성장 이미지 미리보기"
-        width={150}
-        height={150}
-        className="object-contain"
-        unoptimized
-      />
-
-      <span className="font-bold text-[#594173]">
-        {petPreviewEating
-          ? "🍪 냠냠! 먹는 중..."
-          : "🐾 평소 모습"}
-      </span>
-    </div>
-
-    <div className="grid grid-cols-2 gap-2">
-      <button
-        type="button"
-        onClick={() => setPetPreviewEating(false)}
-        className={`win-btn py-2 ${
-          !petPreviewEating ? "font-bold bg-[#dce8ff]" : ""
-        }`}
-      >
-        🐾 평소 모습
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setPetPreviewEating(true)}
-        className={`win-btn py-2 ${
-          petPreviewEating ? "font-bold bg-[#dce8ff]" : ""
-        }`}
-      >
-        🍪 먹는 모습
-      </button>
-    </div>
-  </div>
-</details>
         
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
