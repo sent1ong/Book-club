@@ -3760,13 +3760,6 @@ return (
     className="pointer-events-none absolute top-0 right-2 z-20 pet-heart-float"
   />
 )}
-    
-    <span className="text-xs font-bold text-[#594173]">
-  {currentPet.stage === "egg"
-    ? "🥚 새로운 생명을 기다리는 중..."
-    : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
-</span>
-
     {petCareAction && (
   <div
     role="status"
