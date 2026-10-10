@@ -3028,6 +3028,33 @@ const deleteReadingPlan = async (id: number) => {
                             )
                           )}
 
+                        {/* 🎵 JUKEBOX.exe — 이 책의 OST */}
+{book.ost_youtube_url && (
+  <div className="mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs">
+    <Image
+      src="/icons/music.png"
+      alt=""
+      aria-hidden="true"
+      width={22}
+      height={22}
+      unoptimized
+      className="object-contain shrink-0"
+    />
+
+    <div className="min-w-0 flex-1">
+      <p className="text-[10px] font-bold text-[#800080]">
+        🎵 이 책의 OST
+      </p>
+
+      <p className="font-bold text-gray-800 break-words">
+        {book.ost_title || "제목 없음"}
+        {" — "}
+        {book.ost_artist || "아티스트 미상"}
+      </p>
+    </div>
+  </div>
+)}
+
                         {/* 이모지 반응 */}
                         <div className="flex flex-wrap items-center gap-1.5 my-2 pt-1 border-t border-dashed border-gray-200">
                           {["❤️", "📌", "😭", "😡", "👏"].map((emoji) => {
