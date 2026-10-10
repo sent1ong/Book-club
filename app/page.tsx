@@ -960,6 +960,11 @@ const [expandedSameBookId, setExpandedSameBookId] = useState<number | null>(null
   // 🎵 JUKEBOX.exe 상태
 const [jukeboxActiveId, setJukeboxActiveId] = useState<number | null>(null);
 const [jukeboxPlaying, setJukeboxPlaying] = useState(false);
+  // 🎵 작업표시줄 곡명 넘침 감지
+const jukeboxTickerBoxRef = React.useRef<HTMLSpanElement>(null);
+const jukeboxTickerTextRef = React.useRef<HTMLSpanElement>(null);
+const [jukeboxOverflow, setJukeboxOverflow] = useState(0);
+  
 const [jukeboxReady, setJukeboxReady] = useState(false);
 const [jukeboxError, setJukeboxError] = useState("");
 const [jukeboxSearch, setJukeboxSearch] = useState("");
@@ -1172,6 +1177,32 @@ useEffect(() => {
     jukeboxPlayerRef.current = null;
   };
 }, []);
+
+  // 🎵 작업표시줄 곡명 길이 측정
+useEffect(() => {
+  const box = jukeboxTickerBoxRef.current;
+  const text = jukeboxTickerTextRef.current;
+  if (!box || !text) return;
+
+  const measure = () => {
+    const overflow = Math.max(
+      0,
+      Math.ceil(text.scrollWidth - box.clientWidth)
+    );
+
+    setJukeboxOverflow(overflow);
+  };
+
+  measure();
+
+  const observer = new ResizeObserver(measure);
+  observer.observe(box);
+  observer.observe(text);
+
+  document.fonts?.ready.then(measure);
+
+  return () => observer.disconnect();
+}, [jukeboxActiveId, jukeboxSongs.length]);
   
   // 🐾 PET.exe 상태
 const [currentPet, setCurrentPet] = useState<PetGeneration | null>(null);
@@ -3032,24 +3063,33 @@ const deleteReadingPlan = async (id: number) => {
   }
 }
 
-/* 🎵 작업표시줄 주크박스 곡명 한 줄 흐르기 */
-@keyframes jukeboxMarquee {
+/* 🎵 실제 넘치는 제목만 이동 */
+@keyframes jukeboxTickerMove {
   0%, 12% {
     transform: translateX(0);
   }
+
+  45%, 55% {
+    transform: translateX(
+      calc(-1 * var(--jukebox-overflow))
+    );
+  }
+
   88%, 100% {
-    transform: translateX(-40%);
+    transform: translateX(0);
   }
 }
 
-.jukebox-marquee {
-  white-space: nowrap;
-  min-width: 100%;
-  animation: jukeboxMarquee 12s ease-in-out infinite alternate;
+.jukebox-ticker-moving {
+  animation: jukeboxTickerMove
+    var(--jukebox-duration)
+    ease-in-out
+    infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jukebox-marquee {
+  .jukebox-ticker-moving {
     animation: none;
   }
 }
@@ -6644,18 +6684,29 @@ return (
           : "주크박스 열기"
       }
     >
-      <span className="block whitespace-nowrap overflow-hidden text-[10px] sm:text-xs text-black">
-        {jukeboxActive ? (
-          <span
-            key={jukeboxActive.id}
-            className="inline-block jukebox-marquee"
-          >
-            ♫ {jukeboxActive.ost_title} — {jukeboxActive.ost_artist}
-          </span>
-        ) : (
-          "♫ 주크박스"
-        )}
-      </span>
+
+      <span
+  ref={jukeboxTickerBoxRef}
+  className="block w-full overflow-hidden whitespace-nowrap text-[10px] sm:text-xs text-black"
+>
+  <span
+    ref={jukeboxTickerTextRef}
+    className={`inline-block whitespace-nowrap ${
+      jukeboxOverflow > 0 ? "jukebox-ticker-moving" : ""
+    }`}
+    style={
+      {
+        "--jukebox-overflow": `${jukeboxOverflow}px`,
+        "--jukebox-duration": `${Math.max(6, jukeboxOverflow / 22 + 4)}s`,
+      } as React.CSSProperties
+    }
+  >
+    {jukeboxActive
+      ? `♫ ${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+      : "♫ 주크박스"}
+  </span>
+</span>
+      
     </button>
 
     {/* 재생 컨트롤 — 항상 오른쪽에 고정 */}
