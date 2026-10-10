@@ -844,6 +844,7 @@ const [petReload, setPetReload] = useState(0);
 const [petCaretaker, setPetCaretaker] = useState("");
   // 🐾 작업표시줄 위 미니 펫
 const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
+  const miniPetPreview = true; // 테스트할 때만 true
   // 🐾 회원별 돌보기 횟수
 const [petCareCounts, setPetCareCounts] = useState({
   feed: 0,
@@ -5248,7 +5249,7 @@ return (
 {miniPet && (
   <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
 
-    {miniPet.stage === "egg" ? (
+    {miniPet.stage === "egg" && !miniPetPreview ? (
       <button
         type="button"
         onClick={() => setOpenWindow("pets")}
@@ -5292,7 +5293,7 @@ return (
           className="block pointer-events-auto mini-pet-hop"
         >
           <Image
-            src={`/pets/${miniPet.species}/${miniPet.stage}.png`}
+           src={`/pets/${miniPet.species}/${miniPetPreview ? "baby" : miniPet.stage}.png`}
             alt={miniPet.pet_name || "우리 펫"}
             width={70}
             height={70}
