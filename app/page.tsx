@@ -3988,7 +3988,7 @@ return (
     {petHistory.length > 0 && ` (${petHistory.length}마리)`}
   </summary>
 
-  <div className="mt-3 space-y-3">
+  <div className="mt-3 max-h-[320px] overflow-y-auto space-y-3 pr-2">
     {petHistoryLoading ? (
       <p className="text-gray-600">기록을 불러오는 중...</p>
     ) : petHistoryError ? (
