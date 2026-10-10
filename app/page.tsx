@@ -970,7 +970,7 @@ const [jukeboxError, setJukeboxError] = useState("");
 const [jukeboxSearch, setJukeboxSearch] = useState("");
 const [jukeboxSort, setJukeboxSort] = useState<
   "newest" | "oldest" | "title"
->("newest");
+>("title");
 
 // 유튜브 플레이어와 현재 곡 정보 보관
 const jukeboxPlayerRef = React.useRef<any>(null);
@@ -3716,10 +3716,10 @@ const deleteReadingPlan = async (id: number) => {
 >
   <div
     className={
-      openWindow === "jukebox"
-        ? "w-full max-w-lg max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
-        : "w-[200px] max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
-    }
+  openWindow === "jukebox"
+    ? "w-full max-w-lg max-h-[70dvh] sm:max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
+    : "w-[200px] max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
+}
   >
     {/* 제목 표시줄 */}
     <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between gap-2 text-xs font-bold">
@@ -3880,9 +3880,9 @@ const deleteReadingPlan = async (id: number) => {
             aria-label="OST 정렬"
             className="win-inset bg-white px-1 text-xs"
           >
+            <option value="title">곡 제목순</option>
             <option value="newest">최신순</option>
             <option value="oldest">오래된순</option>
-            <option value="title">곡 제목순</option>
           </select>
         </div>
 
@@ -3890,7 +3890,7 @@ const deleteReadingPlan = async (id: number) => {
           🎶 우리 모임 OST ({jukeboxSongs.length}곡)
         </div>
 
-        <div className="bg-white win-inset max-h-[260px] overflow-y-auto p-2 space-y-1">
+        <div className="bg-white win-inset max-h-[140px] sm:max-h-[260px] overflow-y-auto p-2 space-y-1">
           {jukeboxVisibleSongs.length === 0 ? (
             <p className="text-center text-gray-500 text-xs py-6">
               {jukeboxSongs.length === 0
