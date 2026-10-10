@@ -58,6 +58,96 @@ const PET_SPECIES_NAMES: Record<string, string> = {
   kongmongi: "콩몽이",
 };
 
+// 🎨 세대별 펫 색상 변형
+const PET_COLOR_FILTERS: Record<string, string> = {
+  original: "none",
+  lavender: "hue-rotate(25deg) saturate(1.1)",
+  mint: "hue-rotate(115deg) saturate(1.05)",
+  peach: "hue-rotate(315deg) saturate(1.1)",
+  sky: "hue-rotate(175deg) saturate(1.05)",
+  butter: "hue-rotate(55deg) saturate(1.1)",
+};
+
+// 🎀 세대별 펫 장식
+const PET_DECORATIONS: Record<string, string> = {
+  star_mark: "/pets/deco/star_mark.png",
+  patch_heart: "/pets/deco/patch_heart.png",
+  patch_dot: "/pets/deco/patch_dot.png",
+  sparkle: "/pets/deco/sparkle.png",
+};
+
+function PetSprite({
+  pet,
+  stage,
+  eating = false,
+  size = 150,
+  className = "",
+}: {
+  pet: PetGeneration;
+  stage?: "egg" | "baby" | "teen" | "adult";
+  eating?: boolean;
+  size?: number;
+  className?: string;
+}) {
+  const visibleStage =
+    stage || (pet.stage === "dead" ? "adult" : pet.stage);
+
+  const fileName =
+    eating && visibleStage !== "egg"
+      ? `${visibleStage}_eat`
+      : visibleStage;
+
+  const decoration =
+    visibleStage !== "egg" && pet.decoration
+      ? PET_DECORATIONS[pet.decoration]
+      : null;
+
+  const colorFilter =
+    PET_COLOR_FILTERS[pet.color_variant || "original"] || "none";
+
+  return (
+    <span
+      className={`relative inline-block shrink-0 ${className}`}
+      style={{
+        width: size,
+        height: size,
+      }}
+    >
+      <Image
+        src={`/pets/${pet.species}/${fileName}.png`}
+        alt={pet.pet_name || "우리 펫"}
+        width={size}
+        height={size}
+        unoptimized
+        className="block object-contain"
+        style={{
+          width: size,
+          height: size,
+          filter: colorFilter,
+        }}
+      />
+
+      {decoration && (
+        <Image
+          src={decoration}
+          alt=""
+          aria-hidden="true"
+          width={Math.round(size * 0.27)}
+          height={Math.round(size * 0.27)}
+          unoptimized
+          className="absolute pointer-events-none object-contain"
+          style={{
+            width: size * 0.27,
+            height: size * 0.27,
+            right: size * 0.12,
+            bottom: size * 0.22,
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
 interface UserGoal {
   id?: number;
   group_name: string;
@@ -902,6 +992,10 @@ const [petCareLoading, setPetCareLoading] = useState(false);
 const [petCareBusy, setPetCareBusy] = useState(false);
 const [petCareAction, setPetCareAction] = useState<"feed" | "pet" | null>(null);
 const [petCareError, setPetCareError] = useState("");
+  // 🧪 펫 색상·장식 미리보기
+const [petStylePreviewSpecies, setPetStylePreviewSpecies] = useState("bogli");
+const [petStylePreviewColor, setPetStylePreviewColor] = useState("lavender");
+const [petStylePreviewDecoration, setPetStylePreviewDecoration] = useState("star_mark");
 
 // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
 useEffect(() => {
@@ -3627,25 +3721,18 @@ return (
   </div>
 ) : (
   <div className="flex flex-col items-center gap-2">
-    <Image
-      src={`/pets/${currentPet.species}/${
-  petCareAction === "feed" &&
-  currentPet.stage !== "egg"
-    ? `${currentPet.stage}_eat`
-    : currentPet.stage
-}.png`}
-      alt={currentPet.pet_name || "우리 펫"}
-      width={150}
-      height={150}
-      className={`object-contain ${
-  currentPet.stage === "egg"
-    ? petCareAction === "feed"
-      ? "pet-egg-excited"
-      : "pet-egg-bounce"
-    : ""
-}`}
-      unoptimized
-    />
+    <PetSprite
+  pet={currentPet}
+  size={150}
+  eating={petCareAction === "feed"}
+  className={
+    currentPet.stage === "egg"
+      ? petCareAction === "feed"
+        ? "pet-egg-excited"
+        : "pet-egg-bounce"
+      : ""
+  }
+/>
 
     {petCareAction === "pet" && (
   <Image
@@ -3792,6 +3879,119 @@ return (
       )}
     </div>
   )}
+        {/* 🧪 세대별 색상·장식 테스트 */}
+<details className="bg-white win-inset p-2 text-xs">
+  <summary className="cursor-pointer font-bold">
+    🧪 펫 색상·장식 미리보기
+  </summary>
+
+  <div className="mt-3 space-y-3">
+    <p className="text-gray-600">
+      7세대 이후 외형 테스트용이에요.
+      실제 펫의 모습이나 데이터는 변경되지 않아요.
+    </p>
+
+    {/* 종족 선택 */}
+    <div>
+      <label className="block font-bold mb-1">🐾 종족</label>
+      <select
+        value={petStylePreviewSpecies}
+        onChange={(e) => setPetStylePreviewSpecies(e.target.value)}
+        className="w-full bg-white win-inset p-2"
+      >
+        <option value="bogli">보글이</option>
+        <option value="byeolkongi">별콩이</option>
+        <option value="kongmongi">콩몽이</option>
+      </select>
+    </div>
+
+    {/* 색상 선택 */}
+    <div>
+      <label className="block font-bold mb-1">🎨 색상</label>
+      <select
+        value={petStylePreviewColor}
+        onChange={(e) => setPetStylePreviewColor(e.target.value)}
+        className="w-full bg-white win-inset p-2"
+      >
+        <option value="original">원본</option>
+        <option value="lavender">라벤더</option>
+        <option value="mint">민트</option>
+        <option value="peach">피치</option>
+        <option value="sky">스카이</option>
+        <option value="butter">버터</option>
+      </select>
+    </div>
+
+    {/* 장식 선택 */}
+    <div>
+      <label className="block font-bold mb-1">🎀 장식</label>
+      <select
+        value={petStylePreviewDecoration}
+        onChange={(e) => setPetStylePreviewDecoration(e.target.value)}
+        className="w-full bg-white win-inset p-2"
+      >
+        <option value="">장식 없음</option>
+        <option value="star_mark">별 무늬</option>
+        <option value="patch_heart">하트 무늬</option>
+        <option value="patch_dot">점 무늬</option>
+        <option value="sparkle">반짝이</option>
+      </select>
+    </div>
+
+    {/* 원본과 변형 비교 */}
+    <div className="grid grid-cols-2 gap-2">
+      <div className="bg-[#f5f0ff] win-inset p-2 flex flex-col items-center justify-center gap-2">
+        <PetSprite
+          pet={{
+            id: -1,
+            group_name: "preview",
+            generation_number: 1,
+            species: petStylePreviewSpecies,
+            pet_name: null,
+            named_by: null,
+            xp: 350,
+            stage: "adult",
+            color_variant: "original",
+            decoration: null,
+            born_at: "",
+            adult_at: null,
+            died_at: null,
+          }}
+          stage="adult"
+          size={110}
+        />
+        <span className="font-bold">원본</span>
+      </div>
+
+      <div className="bg-[#f5f0ff] win-inset p-2 flex flex-col items-center justify-center gap-2">
+        <PetSprite
+          pet={{
+            id: -2,
+            group_name: "preview",
+            generation_number: 7,
+            species: petStylePreviewSpecies,
+            pet_name: null,
+            named_by: null,
+            xp: 350,
+            stage: "adult",
+            color_variant: petStylePreviewColor,
+            decoration: petStylePreviewDecoration || null,
+            born_at: "",
+            adult_at: null,
+            died_at: null,
+          }}
+          stage="adult"
+          size={110}
+        />
+        <span className="font-bold">변형</span>
+      </div>
+    </div>
+
+    <p className="text-center text-gray-500">
+      왼쪽 원본 ↔ 오른쪽 변형
+    </p>
+  </div>
+</details>
         
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
@@ -3944,15 +4144,11 @@ return (
           className="bg-[#f5f0ff] win-inset p-3 space-y-2"
         >
           <div className="flex items-center gap-3">
-            <Image
-              src={`/pets/${pet.species}/adult.png`}
-              alt={pet.pet_name || "이전 세대 펫"}
-              width={65}
-              height={65}
-              className="object-contain shrink-0"
-              unoptimized
-            />
-
+            <PetSprite
+  pet={pet}
+  stage="adult"
+  size={65}
+/>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="font-bold text-[#594173]">
                 {pet.generation_number}세대 ·{" "}
@@ -5688,22 +5884,16 @@ return (
           aria-label="펫 돌보기 열기"
           className="relative block pointer-events-auto mini-pet-hop"
         >
-          <Image
-           src={`/pets/${miniPet.species}/${
-  miniPetPreview
-    ? "baby"
-    : petCareAction === "feed" &&
-      openWindow === "pets" &&
-      currentPet?.id === miniPet.id
-    ? `${miniPet.stage}_eat`
-    : miniPet.stage
-}.png`}
-            alt={miniPet.pet_name || "우리 펫"}
-            width={70}
-            height={70}
-            className="object-contain"
-            unoptimized
-          />
+          <PetSprite
+  pet={miniPet}
+  stage={miniPetPreview ? "baby" : undefined}
+  size={70}
+  eating={
+    petCareAction === "feed" &&
+    openWindow === "pets" &&
+    currentPet?.id === miniPet.id
+  }
+/>
           
         </button>
       </div>
