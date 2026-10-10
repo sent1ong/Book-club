@@ -31,6 +31,9 @@ interface BookReview {
   is_favorite?: boolean;
   is_revisit?: boolean;
   created_at?: string;
+  ost_youtube_url?: string | null;
+  ost_title?: string | null;
+  ost_artist?: string | null;
 }
 
 interface PetGeneration {
@@ -1308,13 +1311,16 @@ const nameBabyPet = async () => {
     is_spoiler?: boolean;
   }>({ user_name: "", password: "", content: "", is_spoiler: false });
   const [formData, setFormData] = useState({
-    user_name: "",
-    title: "",
-    author: "",
-    review: "",
-    genre: "소설",
-    rating: "★★★★★",
-  });
+  user_name: "",
+  title: "",
+  author: "",
+  review: "",
+  genre: "소설",
+  rating: "★★★★★",
+  ost_youtube_url: "",
+  ost_title: "",
+  ost_artist: "",
+});
   const [goalForm, setGoalForm] = useState({
     user_name: "",
     target_count: "10",
@@ -2096,6 +2102,51 @@ const deleteReadingPlan = async (id: number) => {
     if (!formData.title) return alert("제목을 입력해주세요!");
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
+      // 🎵 JUKEBOX.exe — OST 입력값 검사
+  const ostUrl = formData.ost_youtube_url.trim();
+  const ostTitle = formData.ost_title.trim();
+  const ostArtist = formData.ost_artist.trim();
+
+  const hasAnyOstField = !!(ostUrl || ostTitle || ostArtist);
+
+  if (hasAnyOstField && (!ostUrl || !ostTitle || !ostArtist)) {
+    return alert(
+      "OST를 등록하려면 유튜브 링크, 곡 제목, 아티스트를 모두 입력해주세요!"
+    );
+  }
+
+  if (ostUrl) {
+    let validYoutubeUrl = false;
+
+    try {
+      const url = new URL(ostUrl);
+      const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+
+      const videoId =
+        hostname === "youtu.be"
+          ? url.pathname.split("/").filter(Boolean)[0]
+          : hostname === "youtube.com" || hostname === "m.youtube.com"
+            ? url.pathname === "/watch"
+              ? url.searchParams.get("v")
+              : url.pathname.startsWith("/shorts/") ||
+                  url.pathname.startsWith("/live/") ||
+                  url.pathname.startsWith("/embed/")
+                ? url.pathname.split("/")[2]
+                : null
+            : null;
+
+      validYoutubeUrl =
+        url.protocol === "https:" &&
+        /^[a-zA-Z0-9_-]{11}$/.test(videoId || "");
+    } catch {
+      validYoutubeUrl = false;
+    }
+
+    if (!validYoutubeUrl) {
+      return alert("올바른 유튜브 영상 링크를 입력해주세요!");
+    }
+  }
+
     if (targetMember.some((name) => !userList.includes(name))) {
   return alert("기존 멤버를 선택해주세요!");
     }
@@ -2287,42 +2338,50 @@ const deleteReadingPlan = async (id: number) => {
   };
 
   const resetForm = () => {
-    setTargetMember([]);
-    setFormData({
-      user_name: formData.user_name,
-      title: "",
-      author: "",
-      review: "",
-      genre: "소설",
-      rating: "★★★★★",
-    });
-    setIsSpoiler(false);
-    setIsFavorite(false);
-    setIsRevisit(false);
-  };
+  setTargetMember([]);
+  setFormData({
+    user_name: formData.user_name,
+    title: "",
+    author: "",
+    review: "",
+    genre: "소설",
+    rating: "★★★★★",
+    ost_youtube_url: "",
+    ost_title: "",
+    ost_artist: "",
+  });
+  setIsSpoiler(false);
+  setIsFavorite(false);
+  setIsRevisit(false);
+};
 
   const handleEdit = (book: BookReview) => {
-    setEditingId(book.id);
-    setTargetMember(
-  (book.target_member || "")
-    .split(",")
-    .map((name) => name.trim())
-    .filter(Boolean)
-    );
-    setFormData({
-      user_name: book.user_name,
-      title: book.title,
-      author: book.author || "",
-      review: serializeReview(book.review || "", false),
-      genre: book.genre || "소설",
-      rating: book.rating || "★★★★★",
-    });
-    setIsSpoiler(book.review ? book.review.includes("(스포일러)") : false);
-    setIsFavorite(!!book.is_favorite);
-    setIsRevisit(!!book.is_revisit);
-    setOpenWindow("book-add");
-  };
+  setEditingId(book.id);
+  setTargetMember(
+    (book.target_member || "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean)
+  );
 
+  setFormData({
+    user_name: book.user_name,
+    title: book.title,
+    author: book.author || "",
+    review: serializeReview(book.review || "", false),
+    genre: book.genre || "소설",
+    rating: book.rating || "★★★★★",
+    ost_youtube_url: book.ost_youtube_url || "",
+    ost_title: book.ost_title || "",
+    ost_artist: book.ost_artist || "",
+  });
+
+  setIsSpoiler(book.review ? book.review.includes("(스포일러)") : false);
+  setIsFavorite(!!book.is_favorite);
+  setIsRevisit(!!book.is_revisit);
+  setOpenWindow("book-add");
+};
+  
   const cancelEdit = () => {
     setEditingId(null);
     resetForm();
@@ -3303,6 +3362,73 @@ const deleteReadingPlan = async (id: number) => {
           {user}
         </label>
       ))}
+  </div>
+</div>
+                {/* 🎵 JUKEBOX.exe — 리뷰 OST 등록 */}
+<div className="border-t border-gray-400 pt-3 space-y-2">
+  <div className="text-[11px] font-bold text-[#800080]">
+    🎵 JUKEBOX OST (선택 사항)
+  </div>
+
+  <p className="text-[10px] text-gray-600 leading-relaxed">
+    이 책과 어울리는 노래를 등록해 주세요.
+    등록된 곡은 우리 모임 주크박스에 모여요!
+  </p>
+
+  <div>
+    <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
+      YOUTUBE URL (유튜브 링크)
+    </label>
+    <input
+      type="url"
+      value={formData.ost_youtube_url}
+      onChange={(e) =>
+        setFormData({
+          ...formData,
+          ost_youtube_url: e.target.value,
+        })
+      }
+      className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+      placeholder="https://www.youtube.com/watch?v=..."
+    />
+  </div>
+
+  <div className="grid grid-cols-2 gap-2">
+    <div className="min-w-0">
+      <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
+        SONG (곡 제목)
+      </label>
+      <input
+        type="text"
+        value={formData.ost_title}
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            ost_title: e.target.value,
+          })
+        }
+        className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+        placeholder="노래 제목"
+      />
+    </div>
+
+    <div className="min-w-0">
+      <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
+        ARTIST (아티스트)
+      </label>
+      <input
+        type="text"
+        value={formData.ost_artist}
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            ost_artist: e.target.value,
+          })
+        }
+        className="w-full p-1.5 text-xs bg-white win-inset outline-none"
+        placeholder="가수 / 아티스트"
+      />
+    </div>
   </div>
 </div>
                 <div className="flex gap-1 pt-2">
