@@ -95,8 +95,26 @@ function PetSprite({
   const visibleStage =
     stage || (pet.stage === "dead" ? "adult" : pet.stage);
 
+    // 🐾 우물우물: 일반 이미지와 먹는 이미지 교차
+  const [chewFrame, setChewFrame] = useState(false);
+
+  useEffect(() => {
+    if (!eating || visibleStage === "egg") {
+      setChewFrame(false);
+      return;
+    }
+
+    setChewFrame(true);
+
+    const timer = window.setInterval(() => {
+      setChewFrame((previous) => !previous);
+    }, 180);
+
+    return () => window.clearInterval(timer);
+  }, [eating, visibleStage]);
+
   const fileName =
-    eating && visibleStage !== "egg"
+    eating && visibleStage !== "egg" && chewFrame
       ? `${visibleStage}_eat`
       : visibleStage;
 
