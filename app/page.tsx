@@ -6688,10 +6688,10 @@ return (
                 <p className="text-xs text-gray-600">{randomBook.author || "작자 미상"} · {randomBook.genre}</p>
                 <div className="text-amber-500 font-bold">{randomBook.rating}</div>
                 {randomBook.review && (
-                    <div className="bg-gray-50 p-2 text-xs text-gray-700 win-inset break-words">
-                      "<SpoilerReviewText text={randomBook.review} />"
-                    </div>
-                  )}
+              <div className="bg-gray-50 p-2 text-xs text-gray-700 win-inset break-words text-left">
+  <SpoilerReviewText text={randomBook.review} />
+</div>
+)}
               </div>
               <div className="flex gap-1 p-2">
                 <button onClick={handleRandomRecommend} className="flex-1 py-1 win-btn text-xs font-bold">다시 뽑기</button>
