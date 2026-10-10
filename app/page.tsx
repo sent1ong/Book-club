@@ -2380,11 +2380,13 @@ const deleteReadingPlan = async (id: number) => {
       matchesFilter = selectedGenre === "전체" || r.genre === selectedGenre;
     }
 
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-    !searchQuery ||
-    r.title?.toLowerCase().includes(q) ||
-    r.author?.toLowerCase().includes(q);
+    // 🔍 제목 + 작가 + 리뷰 본문 통합 검색
+const q = searchQuery.trim().toLowerCase();
+const matchesSearch =
+  !q ||
+  (r.title ?? "").toLowerCase().includes(q) ||
+  (r.author ?? "").toLowerCase().includes(q) ||
+  (r.review ?? "").toLowerCase().includes(q);
     return matchesUser && matchesFilter && matchesSearch;
   });
 
@@ -3186,22 +3188,22 @@ const { error } = await supabase.from("book_comments").insert([
 </div>
 </div>
           <div className="p-2 space-y-2 bg-[#d4d8dc] lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
-            <input
-              type="text"
-              placeholder="🔍 제목 또는 작가 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs p-1.5 win-inset bg-white focus:outline-none placeholder-gray-500"
-            />
+            {/* 🔍 검색창 + 🎲 랜덤 추천 버튼 */}
+<div className="flex items-center gap-1.5 w-full min-w-0">
+  <input
+    type="text"
+    placeholder="🔍 제목, 작가, 리뷰 내용 검색..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="flex-1 min-w-0 text-xs p-1.5 win-inset bg-white focus:outline-none placeholder-gray-500"
+  />
 
-            {/* 🎲 랜덤 책 추천 */}
-<div className="flex justify-end">
   <button
     type="button"
     onClick={handleRandomRecommend}
-    className="win-btn px-3 py-1 text-xs font-bold"
+    className="win-btn shrink-0 whitespace-nowrap px-2 py-1.5 text-xs font-bold"
   >
-    🎲 랜덤 책 추천
+    🎲 랜덤 추천
   </button>
 </div>
 
