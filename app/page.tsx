@@ -3282,13 +3282,14 @@ const deleteReadingPlan = async (id: number) => {
   const isOpen = openCommentBookId === book.id;
 
   // 📚 같은 작품에 다른 모임원이 남긴 리뷰
-  const sameBookReviews = reviews.filter((other) =>
-    other.id !== book.id &&
-    other.group_name === book.group_name &&
-    other.user_name !== book.user_name &&
-    normalizeBookTitle(other.title) === normalizeBookTitle(book.title) &&
-    isSameAuthors(other.author, book.author)
-  );
+    const sameBookReviews = reviews.filter((other) =>
+  other.id !== book.id &&
+  other.group_name === book.group_name &&
+  other.user_name !== book.user_name &&
+  other.genre === book.genre &&
+  normalizeBookTitle(other.title) === normalizeBookTitle(book.title) &&
+  isSameAuthors(other.author, book.author)
+);
 
   const isSameBookExpanded = expandedSameBookId === book.id;
 
