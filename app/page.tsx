@@ -3316,8 +3316,12 @@ return (
     : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
 </span>
 
-{petCareAction && (
-  <div className="text-xs font-bold text-[#9b477e]">
+    {petCareAction && (
+  <div
+    role="status"
+    aria-live="polite"
+    className="absolute bottom-2 left-2 right-2 z-30 bg-white border-2 border-[#9b477e] px-2 py-2 text-center text-xs font-bold text-[#9b477e] shadow-md"
+  >
     {petCareAction === "feed"
       ? currentPet.stage === "egg"
         ? "🥚 알을 보살피는 중..."
