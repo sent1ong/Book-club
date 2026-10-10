@@ -164,6 +164,39 @@ function SpoilerReviewText({ text }: { text: string }) {
   return renderReviewText(text.replace(/\(스포일러\)/g, ""));
 }
 
+// 📚 책 제목 비교
+function normalizeBookTitle(value: string) {
+  return value.normalize("NFC").replace(/\s+/g, "").toLowerCase();
+}
+
+// ✍️ 공동 작가 비교: 역할, 구분자, 순서 차이 허용
+function isSameAuthors(a: string, b: string) {
+  const compact = (value: string) =>
+    value.normalize("NFC")
+      .toLowerCase()
+      .replace(/(?:원작|그림|글|작화|일러스트|저자)\s*[:：]?\s*/g, "")
+      .replace(/[\s,，、/&·ㆍ;；]+/g, "");
+
+  if (compact(a) === compact(b)) return true;
+
+  const split = (value: string) =>
+    value.normalize("NFC")
+      .toLowerCase()
+      .replace(/(?:원작|그림|글|작화|일러스트|각색|저자)\s*[:：]?\s*/g, ",")
+      .split(/[\s,，、/&·ㆍ;；]+/)
+      .filter(Boolean)
+      .sort();
+
+  const left = split(a);
+  const right = split(b);
+
+  return (
+    left.length > 1 &&
+    right.length > 1 &&
+    JSON.stringify(left) === JSON.stringify(right)
+  );
+}
+
 function isValidGroup(name: string | null) {
   if (!name) return false;
   if (name === "기본모임") return true;
@@ -2254,15 +2287,12 @@ const deleteReadingPlan = async (id: number) => {
                                 </span>
                               )}
                             {readingPlans.some((plan) => {
-                          const normalize = (value: string) =>
-                                value.normalize("NFC").replace(/\s+/g, "").toLowerCase();
-
-                          return (
-                                plan.user_name === book.user_name &&
-                                normalize(plan.title) === normalize(book.title) &&
-                                normalize(plan.author) === normalize(book.author || "") &&
-                                plan.genre === book.genre
-                            );
+                         return (
+                               plan.user_name === book.user_name &&
+                               normalizeBookTitle(plan.title) === normalizeBookTitle(book.title) &&
+                               isSameAuthors(plan.author, book.author || "") &&
+                               plan.genre === book.genre
+                          );
                       }) && (
                           <span className="bg-green-100 text-green-800 border border-green-400 font-bold text-xs px-1 rounded">
                               📌 예고 이행!
@@ -2842,22 +2872,20 @@ const deleteReadingPlan = async (id: number) => {
         {readingPlans
           .filter((plan) => plan.user_name === selectedUser)
           .map((plan) => {
-            const normalize = (value: string) =>
-              value.normalize("NFC").replace(/\s+/g, "").toLowerCase();
 
             const completed = reviews.some(
-              (book) =>
-                book.user_name === plan.user_name &&
-                normalize(book.title) === normalize(plan.title) &&
-                normalize(book.author || "") === normalize(plan.author) &&
-                book.genre === plan.genre
+                (book) =>
+                      book.user_name === plan.user_name &&
+                      normalizeBookTitle(book.title) === normalizeBookTitle(plan.title) &&
+                      isSameAuthors(book.author || "", plan.author) &&
+                     book.genre === plan.genre
             );
 
-            return (
-              <div key={plan.id} className="bg-white win-inset p-3 text-xs">
-                <div className="font-bold text-[#000080] break-words">
-                  📖 {plan.title}
-                </div>
+return (
+  <div key={plan.id} className="bg-white win-inset p-3 text-xs">
+    <div className="font-bold text-[#000080] break-words">
+      📖 {plan.title}
+    </div>
 
                 <div className="text-gray-600 mt-1">
                   {plan.author} · {plan.genre}
