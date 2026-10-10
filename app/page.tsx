@@ -773,7 +773,7 @@ function BookClubContent() {
   const [mailSort, setMailSort] = useState<"newest" | "oldest">("newest");
   const [mailBusy, setMailBusy] = useState<number | null>(null);
   const [mailReload, setMailReload] = useState(0);
-  const [targetMember, setTargetMember] = useState("");
+  const [targetMember, setTargetMember] = useState<string[]>([]);
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
   const [revealedCommentSpoilers, setRevealedCommentSpoilers] = useState<number[]>([]);
   const [commentForm, setCommentForm] = useState<{
@@ -1496,7 +1496,9 @@ function BookClubContent() {
     if (!formData.title) return alert("제목을 입력해주세요!");
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
-    if (targetMember && !userList.includes(targetMember)) return alert("기존 멤버를 선택해주세요!");
+    if (targetMember.some((name) => !userList.includes(name))) {
+  return alert("기존 멤버를 선택해주세요!");
+    }
     setLoading(true);
     const finalReview = serializeReview(formData.review || "", isSpoiler);
 
@@ -1506,7 +1508,7 @@ function BookClubContent() {
         .update({
         ...formData,
         review: finalReview,
-        target_member: targetMember || null,
+        target_member: targetMember.length > 0 ? targetMember.join(",") : null,
         is_favorite: isFavorite,
         is_revisit: isRevisit,
       })
@@ -1529,7 +1531,7 @@ function BookClubContent() {
         {
           ...formData,
           review: finalReview,
-        target_member: targetMember || null,
+        target_member: targetMember.length > 0 ? targetMember.join(",") : null,
           group_name: groupName,
           is_favorite: isFavorite,
           is_revisit: isRevisit,
@@ -1685,7 +1687,7 @@ function BookClubContent() {
   };
 
   const resetForm = () => {
-    setTargetMember("");
+    setTargetMember([]);
     setFormData({
       user_name: formData.user_name,
       title: "",
@@ -1701,7 +1703,12 @@ function BookClubContent() {
 
   const handleEdit = (book: BookReview) => {
     setEditingId(book.id);
-    setTargetMember(book.target_member || "");
+    setTargetMember(
+  (book.target_member || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    );
     setFormData({
       user_name: book.user_name,
       title: book.title,
@@ -2155,7 +2162,22 @@ function BookClubContent() {
                           {book.author ? `${book.author} · ` : ""}{book.genre} | <span className="font-bold text-gray-800">{book.user_name}</span>
                         </div>
 
-                        {book.target_member && <div className="mt-1 mb-1.5"><span className="bg-[#800080] text-white font-bold px-2 py-0.5">@{book.target_member}</span></div>}
+                        {book.target_member && (
+                        <div className="mt-1 mb-1.5 flex flex-wrap gap-1">
+                          {book.target_member
+                            .split(",")
+                            .map((name) => name.trim())
+                            .filter(Boolean)
+                            .map((name) => (
+                              <span
+                                key={name}
+                                className="bg-[#800080] text-white font-bold px-2 py-0.5"
+                                >
+                                @{name}
+                              </span>
+                            ))}
+                        </div>
+                      )}
                         {book.review && (
                             book.review.includes("(스포일러)") && !revealedSpoilers.includes(book.id) ? (
                               <div
@@ -2478,12 +2500,36 @@ function BookClubContent() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="target-member" className="block text-[11px] font-bold mb-0.5">영업하기</label>
-                  <select id="target-member" value={targetMember} onChange={(e) => setTargetMember(e.target.value)} className="w-full bg-white win-inset p-1.5 text-xs">
-                    <option value="">선택 안 함</option>
-                    {userList.filter((user) => user !== "전체").map((user) => <option key={user} value={user}>{user}</option>)}
-                  </select>
-                </div>
+  <label className="block text-[11px] font-bold mb-1">
+    📣 영업하기 (여러 명 선택 가능)
+  </label>
+
+  <div className="win-inset bg-white p-2 flex flex-wrap gap-x-3 gap-y-2">
+    {userList
+      .filter((user) => user !== "전체")
+      .map((user) => (
+        <label
+          key={user}
+          className="flex items-center gap-1 text-xs cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            checked={targetMember.includes(user)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setTargetMember((previous) => [...previous, user]);
+              } else {
+                setTargetMember((previous) =>
+                  previous.filter((name) => name !== user)
+                );
+              }
+            }}
+          />
+          {user}
+        </label>
+      ))}
+  </div>
+</div>
                 <div className="flex gap-1 pt-2">
                   <button type="submit" disabled={loading} className="flex-1 py-1.5 win-btn font-bold text-xs">
                     {loading ? "처리 중..." : editingId ? "수정 완료" : "입력 완료"}
