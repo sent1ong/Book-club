@@ -3326,6 +3326,8 @@ return (
   </div>
 )}
         </div>
+  )}
+        </div>
 
         {/* 상태 정보 */}
         {currentPet && (
