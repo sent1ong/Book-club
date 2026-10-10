@@ -842,6 +842,14 @@ const [petError, setPetError] = useState("");
 const [petAdopting, setPetAdopting] = useState(false);
 const [petReload, setPetReload] = useState(0);
 const [petCaretaker, setPetCaretaker] = useState("");
+  // 🐾 회원별 돌보기 횟수
+const [petCareCounts, setPetCareCounts] = useState({
+  feed: 0,
+  pet: 0,
+});
+const [petCareLoading, setPetCareLoading] = useState(false);
+const [petCareBusy, setPetCareBusy] = useState(false);
+const [petCareError, setPetCareError] = useState("");
 
 // PET.exe 현재 세대 불러오기
 useEffect(() => {
@@ -926,6 +934,97 @@ const adoptPetEgg = async () => {
 
   setPetReload((value) => value + 1);
 };
+// 🐾 한국 날짜 기준 돌보기 횟수 조회
+useEffect(() => {
+  if (openWindow !== "pets" || !currentPet || !petCaretaker) {
+    setPetCareCounts({ feed: 0, pet: 0 });
+    return;
+  }
+
+  let cancelled = false;
+
+  const loadCareCounts = async () => {
+    setPetCareLoading(true);
+    setPetCareError("");
+
+    const today = new Date().toLocaleDateString("sv-SE", {
+      timeZone: "Asia/Seoul",
+    });
+
+    const { data, error } = await supabase
+      .from("pet_care_actions")
+      .select("action_type")
+      .eq("generation_id", currentPet.id)
+      .eq("user_name", petCaretaker)
+      .eq("action_date", today);
+
+    if (cancelled) return;
+
+    if (error) {
+      setPetCareError("남은 돌보기 횟수를 불러오지 못했어요.");
+      setPetCareLoading(false);
+      return;
+    }
+
+    setPetCareCounts({
+      feed: (data || []).filter((item) => item.action_type === "feed").length,
+      pet: (data || []).filter((item) => item.action_type === "pet").length,
+    });
+    setPetCareLoading(false);
+  };
+
+  void loadCareCounts();
+
+  return () => {
+    cancelled = true;
+  };
+}, [openWindow, currentPet?.id, petCaretaker, petReload]);
+
+// 🐾 실제 돌보기 실행
+const doPetCare = async (actionType: "feed" | "pet") => {
+  if (
+    !currentPet ||
+    currentPet.stage === "dead" ||
+    !petCaretaker ||
+    !userList.includes(petCaretaker) ||
+    petCareBusy ||
+    petCareLoading ||
+    petCareError
+  ) {
+    return;
+  }
+
+  const used =
+    actionType === "feed" ? petCareCounts.feed : petCareCounts.pet;
+  const limit = actionType === "feed" ? 3 : 5;
+
+  if (used >= limit) return;
+
+  setPetCareBusy(true);
+  setPetCareError("");
+
+  try {
+    const { error } = await supabase.rpc("pet_do_care", {
+      p_generation_id: currentPet.id,
+      p_user_name: petCaretaker,
+      p_action_type: actionType,
+    });
+
+    if (error) throw error;
+
+    // 돌보기 성공 → XP와 오늘 사용 횟수 다시 조회
+    setPetReload((value) => value + 1);
+  } catch (error) {
+    setPetCareError(
+      error instanceof Error
+        ? error.message
+        : "돌보기에 실패했어요. 다시 시도해 주세요."
+    );
+  } finally {
+    setPetCareBusy(false);
+  }
+};
+  
   const [time, setTime] = useState<string>("");
   const [receiptData, setReceiptData] = useState<{
     type: "single" | "list";
@@ -3300,23 +3399,80 @@ return (
   </select>
 </div>
 
-        {/* 돌보기 버튼 — DB 연결 전 */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled
-            className="win-btn py-2 text-xs font-bold disabled:opacity-50"
-          >
-            🍪 먹이 주기
-          </button>
-          <button
-            type="button"
-            disabled
-            className="win-btn py-2 text-xs font-bold disabled:opacity-50"
-          >
-            💗 쓰다듬기
-          </button>
-        </div>
+        {/* 🐾 실제 돌보기 버튼 */}
+<div className="space-y-2">
+  <div className="grid grid-cols-2 gap-2">
+    <button
+      type="button"
+      onClick={() => void doPetCare("feed")}
+      disabled={
+        !currentPet ||
+        currentPet.stage === "dead" ||
+        !userList.includes(petCaretaker) ||
+        petCareLoading ||
+        petCareBusy ||
+        !!petCareError ||
+        petCareCounts.feed >= 3
+      }
+      className="win-btn py-2 px-1 text-xs font-bold disabled:opacity-50"
+    >
+      <div>
+        {currentPet?.stage === "egg"
+          ? "🥚 알 보살피기"
+          : "🍪 먹이 주기"}
+      </div>
+      <div className="mt-1 font-normal">
+        {petCareLoading
+          ? "확인 중..."
+          : `남은 횟수 ${Math.max(0, 3 - petCareCounts.feed)}/3`}
+      </div>
+    </button>
+
+    <button
+      type="button"
+      onClick={() => void doPetCare("pet")}
+      disabled={
+        !currentPet ||
+        currentPet.stage === "dead" ||
+        !userList.includes(petCaretaker) ||
+        petCareLoading ||
+        petCareBusy ||
+        !!petCareError ||
+        petCareCounts.pet >= 5
+      }
+      className="win-btn py-2 px-1 text-xs font-bold disabled:opacity-50"
+    >
+      <div>💗 쓰다듬기</div>
+      <div className="mt-1 font-normal">
+        {petCareLoading
+          ? "확인 중..."
+          : `남은 횟수 ${Math.max(0, 5 - petCareCounts.pet)}/5`}
+      </div>
+    </button>
+  </div>
+
+  {!petCaretaker && (
+    <p className="text-center text-xs text-gray-600">
+      돌보는 사람의 닉네임을 먼저 선택해 주세요.
+    </p>
+  )}
+
+  {petCareError && (
+    <div className="space-y-1 text-center">
+      <p className="text-xs text-red-700">{petCareError}</p>
+      <button
+        type="button"
+        className="win-btn px-3 py-1 text-xs"
+        onClick={() => {
+          setPetCareError("");
+          setPetReload((value) => value + 1);
+        }}
+      >
+        다시 불러오기
+      </button>
+    </div>
+  )}
+</div>
 
         {/* 도움말 */}
         <details className="bg-white win-inset p-2 text-xs">
