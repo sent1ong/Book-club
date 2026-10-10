@@ -735,6 +735,22 @@ function BookClubContent() {
   // 화면과 입력 상태
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [reviews, setReviews] = useState<BookReview[]>([]);
+  type ReadingPlan = {
+  id: number;
+  group_name: string;
+  user_name: string;
+  title: string;
+  author: string;
+  genre: string;
+  planned_date: string | null;
+  created_at: string;
+  };
+  const [readingPlans, setReadingPlans] = useState<ReadingPlan[]>([]);
+  const [planTitle, setPlanTitle] = useState("");
+  const [planAuthor, setPlanAuthor] = useState("");
+  const [planGenre, setPlanGenre] = useState("소설");
+  const [planDate, setPlanDate] = useState("");
+  const [planLoading, setPlanLoading] = useState(false);
   const [goals, setGoals] = useState<UserGoal[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1291,6 +1307,84 @@ function BookClubContent() {
   }, []);
 
   const handleSelectUser = (user: string) => setSelectedUser(user);
+
+  // 📌 독서 예고장 목록 불러오기
+const fetchReadingPlans = async () => {
+  if (!isValidGroup(groupName)) return;
+
+  const { data, error } = await supabase
+    .from("reading_plans")
+    .select("*")
+    .eq("group_name", groupName)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("독서 예고장 불러오기 실패:", error);
+    return;
+  }
+
+  setReadingPlans(data || []);
+};
+
+  // 📌 예고장 창을 열 때마다 목록 새로 불러오기
+useEffect(() => {
+  if (openWindow === "reading-plan") {
+    void fetchReadingPlans();
+  }
+}, [openWindow, groupName]);
+
+  // 📌 독서 예고장 등록
+const addReadingPlan = async () => {
+  if (!planTitle.trim() || !planAuthor.trim()) {
+    alert("작품 제목과 작가를 입력해주세요!");
+    return;
+  }
+
+  if (selectedUser === "전체" || !isValidGroup(groupName)) return;
+
+  setPlanLoading(true);
+
+  const { error } = await supabase.from("reading_plans").insert({
+    group_name: groupName,
+    user_name: selectedUser,
+    title: planTitle.trim(),
+    author: planAuthor.trim(),
+    genre: planGenre,
+    planned_date: planDate || null,
+  });
+
+  setPlanLoading(false);
+
+  if (error) {
+    alert("예고장 등록 실패: " + error.message);
+    return;
+  }
+
+  setPlanTitle("");
+  setPlanAuthor("");
+  setPlanGenre("소설");
+  setPlanDate("");
+  await fetchReadingPlans();
+};
+
+// 📌 독서 예고장 삭제
+const deleteReadingPlan = async (id: number) => {
+  if (!confirm("이 독서 예고장을 삭제할까요?")) return;
+
+  const { error } = await supabase
+    .from("reading_plans")
+    .delete()
+    .eq("id", id)
+    .eq("group_name", groupName)
+    .eq("user_name", selectedUser);
+
+  if (error) {
+    alert("예고장 삭제 실패: " + error.message);
+    return;
+  }
+
+  await fetchReadingPlans();
+};
 
   useEffect(() => {
     let cancelled = false;
@@ -2091,13 +2185,23 @@ function BookClubContent() {
         }}
         className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
       >
-        ✉️ {selectedUser}의 우편함
+                ✉️ {selectedUser}의 우편함
         {mailStatus === "ready" && unreadMailCount > 0 && (
           <span className="ml-1 bg-red-600 text-white px-1 rounded-full">
             {unreadMailCount}
           </span>
         )}
       </button>
+
+      {/* 독서 예고장 */}
+      <button
+        type="button"
+        onClick={() => setOpenWindow("reading-plan")}
+        className="win-btn px-2 py-0.5 text-xs font-bold whitespace-nowrap shrink-0"
+      >
+        📌 {selectedUser}의 예고장
+      </button>
+
     </div>
   )}
 
@@ -2651,6 +2755,128 @@ function BookClubContent() {
           </div>
         </div>
       )}
+
+      {/* 📌 독서 예고장 */}
+{openWindow === "reading-plan" && selectedUser !== "전체" && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+    <div className="w-full max-w-lg max-h-[85dvh] bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col text-black">
+
+      <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+        <span>📌 COMING_SOON.exe - {selectedUser}의 예고장</span>
+        <button
+          type="button"
+          onClick={() => setOpenWindow(null)}
+          className="win-btn text-black px-1"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="p-3 flex flex-col gap-2 overflow-y-auto min-h-0">
+
+        <div className="text-xs font-bold">📢 다음에 읽을 작품 예고하기</div>
+
+        <input
+          value={planTitle}
+          onChange={(e) => setPlanTitle(e.target.value)}
+          placeholder="작품 제목"
+          className="w-full bg-white win-inset p-2 text-xs"
+        />
+
+        <input
+          value={planAuthor}
+          onChange={(e) => setPlanAuthor(e.target.value)}
+          placeholder="작가 이름"
+          className="w-full bg-white win-inset p-2 text-xs"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={planGenre}
+            onChange={(e) => setPlanGenre(e.target.value)}
+            className="bg-white win-inset p-2 text-xs flex-1"
+          >
+            {["소설", "만화", "웹툰", "오디오드라마"].map((genre) => (
+              <option key={genre} value={genre}>{genre}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={planDate}
+            onChange={(e) => setPlanDate(e.target.value)}
+            className="bg-white win-inset p-2 text-xs flex-1 min-w-0"
+          />
+        </div>
+
+        <button
+          type="button"
+          disabled={planLoading}
+          onClick={() => void addReadingPlan()}
+          className="win-btn px-3 py-2 text-xs font-bold disabled:opacity-50"
+        >
+          {planLoading ? "등록 중..." : "📌 예고장 등록"}
+        </button>
+
+        <div className="border-t border-gray-400 my-1" />
+
+        <strong className="text-xs">📋 {selectedUser}의 독서 예고 목록</strong>
+
+        {readingPlans
+          .filter((plan) => plan.user_name === selectedUser)
+          .map((plan) => {
+            const normalize = (value: string) =>
+              value.normalize("NFC").replace(/\s+/g, "").toLowerCase();
+
+            const completed = reviews.some(
+              (book) =>
+                book.user_name === plan.user_name &&
+                normalize(book.title) === normalize(plan.title) &&
+                normalize(book.author || "") === normalize(plan.author) &&
+                book.genre === plan.genre
+            );
+
+            return (
+              <div key={plan.id} className="bg-white win-inset p-3 text-xs">
+                <div className="font-bold text-[#000080] break-words">
+                  📖 {plan.title}
+                </div>
+
+                <div className="text-gray-600 mt-1">
+                  {plan.author} · {plan.genre}
+                </div>
+
+                {plan.planned_date && (
+                  <div className="mt-1">
+                    📅 예정일: {plan.planned_date}
+                  </div>
+                )}
+
+                <div className={`mt-2 font-bold ${completed ? "text-green-700" : "text-orange-700"}`}>
+                  {completed ? "✅ 예고 이행!" : "⏳ 예고 중"}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void deleteReadingPlan(plan.id)}
+                  className="win-btn px-2 py-1 mt-2 text-xs"
+                >
+                  삭제
+                </button>
+              </div>
+            );
+          })}
+
+        {readingPlans.filter((plan) => plan.user_name === selectedUser).length === 0 && (
+          <p className="text-xs text-gray-600 text-center py-4">
+            아직 등록된 독서 예고가 없습니다.
+          </p>
+        )}
+
+      </div>
+    </div>
+  </div>
+)}
 
       {/* 4. 전체 댓글 (comments) */}
       {openWindow === "comments" && (
