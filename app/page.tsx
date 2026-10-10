@@ -2961,7 +2961,7 @@ const deleteReadingPlan = async (id: number) => {
           />
         )}
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["mailbox", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
+      {openWindow && !["mailbox", "reading-plan", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo"].includes(openWindow) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
             <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
               <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
