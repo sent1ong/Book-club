@@ -6596,7 +6596,7 @@ return (
         onClick={() => setOpenWindow("pets")}
         title="PET.exe 열기"
         aria-label="펫 돌보기 열기"
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-auto"
+        className="absolute -bottom-3 left-1/2 -translate-x-1/2 pointer-events-auto"
       >
         <Image
           src={`/pets/${miniPet.species}/egg.png`}
@@ -6625,7 +6625,7 @@ return (
         />
       </button>
     ) : (
-      <div className="absolute bottom-0 left-0 mini-pet-walk">
+      <div className="absolute -bottom-3 left-0 mini-pet-walk">
         <button
           type="button"
           onClick={() => setOpenWindow("pets")}
