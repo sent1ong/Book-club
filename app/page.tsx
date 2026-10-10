@@ -979,7 +979,7 @@ useEffect(() => {
   };
 }, [openWindow, currentPet?.id, petCaretaker, petReload]);
 
-// 🐾 실제 돌보기 실행
+  // 🐾 실제 돌보기 실행
 const doPetCare = async (actionType: "feed" | "pet") => {
   if (
     !currentPet ||
@@ -1002,6 +1002,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
   setPetCareBusy(true);
   setPetCareAction(actionType);
   setPetCareError("");
+
   const careStartedAt = Date.now();
 
   try {
@@ -1012,29 +1013,28 @@ const doPetCare = async (actionType: "feed" | "pet") => {
     });
 
     if (error) throw error;
-
-    // 돌보기 성공 → XP와 오늘 사용 횟수 다시 조회
-    setPetReload((value) => value + 1);
   } catch (error) {
     setPetCareError(
       error instanceof Error
         ? error.message
         : "돌보기에 실패했어요. 다시 시도해 주세요."
     );
-    } finally {
-  const elapsed = Date.now() - careStartedAt;
-  const remaining = Math.max(0, 1500 - elapsed);
+  } finally {
+    const elapsed = Date.now() - careStartedAt;
+    const remaining = Math.max(0, 1500 - elapsed);
 
-  if (remaining > 0) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, remaining);
-    });
+    if (remaining > 0) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, remaining);
+      });
+    }
+
+    setPetCareBusy(false);
+    setPetCareAction(null);
+
+    // 돌보기 연출이 끝난 뒤 XP와 남은 횟수 갱신
+    setPetReload((value) => value + 1);
   }
-
-  setPetCareBusy(false);
-  setPetCareAction(null);
-  setPetReload((value) => value + 1);
-}
 };
   
   const [time, setTime] = useState<string>("");
