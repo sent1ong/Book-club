@@ -162,6 +162,7 @@ interface Comment {
   password?: string;
   content: string;
   created_at: string;
+  parent_comment_id?: number | null;
 }
 
 interface MailNotification {
@@ -1602,6 +1603,12 @@ const nameBabyPet = async () => {
   const [mailReload, setMailReload] = useState(0);
   const [targetMember, setTargetMember] = useState<string[]>([]);
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(null);
+  // 📬 현재 답글을 작성 중인 대상 댓글
+const [replyTarget, setReplyTarget] = useState<{
+  bookId: number;
+  commentId: number;
+  userName: string;
+} | null>(null);
   const [revealedCommentSpoilers, setRevealedCommentSpoilers] = useState<number[]>([]);
   const [commentForm, setCommentForm] = useState<{
     user_name: string;
@@ -2548,30 +2555,40 @@ const deleteReadingPlan = async (id: number) => {
     if (!commentForm.content.trim()) return alert("댓글 내용을 입력해주세요!");
     if (!/^\d{4}$/.test(commentForm.password)) return alert("비밀번호는 숫자 4자리로 입력해주세요!");
 
-    const { error } = await supabase.from("book_comments").insert([
-      {
-        book_id: bookId,
-        group_name: groupName,
-        user_name: commentForm.user_name.trim(),
-        password: commentForm.password,
-        content: commentForm.is_spoiler ? "(스포일러) " + commentForm.content.trim() : commentForm.content.trim(),
-      },
-    ]);
+    // 📬 답글 작성 중이라면 해당 댓글의 ID를 함께 저장
+const parentCommentId =
+  replyTarget?.bookId === bookId
+    ? replyTarget.commentId
+    : null;
+
+const { error } = await supabase.from("book_comments").insert([
+  {
+    book_id: bookId,
+    group_name: groupName,
+    user_name: commentForm.user_name.trim(),
+    password: commentForm.password,
+    content: commentForm.is_spoiler
+      ? "(스포일러) " + commentForm.content.trim()
+      : commentForm.content.trim(),
+    parent_comment_id: parentCommentId,
+  },
+]);
 
     if (error) {
-      alert("댓글 저장 실패: " + error.message);
-    } else {
-      playRetroDing();
-      setCommentForm({
-        user_name: commentForm.user_name,
-        password: "",
-        content: "",
-        is_spoiler: false,
-      });
-      fetchComments();
-      setMailReload((value) => value + 1);
-    }
-  };
+  alert("댓글 저장 실패: " + error.message);
+} else {
+  playRetroDing();
+  setReplyTarget(null); // 📬 답글 대상 초기화
+  setCommentForm({
+    user_name: commentForm.user_name,
+    password: "",
+    content: "",
+    is_spoiler: false,
+  });
+  fetchComments();
+  setMailReload((value) => value + 1);
+}
+};
 
   const handleDeleteComment = async (commentId: number) => {
     const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
@@ -3576,52 +3593,161 @@ const deleteReadingPlan = async (id: number) => {
                                 {bookComments.length === 0 ? (
                                     <div className="text-xs text-gray-400 text-center py-1">첫 번째 댓글을 남겨보세요!</div>
                                   ) : (
-                                    bookComments.map((c) => (
-                                      <div key={c.id} className="bg-white p-2 border border-gray-200 text-xs">
-                                        <div className="flex justify-between items-center text-gray-500 text-xs mb-1">
-                                          <span className="font-bold text-gray-800">{c.user_name}</span>
-                                          <div className="flex gap-1.5">
-                                            <button
-                                              onClick={() => handleEditComment(c.id, c.content)}
-                                              className="text-blue-600 hover:underline font-bold"
-                                            >수정</button>
-                                            <button
-                                              onClick={() => handleDeleteComment(c.id)}
-                                              className="text-red-500 hover:underline font-bold"
-                                            >삭제</button>
-                                          </div>
-                                        </div>
-                                        <div className="text-gray-800 break-all text-xs leading-relaxed">
-                                          {c.content.startsWith("(스포일러)") &&
-                                            !revealedCommentSpoilers.includes(c.id) ? (
-                                              <button
-                                                type="button"
-                                                onClick={() => toggleCommentSpoiler(c.id)}
-                                                className="w-full text-left bg-gray-200 border border-dashed border-gray-400 px-2 py-1.5 text-gray-600 hover:bg-gray-300 cursor-pointer"
-                                              >
-                                                🔒 스포일러가 포함된 댓글입니다. 클릭하여 보기
-                                              </button>
-                                            ) : (
-                                              <div>
-                                                {c.content.replace(/^\(스포일러\)\s*/, "").trim()}
-                                                {c.content.startsWith("(스포일러)") && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => toggleCommentSpoiler(c.id)}
-                                                      className="block mt-1 text-[10px] text-blue-700 hover:underline"
-                                                    >
-                                                      🔒 다시 가리기
-                                                    </button>
-                                                  )}
-                                              </div>
-                                            )}
-                                        </div>
-                                      </div>
-                                    ))
+                              (() => {
+  // 📬 댓글을 부모 → 답글 순서로 정렬
+  const commentIds = new Set(bookComments.map((c) => c.id));
+  const visited = new Set<number>();
+
+  const orderedComments: {
+    comment: (typeof bookComments)[number];
+    depth: number;
+  }[] = [];
+
+  const appendComment = (
+    comment: (typeof bookComments)[number],
+    depth: number
+  ) => {
+    if (visited.has(comment.id)) return;
+
+    visited.add(comment.id);
+    orderedComments.push({ comment, depth });
+
+    bookComments
+      .filter((child) => child.parent_comment_id === comment.id)
+      .forEach((child) => appendComment(child, depth + 1));
+  };
+
+  // 일반 댓글과 부모가 삭제된 답글을 먼저 표시
+  bookComments
+    .filter(
+      (c) =>
+        c.parent_comment_id == null ||
+        !commentIds.has(c.parent_comment_id)
+    )
+    .forEach((c) => appendComment(c, 0));
+
+  // 비정상적인 연결 데이터가 있어도 댓글은 빠뜨리지 않기
+  bookComments.forEach((c) => {
+    if (!visited.has(c.id)) appendComment(c, 0);
+  });
+
+  return orderedComments.map(({ comment: c, depth }) => {
+    const parentComment = bookComments.find(
+      (parent) => parent.id === c.parent_comment_id
+    );
+
+    return (
+      <div
+        key={c.id}
+        className={`p-2 border text-xs ${
+          depth > 0
+            ? "bg-[#f5f0fc] border-[#d1c4e0] border-l-[3px] border-l-[#800080]"
+            : "bg-white border-gray-200"
+        }`}
+        style={{
+          marginLeft: depth > 0 ? `${Math.min(depth, 3) * 12}px` : "0px",
+        }}
+      >
+        <div className="flex justify-between items-center gap-1 text-gray-500 text-xs mb-1">
+          <div className="min-w-0">
+            <span className="font-bold text-gray-800">
+              {depth > 0 ? "↳ " : ""}
+              {c.user_name}
+            </span>
+
+            {parentComment && (
+              <span className="ml-1 text-[10px] text-[#800080]">
+                → {parentComment.user_name}에게 답글
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-1.5 shrink-0">
+            {/* 📬 답글 달기 */}
+            <button
+              type="button"
+              onClick={() => {
+                setReplyTarget({
+                  bookId: book.id,
+                  commentId: c.id,
+                  userName: c.user_name,
+                });
+                setOpenCommentBookId(book.id);
+              }}
+              className="text-[#800080] hover:underline font-bold"
+            >
+              ↳ 답글
+            </button>
+
+            <button
+              onClick={() => handleEditComment(c.id, c.content)}
+              className="text-blue-600 hover:underline font-bold"
+            >
+              수정
+            </button>
+
+            <button
+              onClick={() => handleDeleteComment(c.id)}
+              className="text-red-500 hover:underline font-bold"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+
+        <div className="text-gray-800 break-all text-xs leading-relaxed">
+          {c.content.startsWith("(스포일러)") &&
+          !revealedCommentSpoilers.includes(c.id) ? (
+            <button
+              type="button"
+              onClick={() => toggleCommentSpoiler(c.id)}
+              className="w-full text-left bg-gray-200 border border-dashed border-gray-400 px-2 py-1.5 text-gray-600 hover:bg-gray-300 cursor-pointer"
+            >
+              🔒 스포일러가 포함된 댓글입니다. 클릭하여 보기
+            </button>
+          ) : (
+            <div>
+              {c.content
+                .replace(/^\(스포일러\)\s*/, "")
+                .trim()}
+
+              {c.content.startsWith("(스포일러)") && (
+                <button
+                  type="button"
+                  onClick={() => toggleCommentSpoiler(c.id)}
+                  className="block mt-1 text-[10px] text-blue-700 hover:underline"
+                >
+                  🔒 다시 가리기
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  });
+})()
                                   )}
                               </div>
 
                               <form onSubmit={(e) => handleCommentSubmit(e, book.id)} className="space-y-1">
+                                {/* 📬 누구에게 답글을 작성 중인지 표시 */}
+                                {replyTarget?.bookId === book.id && (
+                                <div className="flex items-center justify-between gap-2 bg-[#eee7fa] border border-[#b8a7d1] px-2 py-1.5 text-xs">
+                                      <span className="font-bold text-[#800080] truncate">
+                                              ↳ {replyTarget.userName} 님에게 답글 작성 중
+                                         </span>
+
+                                  <button
+                                          type="button"
+                                          onClick={() => setReplyTarget(null)}
+                                          className="win-btn px-2 py-0.5 text-[11px] shrink-0"
+                                        >
+                                         취소
+                                      </button>
+                                  </div>
+                            )}
+                              
                                 <div className="grid grid-cols-2 gap-1">
                                   <input
                                     type="text"
