@@ -228,6 +228,37 @@ const APP_LIST: AppItem[] = [
   { id: "collector", name: "카드 도감", icon: "/icons/collector.png" },
 ];
 
+// 🎵 JUKEBOX.exe: 유튜브 주소에서 영상 ID 추출
+function getJukeboxVideoId(
+  value: string | null | undefined
+): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+
+    if (url.protocol !== "https:") return null;
+
+    const id =
+      host === "youtu.be"
+        ? url.pathname.split("/").filter(Boolean)[0]
+        : host === "youtube.com" ||
+            host === "m.youtube.com" ||
+            host === "music.youtube.com"
+          ? url.pathname === "/watch"
+            ? url.searchParams.get("v")
+            : /^(\/shorts\/|\/live\/|\/embed\/)/.test(url.pathname)
+              ? url.pathname.split("/")[2]
+              : null
+          : null;
+
+    return id && /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 function renderReviewText(text: string): React.ReactNode {
   return (
     <span className="whitespace-pre-wrap">
@@ -906,6 +937,222 @@ function BookClubContent() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [openWindow, setOpenWindow] = useState<string | null>(null);
+  // 🎵 JUKEBOX.exe 상태
+const [jukeboxActiveId, setJukeboxActiveId] = useState<number | null>(null);
+const [jukeboxPlaying, setJukeboxPlaying] = useState(false);
+const [jukeboxReady, setJukeboxReady] = useState(false);
+const [jukeboxError, setJukeboxError] = useState("");
+const [jukeboxSearch, setJukeboxSearch] = useState("");
+const [jukeboxSort, setJukeboxSort] = useState<
+  "newest" | "oldest" | "title"
+>("newest");
+
+// 유튜브 플레이어와 현재 곡 정보 보관
+const jukeboxPlayerRef = React.useRef<any>(null);
+const jukeboxPendingRef = React.useRef<string | null>(null);
+const jukeboxLoadedVideoRef = React.useRef<string | null>(null);
+const jukeboxActiveIdRef = React.useRef<number | null>(null);
+const jukeboxSongsRef = React.useRef<BookReview[]>([]);
+const jukeboxActionRef = React.useRef<(direction: number) => void>(
+  () => {}
+);
+  // 🎵 현재 모임의 리뷰에서 OST가 등록된 곡만 수집
+const jukeboxSongs = React.useMemo(() => {
+  const available = reviews.filter(
+    (review) =>
+      review.group_name === groupName &&
+      !!getJukeboxVideoId(review.ost_youtube_url) &&
+      !!review.ost_title?.trim() &&
+      !!review.ost_artist?.trim()
+  );
+
+  return available.sort((a, b) =>
+    jukeboxSort === "oldest"
+      ? a.id - b.id
+      : jukeboxSort === "title"
+        ? (a.ost_title || "").localeCompare(
+            b.ost_title || "",
+            "ko"
+          )
+        : b.id - a.id
+  );
+}, [reviews, groupName, jukeboxSort]);
+
+jukeboxSongsRef.current = jukeboxSongs;
+jukeboxActiveIdRef.current = jukeboxActiveId;
+
+// 현재 선택된 곡
+const jukeboxActive =
+  jukeboxSongs.find((review) => review.id === jukeboxActiveId) || null;
+
+// 주크박스 검색
+const jukeboxSearchText = jukeboxSearch.trim().toLocaleLowerCase();
+
+const jukeboxVisibleSongs = jukeboxSongs.filter((review) =>
+  [
+    review.ost_title,
+    review.ost_artist,
+    review.title,
+    review.user_name,
+  ].some((value) =>
+    (value || "").toLocaleLowerCase().includes(jukeboxSearchText)
+  )
+);
+
+  // 🎵 JUKEBOX.exe — 곡 선택
+const jukeboxPlaySong = (review: BookReview) => {
+  const videoId = getJukeboxVideoId(review.ost_youtube_url);
+  if (!videoId) return;
+
+  jukeboxPendingRef.current = videoId;
+  setJukeboxActiveId(review.id);
+  setJukeboxError("");
+
+  const player = jukeboxPlayerRef.current;
+
+  if (player && jukeboxReady) {
+    jukeboxLoadedVideoRef.current = videoId;
+    player.loadVideoById(videoId);
+  }
+};
+
+// 🎵 이전 곡 / 다음 곡
+const jukeboxSkip = (direction: number) => {
+  const songs = jukeboxSongsRef.current;
+  if (songs.length === 0) return;
+
+  const currentIndex = songs.findIndex(
+    (song) => song.id === jukeboxActiveIdRef.current
+  );
+
+  const nextIndex =
+    currentIndex === -1
+      ? 0
+      : (currentIndex + direction + songs.length) % songs.length;
+
+  jukeboxPlaySong(songs[nextIndex]);
+};
+
+jukeboxActionRef.current = jukeboxSkip;
+
+// 🎵 재생 / 일시정지
+const jukeboxTogglePlayback = () => {
+  const player = jukeboxPlayerRef.current;
+
+  if (!jukeboxActive) {
+    if (jukeboxSongs.length > 0) {
+      jukeboxPlaySong(jukeboxSongs[0]);
+    }
+    return;
+  }
+
+  if (!player || !jukeboxReady) return;
+
+  if (jukeboxPlaying) {
+    player.pauseVideo();
+  } else {
+    player.playVideo();
+  }
+};
+
+  // 🎵 YouTube IFrame API — 플레이어는 한 번만 생성
+useEffect(() => {
+  let cancelled = false;
+  let player: any = null;
+
+  const ytWindow = window as typeof window & {
+    YT?: any;
+    onYouTubeIframeAPIReady?: () => void;
+  };
+
+  const createPlayer = () => {
+    if (cancelled || !ytWindow.YT?.Player) return;
+
+    const mount = document.getElementById("jukebox-youtube-player");
+    if (!mount) return;
+
+    player = new ytWindow.YT.Player(mount, {
+      width: "100%",
+      height: "100%",
+      playerVars: {
+        playsinline: 1,
+        controls: 1,
+        rel: 0,
+        origin: window.location.origin,
+      },
+      events: {
+        onReady: (event: any) => {
+          if (cancelled) return;
+
+          jukeboxPlayerRef.current = event.target;
+          setJukeboxReady(true);
+
+          const pendingVideoId = jukeboxPendingRef.current;
+
+          if (pendingVideoId) {
+            jukeboxLoadedVideoRef.current = pendingVideoId;
+            event.target.loadVideoById(pendingVideoId);
+          }
+        },
+
+        onStateChange: (event: any) => {
+          if (cancelled) return;
+
+          const state = event.data;
+
+          setJukeboxPlaying(
+            state === ytWindow.YT.PlayerState.PLAYING
+          );
+
+          // 영상이 끝나면 다음 곡으로 이동
+          if (state === ytWindow.YT.PlayerState.ENDED) {
+            jukeboxActionRef.current(1);
+          }
+        },
+
+        onError: () => {
+          if (cancelled) return;
+
+          setJukeboxPlaying(false);
+          setJukeboxError(
+            "이 영상은 재생할 수 없어요. 다른 곡을 선택해 주세요."
+          );
+        },
+      },
+    });
+  };
+
+  if (ytWindow.YT?.Player) {
+    createPlayer();
+  } else {
+    const previousCallback = ytWindow.onYouTubeIframeAPIReady;
+
+    ytWindow.onYouTubeIframeAPIReady = () => {
+      previousCallback?.();
+      createPlayer();
+    };
+
+    if (!document.querySelector(
+      'script[src="https://www.youtube.com/iframe_api"]'
+    )) {
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }
+
+  return () => {
+    cancelled = true;
+
+    if (player && typeof player.destroy === "function") {
+      player.destroy();
+    }
+
+    jukeboxPlayerRef.current = null;
+  };
+}, []);
+  
   // 🐾 PET.exe 상태
 const [currentPet, setCurrentPet] = useState<PetGeneration | null>(null);
   // 🪦 역대 펫 기록
@@ -2764,6 +3011,29 @@ const deleteReadingPlan = async (id: number) => {
     opacity: 0;
   }
 }
+
+/* 🎵 작업표시줄 주크박스 곡명 한 줄 흐르기 */
+@keyframes jukeboxMarquee {
+  0%, 12% {
+    transform: translateX(0);
+  }
+  88%, 100% {
+    transform: translateX(-40%);
+  }
+}
+
+.jukebox-marquee {
+  white-space: nowrap;
+  min-width: 100%;
+  animation: jukeboxMarquee 12s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jukebox-marquee {
+    animation: none;
+  }
+}
+
 `}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
@@ -3031,7 +3301,16 @@ const deleteReadingPlan = async (id: number) => {
 
                         {/* 🎵 JUKEBOX.exe — 이 작품의 OST */}
 {book.ost_youtube_url && (
-  <div className="mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs">
+  <button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    jukeboxPlaySong(book);
+    setOpenWindow("jukebox");
+  }}
+  className="w-full mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs text-left hover:bg-[#ece0f8] cursor-pointer"
+  title="주크박스에서 이 노래 재생"
+>
     <Image
       src="/icons/music.png"
       alt=""
@@ -3053,7 +3332,7 @@ const deleteReadingPlan = async (id: number) => {
         {book.ost_artist || "아티스트 미상"}
       </p>
     </div>
-  </div>
+  </button>
 )}
 
                         {/* 이모지 반응 */}
@@ -3246,6 +3525,188 @@ const deleteReadingPlan = async (id: number) => {
           </div>
         </div>
       </div>
+
+      {/* 🎵 JUKEBOX.exe — 창을 닫아도 유지되는 플레이어 */}
+<div
+  className={
+    openWindow === "jukebox"
+      ? "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      : jukeboxActiveId !== null
+        ? "fixed bottom-12 left-2 z-30"
+        : "fixed bottom-12 left-2 z-30 invisible pointer-events-none"
+  }
+>
+  <div
+    className={
+      openWindow === "jukebox"
+        ? "w-full max-w-lg max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
+        : "w-[200px] max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
+    }
+  >
+    {/* 제목 표시줄 */}
+    <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between gap-2 text-xs font-bold">
+      <span className="flex items-center gap-1 min-w-0">
+        <Image
+          src="/icons/music.png"
+          alt=""
+          width={16}
+          height={16}
+          unoptimized
+          className="object-contain"
+        />
+        <span className="truncate">
+          {openWindow === "jukebox" ? "JUKEBOX.exe" : "🎵 재생 중"}
+        </span>
+      </span>
+
+      <button
+        type="button"
+        onClick={() =>
+          setOpenWindow(openWindow === "jukebox" ? null : "jukebox")
+        }
+        className="win-btn text-black px-2"
+        aria-label={
+          openWindow === "jukebox"
+            ? "주크박스 창 닫기"
+            : "주크박스 창 열기"
+        }
+      >
+        {openWindow === "jukebox" ? "✕" : "□"}
+      </button>
+    </div>
+
+    {/* 유튜브 플레이어: 항상 같은 요소 유지 */}
+    <div className="relative w-full aspect-video bg-black win-inset overflow-hidden">
+      <div
+        id="jukebox-youtube-player"
+        className="absolute inset-0 w-full h-full"
+      />
+
+      {!jukeboxActive && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#171525] text-white text-xs text-center p-3 pointer-events-none">
+          🎵 재생할 노래를 선택해 주세요.
+        </div>
+      )}
+    </div>
+
+    {/* 현재 재생 정보 */}
+    {jukeboxActive && (
+      <div className="px-2 py-1 text-[11px] bg-[#e5dff0] min-w-0">
+        <p className="font-bold truncate">
+          {jukeboxActive.ost_title} — {jukeboxActive.ost_artist}
+        </p>
+        {openWindow === "jukebox" && (
+          <p className="text-gray-600 truncate">
+            📚 {jukeboxActive.title} · {jukeboxActive.user_name}
+          </p>
+        )}
+      </div>
+    )}
+
+    {/* 주크박스 전체 창에서만 표시 */}
+    {openWindow === "jukebox" && (
+      <div className="p-3 space-y-3 overflow-y-auto min-h-0">
+        {jukeboxError && (
+          <p role="alert" className="bg-white win-inset p-2 text-xs text-red-700">
+            {jukeboxError}
+          </p>
+        )}
+
+        {/* 이전 / 재생 / 다음 */}
+        <div className="flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => jukeboxSkip(-1)}
+            disabled={jukeboxSongs.length === 0}
+            className="win-btn px-4 py-1.5 text-sm disabled:opacity-50"
+            aria-label="이전 곡"
+          >
+            ⏮
+          </button>
+          <button
+            type="button"
+            onClick={jukeboxTogglePlayback}
+            disabled={jukeboxSongs.length === 0}
+            className="win-btn px-5 py-1.5 text-sm disabled:opacity-50"
+            aria-label={jukeboxPlaying ? "일시정지" : "재생"}
+          >
+            {jukeboxPlaying ? "⏸" : "▶"}
+          </button>
+          <button
+            type="button"
+            onClick={() => jukeboxSkip(1)}
+            disabled={jukeboxSongs.length === 0}
+            className="win-btn px-4 py-1.5 text-sm disabled:opacity-50"
+            aria-label="다음 곡"
+          >
+            ⏭
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="search"
+            value={jukeboxSearch}
+            onChange={(e) => setJukeboxSearch(e.target.value)}
+            placeholder="곡명 · 아티스트 · 책 · 작성자"
+            aria-label="OST 검색"
+            className="min-w-0 flex-1 bg-white win-inset px-2 py-1.5 text-xs outline-none"
+          />
+
+          <select
+            value={jukeboxSort}
+            onChange={(e) =>
+              setJukeboxSort(
+                e.target.value as "newest" | "oldest" | "title"
+              )
+            }
+            aria-label="OST 정렬"
+            className="win-inset bg-white px-1 text-xs"
+          >
+            <option value="newest">최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="title">곡 제목순</option>
+          </select>
+        </div>
+
+        <div className="text-xs font-bold">
+          🎶 우리 모임 OST ({jukeboxSongs.length}곡)
+        </div>
+
+        <div className="bg-white win-inset max-h-[260px] overflow-y-auto p-2 space-y-1">
+          {jukeboxVisibleSongs.length === 0 ? (
+            <p className="text-center text-gray-500 text-xs py-6">
+              {jukeboxSongs.length === 0
+                ? "아직 등록된 OST가 없어요."
+                : "검색 결과가 없어요."}
+            </p>
+          ) : (
+            jukeboxVisibleSongs.map((song) => (
+              <button
+                key={song.id}
+                type="button"
+                onClick={() => jukeboxPlaySong(song)}
+                className={`w-full text-left p-2 border text-xs ${
+                  jukeboxActiveId === song.id
+                    ? "bg-[#e8dcf4] border-[#800080]"
+                    : "bg-[#f7f7f7] border-gray-300 hover:bg-[#eee8f5]"
+                }`}
+              >
+                <p className="font-bold break-words">
+                  {jukeboxActiveId === song.id ? "♫ " : "♪ "}
+                  {song.ost_title} — {song.ost_artist}
+                </p>
+                <p className="mt-1 text-[10px] text-gray-600 break-words">
+                  📚 {song.title} · {song.user_name}
+                </p>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+</div>
 
       {/* --- 모달 창들 --- */}
 
@@ -4278,8 +4739,8 @@ return (
 )}
       
       {/* 5. 나머지 신규 기능 플레이스홀더 창 */}
-      {openWindow && !["mailbox", "reading-plan", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo", "pets"].includes(openWindow) && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+{openWindow && !["mailbox", "reading-plan", "book-add", "stats", "goals", "comments", "graveyard", "tags", "genre", "vending", "curation", "versus", "awards", "sales", "pacemaker", "quiz", "collector", "bingo", "pets", "jukebox"].includes(openWindow) && (
+      <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
             <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
               <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
                 <span>{APP_LIST.find((a) => a.id === openWindow)?.name}.exe</span>
@@ -5992,8 +6453,71 @@ return (
           <span>시작</span>
         </button>
 
+        {/* 🎵 JUKEBOX.exe — 작업표시줄 한 줄 플레이어 */}
+{jukeboxSongs.length > 0 && (
+  <div className="flex-1 min-w-0 mx-1 h-[30px] win-inset bg-[#d6d6d6] flex items-center gap-1 px-1">
+    {/* 곡 제목 — 클릭하면 주크박스 열기 */}
+    <button
+      type="button"
+      onClick={() => setOpenWindow("jukebox")}
+      className="min-w-0 flex-1 h-full text-left overflow-hidden"
+      title={
+        jukeboxActive
+          ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+          : "주크박스 열기"
+      }
+    >
+      <span className="block whitespace-nowrap overflow-hidden text-[10px] sm:text-xs text-black">
+        {jukeboxActive ? (
+          <span
+            key={jukeboxActive.id}
+            className="inline-block jukebox-marquee"
+          >
+            ♫ {jukeboxActive.ost_title} — {jukeboxActive.ost_artist}
+          </span>
+        ) : (
+          "♫ 주크박스"
+        )}
+      </span>
+    </button>
+
+    {/* 재생 컨트롤 — 항상 오른쪽에 고정 */}
+    <div className="flex items-center gap-0.5 shrink-0">
+      <button
+        type="button"
+        onClick={() => jukeboxSkip(-1)}
+        className="win-btn w-6 h-6 flex items-center justify-center text-xs"
+        title="이전 곡"
+        aria-label="이전 곡"
+      >
+        ⏮
+      </button>
+
+      <button
+        type="button"
+        onClick={jukeboxTogglePlayback}
+        className="win-btn w-6 h-6 flex items-center justify-center text-xs"
+        title={jukeboxPlaying ? "일시정지" : "재생"}
+        aria-label={jukeboxPlaying ? "일시정지" : "재생"}
+      >
+        {jukeboxPlaying ? "⏸" : "▶"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => jukeboxSkip(1)}
+        className="win-btn w-6 h-6 flex items-center justify-center text-xs"
+        title="다음 곡"
+        aria-label="다음 곡"
+      >
+        ⏭
+      </button>
+    </div>
+  </div>
+)}
+
         {/* 우측 시스템 트레이 영역 (모임 뱃지 + 시계) */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <div className="win-inset px-2 py-0.5 text-[11px] font-mono bg-[#c0c0c0] min-w-[65px] text-center">
             {time}
           </div>
