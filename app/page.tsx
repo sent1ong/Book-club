@@ -5364,7 +5364,7 @@ return (
   onClick={() => setOpenWindow("pets")}
   title="아기 이름을 지어주세요!"
   aria-label="이름 없는 아기 펫 알림"
-  className="absolute -top-8 right-0 z-40 pointer-events-auto group"
+  className="absolute -top-8 left-1/2 -translate-x-1/2 z-40 pointer-events-auto group"
 >
   <span className="relative block whitespace-nowrap rounded-md border-2 border-black bg-[#fff9d7] px-3 py-2 text-xs font-bold text-black shadow-[2px_2px_0_#777]">
     🔔 이름 지어주세요!
