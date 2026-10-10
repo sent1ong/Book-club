@@ -849,6 +849,7 @@ const [petNamingError, setPetNamingError] = useState("");
   // 🐾 작업표시줄 위 미니 펫
 const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const miniPetPreview = false; // 테스트할 때만 true
+  const petNamingPreview = true; // 🧪 이름 짓기 화면 테스트
   // 🐾 회원별 돌보기 횟수
 const [petCareCounts, setPetCareCounts] = useState({
   feed: 0,
@@ -3563,10 +3564,11 @@ return (
 )}
 
         {/* 🐣 이름이 없는 펫의 작명 요청 */}
-{currentPet &&
-  currentPet.stage !== "egg" &&
-  currentPet.stage !== "dead" &&
-  !currentPet.pet_name && (
+        {currentPet &&
+  (petNamingPreview ||
+    (currentPet.stage !== "egg" &&
+      currentPet.stage !== "dead" &&
+      !currentPet.pet_name)) && (
     <div className="bg-[#fff4d9] win-inset p-3 text-xs space-y-2">
       <p className="font-bold text-[#7a4200]">
         🔔 아기가 태어났어요! 이름을 지어주세요.
@@ -5353,9 +5355,10 @@ return (
   <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
 
     {/* 🐣 이름 없는 아기일 때만 표시되는 알림 */}
-{miniPet.stage !== "egg" &&
-  miniPet.stage !== "dead" &&
-  !miniPet.pet_name && (
+    {(petNamingPreview ||
+  (miniPet.stage !== "egg" &&
+    miniPet.stage !== "dead" &&
+    !miniPet.pet_name)) && (
     <button
       type="button"
       onClick={() => setOpenWindow("pets")}
