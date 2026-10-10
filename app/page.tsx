@@ -163,6 +163,7 @@ interface Comment {
   content: string;
   created_at: string;
   parent_comment_id?: number | null;
+  is_deleted?: boolean; // 🗑️ 댓글 삭제 여부
 }
 
 interface MailNotification {
@@ -2591,32 +2592,74 @@ const { error } = await supabase.from("book_comments").insert([
 };
 
   const handleDeleteComment = async (commentId: number) => {
-    const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
-    if (!inputPw) return;
+  const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
+  if (inputPw === null) return;
 
-    const { data: targetComment, error: findError } = await supabase
+  const { data: targetComment, error: findError } = await supabase
+    .from("book_comments")
+    .select("id, book_id, group_name, password, is_deleted")
+    .eq("id", commentId)
+    .eq("group_name", groupName)
+    .single();
+
+  if (findError || !targetComment) {
+    return alert("댓글 정보를 불러올 수 없습니다.");
+  }
+
+  if (targetComment.is_deleted) {
+    return alert("이미 삭제된 댓글입니다.");
+  }
+
+  // 숫자로 저장된 과거 비밀번호도 비교할 수 있도록 문자열로 통일
+  if (String(targetComment.password ?? "") !== inputPw) {
+    return alert("비밀번호가 일치하지 않습니다!");
+  }
+
+  if (!confirm("댓글을 삭제하시겠습니까?")) return;
+
+  // 📬 이 댓글에 직접 달린 답글이 있는지 확인
+  const { data: children, error: childError } = await supabase
+    .from("book_comments")
+    .select("id")
+    .eq("parent_comment_id", commentId)
+    .limit(1);
+
+  if (childError) {
+    return alert("답글 확인 실패: " + childError.message);
+  }
+
+  if (children && children.length > 0) {
+    // 답글이 있으면 내용과 비밀번호를 제거하고 자리만 유지
+    const { error } = await supabase
       .from("book_comments")
-      .select("password")
+      .update({
+        is_deleted: true,
+        content: "삭제된 댓글입니다.",
+        password: "",
+      })
       .eq("id", commentId)
-      .single();
+      .eq("group_name", groupName)
+      .eq("is_deleted", false);
 
-    if (findError || !targetComment) {
-      return alert("댓글 정보를 불러올 수 없습니다.");
-    }
-
-    if (targetComment.password !== inputPw) {
-      return alert("비밀번호가 일치하지 않습니다!");
-    }
-
-    const { error } = await supabase.from("book_comments").delete().eq("id", commentId);
     if (error) {
-      alert("삭제 실패: " + error.message);
-    } else {
-      alert("댓글이 삭제되었습니다.");
-      fetchComments();
-      setMailReload((value) => value + 1);
+      return alert("삭제 실패: " + error.message);
     }
-  };
+  } else {
+    // 답글이 없으면 실제 삭제
+    const { error } = await supabase
+      .from("book_comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("group_name", groupName);
+
+    if (error) {
+      return alert("삭제 실패: " + error.message);
+    }
+  }
+
+  fetchComments();
+  setMailReload((value) => value + 1);
+};
 
   const handleEditComment = async (commentId: number, oldContent: string) => {
     const inputPw = prompt("댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:");
@@ -3651,10 +3694,9 @@ const { error } = await supabase.from("book_comments").insert([
         <div className="flex justify-between items-center gap-1 text-gray-500 text-xs mb-1">
           <div className="min-w-0">
             <span className="font-bold text-gray-800">
-              {depth > 0 ? "↳ " : ""}
-              {c.user_name}
-            </span>
-
+  {depth > 0 ? "↳ " : ""}
+  {c.is_deleted ? "삭제된 댓글" : c.user_name}
+</span>
             {parentComment && (
               <span className="ml-1 text-[10px] text-[#800080]">
                 → {parentComment.user_name}에게 답글
@@ -3662,7 +3704,8 @@ const { error } = await supabase.from("book_comments").insert([
             )}
           </div>
 
-          <div className="flex gap-1.5 shrink-0">
+          {!c.is_deleted && (
+  <div className="flex gap-1.5 shrink-0">
             {/* 📬 답글 달기 */}
             <button
               type="button"
@@ -3693,11 +3736,16 @@ const { error } = await supabase.from("book_comments").insert([
               삭제
             </button>
           </div>
+        )}
         </div>
 
         <div className="text-gray-800 break-all text-xs leading-relaxed">
-          {c.content.startsWith("(스포일러)") &&
-          !revealedCommentSpoilers.includes(c.id) ? (
+          {c.is_deleted ? (
+  <span className="text-gray-400 italic">
+    삭제된 댓글입니다.
+  </span>
+) : c.content.startsWith("(스포일러)") &&
+  !revealedCommentSpoilers.includes(c.id) ? (
             <button
               type="button"
               onClick={() => toggleCommentSpoiler(c.id)}
