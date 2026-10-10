@@ -3703,7 +3703,7 @@ return (
       ? petCareAction === "feed"
         ? "pet-egg-excited"
         : "pet-egg-bounce"
-      : ""
+      : "mini-pet-hop"
   }
 />
 
