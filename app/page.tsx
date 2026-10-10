@@ -33,6 +33,31 @@ interface BookReview {
   created_at?: string;
 }
 
+interface PetGeneration {
+  id: number;
+  group_name: string;
+  generation_number: number;
+  species: string;
+  pet_name: string | null;
+  named_by: string | null;
+  xp: number;
+  stage: "egg" | "baby" | "teen" | "adult" | "dead";
+  color_variant: string | null;
+  decoration: string | null;
+  born_at: string;
+  adult_at: string | null;
+  died_at: string | null;
+}
+
+const PET_SPECIES_NAMES: Record<string, string> = {
+  bogli: "보글이",
+  bosongi: "보송이",
+  byeolkongi: "별콩이",
+  hornkong: "뿔콩이",
+  dungdungi: "둥둥이",
+  kongmongi: "콩몽이",
+};
+
 interface UserGoal {
   id?: number;
   group_name: string;
@@ -810,6 +835,97 @@ function BookClubContent() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [openWindow, setOpenWindow] = useState<string | null>(null);
+  // 🐾 PET.exe 상태
+const [currentPet, setCurrentPet] = useState<PetGeneration | null>(null);
+const [petLoading, setPetLoading] = useState(true);
+const [petError, setPetError] = useState("");
+const [petAdopting, setPetAdopting] = useState(false);
+const [petReload, setPetReload] = useState(0);
+const [petCaretaker, setPetCaretaker] = useState("");
+
+// PET.exe 현재 세대 불러오기
+useEffect(() => {
+  if (openWindow !== "pets") return;
+
+  let cancelled = false;
+
+  const loadPet = async () => {
+    setPetLoading(true);
+    setPetError("");
+
+    try {
+      if (!isValidGroup(groupName)) {
+        throw new Error("올바르지 않은 모임입니다.");
+      }
+
+      // 성인 수명이 끝났는지 먼저 확인
+      const lifecycle = await supabase.rpc("pet_check_lifecycle", {
+        p_group_name: groupName,
+      });
+
+      if (lifecycle.error) throw lifecycle.error;
+
+      // 현재 모임의 가장 최근 세대 조회
+      const { data, error } = await supabase
+        .from("pet_generations")
+        .select("*")
+        .eq("group_name", groupName)
+        .order("generation_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!cancelled) {
+        setCurrentPet(data as PetGeneration | null);
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setPetError(
+          error instanceof Error
+            ? error.message
+            : "펫 정보를 불러오지 못했어요."
+        );
+      }
+    } finally {
+      if (!cancelled) setPetLoading(false);
+    }
+  };
+
+  void loadPet();
+
+  return () => {
+    cancelled = true;
+  };
+}, [openWindow, groupName, petReload]);
+
+// 돌보는 사람 닉네임 기억하기
+useEffect(() => {
+  setPetCaretaker(
+    localStorage.getItem(`pet_caretaker_${groupName}`) || ""
+  );
+}, [groupName]);
+
+// 새 알 입양
+const adoptPetEgg = async () => {
+  if (petAdopting || petLoading) return;
+
+  setPetAdopting(true);
+  setPetError("");
+
+  const { error } = await supabase.rpc("pet_adopt_egg", {
+    p_group_name: groupName,
+  });
+
+  setPetAdopting(false);
+
+  if (error) {
+    setPetError(error.message);
+    return;
+  }
+
+  setPetReload((value) => value + 1);
+};
   const [time, setTime] = useState<string>("");
   const [receiptData, setReceiptData] = useState<{
     type: "single" | "list";
@@ -3030,38 +3146,159 @@ return (
         {/* 펫이 생활하는 방 */}
         <div className="relative bg-[#f5f0ff] win-inset h-56 overflow-hidden flex items-center justify-center">
           <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
-
-          <div className="relative z-10 flex flex-col items-center gap-2">
-            <Image
-              src="/pets/bogli/egg.png"
-              alt="펫 알"
-              width={150}
-              height={150}
-              className="object-contain"
-              unoptimized
-            />
-            <span className="text-xs font-bold text-[#594173]">
-              🥚 새로운 생명을 기다리는 중...
-            </span>
-          </div>
+          {petLoading ? (
+  <span className="text-xs">🐾 펫을 불러오는 중...</span>
+) : petError ? (
+  <span className="text-xs text-red-700">
+    펫을 불러오지 못했어요.
+  </span>
+) : !currentPet ? (
+  <div className="text-center space-y-3">
+    <p className="text-3xl">🥚</p>
+    <p className="text-xs font-bold">
+      아직 우리 모임의 펫이 없어요!
+    </p>
+    <button
+      type="button"
+      onClick={() => void adoptPetEgg()}
+      disabled={petAdopting}
+      className="win-btn px-4 py-2 text-xs font-bold"
+    >
+      {petAdopting ? "입양 중..." : "🥚 첫 알 입양하기"}
+    </button>
+  </div>
+) : currentPet.stage === "dead" ? (
+  <div className="flex flex-col items-center gap-2">
+    <Image
+      src="/pets/deco/grave.png"
+      alt="펫의 묘비"
+      width={150}
+      height={150}
+      unoptimized
+      className="object-contain"
+    />
+    <span className="text-xs font-bold">
+      🕊️ {currentPet.pet_name || "우리 펫"}의 추억
+    </span>
+    <button
+      type="button"
+      onClick={() => void adoptPetEgg()}
+      disabled={petAdopting}
+      className="win-btn px-3 py-1 text-xs font-bold"
+    >
+      {petAdopting ? "입양 중..." : "🥚 새로운 알 입양하기"}
+    </button>
+  </div>
+) : (
+  <div className="flex flex-col items-center gap-2">
+    <Image
+      src={`/pets/${currentPet.species}/${currentPet.stage}.png`}
+      alt={currentPet.pet_name || "우리 펫"}
+      width={150}
+      height={150}
+      className="object-contain"
+      unoptimized
+    />
+    <span className="text-xs font-bold text-[#594173]">
+      {currentPet.stage === "egg"
+        ? "🥚 새로운 생명을 기다리는 중..."
+        : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
+    </span>
+  </div>
+)}
         </div>
 
         {/* 상태 정보 */}
-        <div className="bg-white win-inset p-3 text-xs space-y-2">
-          <div className="flex justify-between font-bold">
-            <span>1세대 · 보글이</span>
-            <span>🥚 알</span>
-          </div>
+        {currentPet && (
+  <div className="bg-white win-inset p-3 text-xs space-y-2">
+    <div className="flex justify-between font-bold">
+      <span>
+        {currentPet.generation_number}세대 ·{" "}
+        {PET_SPECIES_NAMES[currentPet.species] || currentPet.species}
+      </span>
+      <span>
+        {{
+          egg: "🥚 알",
+          baby: "🐣 아기",
+          teen: "🌱 청소년",
+          adult: "✨ 성인",
+          dead: "🪦 무지개다리",
+        }[currentPet.stage]}
+      </span>
+    </div>
 
-          <div className="flex justify-between text-gray-700">
-            <span>성장 경험치</span>
-            <span>0 / 50 XP</span>
-          </div>
-
-          <div className="w-full h-4 bg-gray-200 win-inset p-0.5">
-            <div className="h-full bg-[#000080]" style={{ width: "0%" }} />
-          </div>
+    {currentPet.stage !== "dead" ? (
+      <>
+        <div className="flex justify-between text-gray-700">
+          <span>성장 경험치</span>
+          <span>
+            {currentPet.xp} /{" "}
+            {currentPet.stage === "egg"
+              ? 50
+              : currentPet.stage === "baby"
+              ? 150
+              : currentPet.stage === "teen"
+              ? 350
+              : "MAX"} XP
+          </span>
         </div>
+
+        <div className="w-full h-4 bg-gray-200 win-inset p-0.5">
+          <div
+            className="h-full bg-[#000080]"
+            style={{
+              width: `${
+                currentPet.stage === "adult"
+                  ? 100
+                  : currentPet.stage === "egg"
+                  ? Math.min(100, (currentPet.xp / 50) * 100)
+                  : currentPet.stage === "baby"
+                  ? Math.min(100, ((currentPet.xp - 50) / 100) * 100)
+                  : Math.min(100, ((currentPet.xp - 150) / 200) * 100)
+              }%`,
+            }}
+          />
+        </div>
+      </>
+    ) : (
+      <p className="text-gray-600">
+        최종 경험치: {currentPet.xp} XP
+      </p>
+    )}
+  </div>
+)}
+        {/* 🐾 돌보는 사람 선택 */}
+<div className="bg-white win-inset p-2 text-xs space-y-2">
+  <label
+    htmlFor="pet-caretaker"
+    className="block font-bold text-[#000080]"
+  >
+    🐾 돌보는 사람
+  </label>
+
+  <select
+    id="pet-caretaker"
+    value={userList.includes(petCaretaker) ? petCaretaker : ""}
+    onChange={(e) => {
+      setPetCaretaker(e.target.value);
+      localStorage.setItem(
+        `pet_caretaker_${groupName}`,
+        e.target.value
+      );
+    }}
+    className="w-full bg-white win-inset p-2 text-xs"
+  >
+    <option value="">닉네임을 선택해 주세요</option>
+
+    {userList
+      .filter((user) => user !== "전체")
+      .map((user) => (
+        <option key={user} value={user}>
+          {user}
+        </option>
+      ))}
+  </select>
+</div>
 
         {/* 돌보기 버튼 — DB 연결 전 */}
         <div className="grid grid-cols-2 gap-2">
