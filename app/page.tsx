@@ -850,6 +850,45 @@ const [petNamingError, setPetNamingError] = useState("");
 const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const miniPetPreview = false; // 테스트할 때만 true
   const petNamingPreview = false; // 🧪 이름 짓기 화면 테스트
+  // ✨ 펫 성장 반짝임 연출
+const [petGrowthEffect, setPetGrowthEffect] = useState(false);
+const [petGrowthTest, setPetGrowthTest] = useState(true);
+const previousPetStage = React.useRef<{
+  id: number;
+  stage: string;
+} | null>(null);
+
+// 실제 성장 단계가 바뀌면 반짝임 표시
+useEffect(() => {
+  if (!miniPet) return;
+
+  const previous = previousPetStage.current;
+
+  if (
+    previous &&
+    previous.id === miniPet.id &&
+    previous.stage !== miniPet.stage &&
+    miniPet.stage !== "dead"
+  ) {
+    setPetGrowthEffect(true);
+  }
+
+  previousPetStage.current = {
+    id: miniPet.id,
+    stage: miniPet.stage,
+  };
+}, [miniPet?.id, miniPet?.stage]);
+
+// 반짝임은 1.8초 후 자동 종료
+useEffect(() => {
+  if (!petGrowthEffect) return;
+
+  const timer = window.setTimeout(() => {
+    setPetGrowthEffect(false);
+  }, 1800);
+
+  return () => window.clearTimeout(timer);
+}, [petGrowthEffect]);
   // 🐾 회원별 돌보기 횟수
 const [petCareCounts, setPetCareCounts] = useState({
   feed: 0,
@@ -2507,6 +2546,36 @@ const deleteReadingPlan = async (id: number) => {
     animation: none;
   }
 }
+/* ✨ 성장 반짝임 */
+@keyframes petGrowthSparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-15deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1) rotate(5deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3) rotate(15deg);
+  }
+}
+
+.pet-growth-sparkle {
+  animation: petGrowthSparkle 1.8s ease-in-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-growth-sparkle {
+    animation: none;
+    opacity: 0;
+  }
+}
 `}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
@@ -3461,6 +3530,19 @@ return (
         {/* 펫이 생활하는 방 */}
         <div className="relative bg-[#f5f0ff] win-inset h-56 overflow-hidden flex items-center justify-center">
           <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
+          {/* ✨ 성장 반짝임 */}
+{petGrowthEffect && currentPet && (
+  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+    <Image
+      src="/pets/deco/sparkle.png"
+      alt=""
+      width={180}
+      height={180}
+      unoptimized
+      className="pet-growth-sparkle"
+    />
+  </div>
+)}
 {petLoading && !currentPet ? (
   <span className="text-xs">🐾 펫을 불러오는 중...</span>
           ) : petError ? (
@@ -3671,6 +3753,19 @@ return (
       )}
     </div>
   )}
+        {/* 🧪 성장 연출 테스트 */}
+{petGrowthTest && (
+  <button
+    type="button"
+    onClick={() => {
+      setPetGrowthEffect(false);
+      window.setTimeout(() => setPetGrowthEffect(true), 50);
+    }}
+    className="win-btn w-full py-2 text-xs font-bold"
+  >
+    ✨ 성장 반짝임 테스트
+  </button>
+)}
         
         {/* 🐾 돌보는 사람 선택 */}
 <div className="bg-white win-inset p-2 text-xs space-y-2">
@@ -5411,6 +5506,19 @@ return (
       {/* 🐾 작업표시줄 위 상주 미니 펫 */}
 {miniPet && (
   <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
+    {/* ✨ 미니 펫 성장 반짝임 */}
+{petGrowthEffect && (
+  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+    <Image
+      src="/pets/deco/sparkle.png"
+      alt=""
+      width={100}
+      height={100}
+      unoptimized
+      className="pet-growth-sparkle"
+    />
+  </div>
+)}
 
     {/* 🐣 이름 없는 아기일 때만 표시되는 알림 */}
     {(petNamingPreview ||
