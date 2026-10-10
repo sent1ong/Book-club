@@ -2080,7 +2080,7 @@ function BookClubContent() {
         }}
         className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
       >
-        🧾 {selectedUser} 영수증
+        🧾 {selectedUser}의 영수증
       </button>
 
       <button
