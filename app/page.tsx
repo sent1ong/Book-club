@@ -1004,6 +1004,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
   setPetCareBusy(true);
   setPetCareAction(actionType);
   setPetCareError("");
+  const careStartedAt = Date.now();
 
   try {
     const { error } = await supabase.rpc("pet_do_care", {
@@ -1022,10 +1023,19 @@ const doPetCare = async (actionType: "feed" | "pet") => {
         ? error.message
         : "돌보기에 실패했어요. 다시 시도해 주세요."
     );
-  } finally {
-    setPetCareBusy(false);
-    setPetCareAction(null);
+    } finally {
+  const elapsed = Date.now() - careStartedAt;
+  const remaining = Math.max(0, 1200 - elapsed);
+
+  if (remaining > 0) {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, remaining);
+    });
   }
+
+  setPetCareBusy(false);
+  setPetCareAction(null);
+}
 };
   
   const [time, setTime] = useState<string>("");
