@@ -3194,6 +3194,17 @@ const { error } = await supabase.from("book_comments").insert([
               className="w-full text-xs p-1.5 win-inset bg-white focus:outline-none placeholder-gray-500"
             />
 
+            {/* 🎲 랜덤 책 추천 */}
+<div className="flex justify-end">
+  <button
+    type="button"
+    onClick={handleRandomRecommend}
+    className="win-btn px-3 py-1 text-xs font-bold"
+  >
+    🎲 랜덤 책 추천
+  </button>
+</div>
+
             {/* 필터 탭 */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-1">
