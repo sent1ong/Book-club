@@ -3694,7 +3694,7 @@ return (
   </div>
   ) : currentPet.stage === "dead" ? (
   <div className="absolute inset-0 pointer-events-none">
-    <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+    <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
       <Image
         src="/pets/deco/grave.png"
         alt="펫의 묘비"
@@ -5781,7 +5781,7 @@ return (
         onClick={() => setOpenWindow("pets")}
         title="PET.exe 열기"
         aria-label="펫의 묘비 보기"
-        className="absolute -bottom-10 right-3 pointer-events-auto"
+        className="absolute -bottom-5 right-3 z-40 pointer-events-auto"
       >
         <Image
           src="/pets/deco/grave.png"
