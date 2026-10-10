@@ -213,6 +213,7 @@ const APP_LIST: AppItem[] = [
   { id: "comments", name: "댓글", icon: "/icons/comments.png" },
   { id: "goals", name: "목표 트래커", icon: "/icons/goals.png" },
   { id: "pets", name: "펫 돌보기", icon: "/icons/pets.png" },
+  { id: "jukebox", name: "주크박스", icon: "/icons/music.png" },
   { id: "genre", name: "장르 분석", icon: "/icons/chart-pie.png" },
   { id: "awards", name: "명예의 전당", icon: "/icons/awards.png" },
   { id: "pacemaker", name: "페이스메이커", icon: "/icons/pacemaker.png" },
@@ -2773,7 +2774,7 @@ const deleteReadingPlan = async (id: number) => {
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
           <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
-  <span>📚 EXPLORER - 서재 목록 ({displayedReviews.length}권)</span>
+  <span>📚 EXPLORER - {groupName}의 서재 목록 ({displayedReviews.length}권)</span>
             
             <div className="flex items-center gap-[2px]">
   {["─", "□", "×"].map((symbol) => (
@@ -5993,10 +5994,6 @@ return (
 
         {/* 우측 시스템 트레이 영역 (모임 뱃지 + 시계) */}
         <div className="flex items-center gap-1.5">
-          <div className="win-inset bg-[#c0c0c0] px-2 py-0.5 flex items-center gap-1 text-[11px] font-bold text-gray-800 select-none max-w-[130px] truncate">
-            <span>🖥️</span>
-            <span className="truncate">{groupName}</span>
-          </div>
           <div className="win-inset px-2 py-0.5 text-[11px] font-mono bg-[#c0c0c0] min-w-[65px] text-center">
             {time}
           </div>
