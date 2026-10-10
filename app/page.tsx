@@ -2473,6 +2473,40 @@ const deleteReadingPlan = async (id: number) => {
     animation: none;
   }
 }
+/* 🥚 알 보살피기: 평소보다 빠른 통통 */
+.pet-egg-excited {
+  animation: petEggBounce 0.38s linear infinite;
+  will-change: transform;
+}
+
+/* 💗 쓰다듬기: 하트가 위로 떠오름 */
+@keyframes petHeartFloat {
+  0% {
+    transform: translateY(8px) scale(0.7);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-35px) scale(1.15);
+    opacity: 0;
+  }
+}
+
+.pet-heart-float {
+  animation: petHeartFloat 0.9s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-egg-excited,
+  .pet-heart-float {
+    animation: none;
+  }
+}
 `}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
@@ -3473,13 +3507,37 @@ return (
 ) : (
   <div className="flex flex-col items-center gap-2">
     <Image
-      src={`/pets/${currentPet.species}/${currentPet.stage}.png`}
+      src={`/pets/${currentPet.species}/${
+  petCareAction === "feed" &&
+  currentPet.stage !== "egg"
+    ? `${currentPet.stage}_eat`
+    : currentPet.stage
+}.png`}
       alt={currentPet.pet_name || "우리 펫"}
       width={150}
       height={150}
-      className={`object-contain ${currentPet.stage === "egg" ? "pet-egg-bounce" : ""}`}
+      className={`object-contain ${
+  currentPet.stage === "egg"
+    ? petCareAction === "feed"
+      ? "pet-egg-excited"
+      : "pet-egg-bounce"
+    : ""
+}`}
       unoptimized
     />
+
+    {petCareAction === "pet" && (
+  <Image
+    src="/pets/deco/heart.png"
+    alt=""
+    aria-hidden="true"
+    width={38}
+    height={38}
+    unoptimized
+    className="pointer-events-none absolute top-0 right-2 z-20 pet-heart-float"
+  />
+)}
+    
     <span className="text-xs font-bold text-[#594173]">
   {currentPet.stage === "egg"
     ? "🥚 새로운 생명을 기다리는 중..."
@@ -5420,16 +5478,39 @@ return (
           onClick={() => setOpenWindow("pets")}
           title={`${miniPet.pet_name || "우리 펫"} · PET.exe 열기`}
           aria-label="펫 돌보기 열기"
-          className="block pointer-events-auto mini-pet-hop"
+          className="relative block pointer-events-auto mini-pet-hop"
         >
           <Image
-           src={`/pets/${miniPet.species}/${miniPetPreview ? "baby" : miniPet.stage}.png`}
+           src={`/pets/${miniPet.species}/${
+  miniPetPreview
+    ? "baby"
+    : petCareAction === "feed" &&
+      openWindow === "pets" &&
+      currentPet?.id === miniPet.id
+    ? `${miniPet.stage}_eat`
+    : miniPet.stage
+}.png`}
             alt={miniPet.pet_name || "우리 펫"}
             width={70}
             height={70}
             className="object-contain"
             unoptimized
           />
+
+          {petCareAction === "pet" &&
+  openWindow === "pets" &&
+  currentPet?.id === miniPet.id && (
+    <Image
+      src="/pets/deco/heart.png"
+      alt=""
+      aria-hidden="true"
+      width={28}
+      height={28}
+      unoptimized
+      className="pointer-events-none absolute -top-4 right-0 z-20 pet-heart-float"
+    />
+  )}
+          
         </button>
       </div>
     )}
