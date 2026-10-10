@@ -3300,17 +3300,9 @@ const deleteReadingPlan = async (id: number) => {
                           )}
 
                         {/* 🎵 JUKEBOX.exe — 이 작품의 OST */}
-{book.ost_youtube_url && (
-  <button
-  type="button"
-  onClick={(e) => {
-    e.stopPropagation();
-    jukeboxPlaySong(book);
-    setOpenWindow("jukebox");
-  }}
-  className="w-full mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs text-left hover:bg-[#ece0f8] cursor-pointer"
-  title="주크박스에서 이 노래 재생"
->
+
+                        {book.ost_youtube_url && (
+  <div className="w-full mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs">
     <Image
       src="/icons/music.png"
       alt=""
@@ -3323,7 +3315,7 @@ const deleteReadingPlan = async (id: number) => {
 
     <div className="min-w-0 flex-1">
       <p className="text-[10px] font-bold text-[#800080]">
-        🎵 이 책의 OST
+        🎵 이 작품의 OST
       </p>
 
       <p className="font-bold text-gray-800 break-words">
@@ -3332,7 +3324,22 @@ const deleteReadingPlan = async (id: number) => {
         {book.ost_artist || "아티스트 미상"}
       </p>
     </div>
-  </button>
+
+    {/* 🎵 OST 재생 버튼 */}
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        jukeboxPlaySong(book);
+        setOpenWindow("jukebox");
+      }}
+      className="win-btn shrink-0 w-7 h-7 flex items-center justify-center text-black text-sm"
+      aria-label={`${book.ost_title || "OST"} 재생`}
+      title="OST 재생"
+    >
+      ▶
+    </button>
+  </div>
 )}
 
                         {/* 이모지 반응 */}
@@ -3558,21 +3565,60 @@ const deleteReadingPlan = async (id: number) => {
           {openWindow === "jukebox" ? "JUKEBOX.exe" : "🎵 재생 중"}
         </span>
       </span>
+      {/* Windows 98 창 제어 버튼 */}
+      
+<div className="flex items-center gap-1 shrink-0">
 
-      <button
-        type="button"
-        onClick={() =>
-          setOpenWindow(openWindow === "jukebox" ? null : "jukebox")
-        }
-        className="win-btn text-black px-2"
-        aria-label={
-          openWindow === "jukebox"
-            ? "주크박스 창 닫기"
-            : "주크박스 창 열기"
-        }
-      >
-        {openWindow === "jukebox" ? "✕" : "□"}
-      </button>
+  {/* 최소화 / 복원 */}
+  {openWindow === "jukebox" ? (
+    <button
+      type="button"
+      onClick={() => setOpenWindow(null)}
+      className="win-btn text-black w-5 h-5 flex items-center justify-center text-xs"
+      aria-label="주크박스 최소화"
+      title="최소화"
+    >
+      ─
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setOpenWindow("jukebox")}
+      className="win-btn text-black w-5 h-5 flex items-center justify-center text-xs"
+      aria-label="주크박스 복원"
+      title="복원"
+    >
+      □
+    </button>
+  )}
+
+  {/* 닫기: 음악 정지 */}
+  <button
+    type="button"
+    onClick={() => {
+      const player = jukeboxPlayerRef.current;
+
+      if (player && typeof player.stopVideo === "function") {
+        player.stopVideo();
+      }
+
+      jukeboxPendingRef.current = null;
+      jukeboxLoadedVideoRef.current = null;
+      jukeboxActiveIdRef.current = null;
+
+      setJukeboxActiveId(null);
+      setJukeboxPlaying(false);
+      setJukeboxError("");
+      setOpenWindow(null);
+    }}
+    className="win-btn text-black w-5 h-5 flex items-center justify-center text-xs font-bold"
+    aria-label="주크박스 닫기"
+    title="닫기"
+  >
+    ✕
+  </button>
+</div>
+      
     </div>
 
     {/* 유튜브 플레이어: 항상 같은 요소 유지 */}
@@ -6455,7 +6501,7 @@ return (
 
         {/* 🎵 JUKEBOX.exe — 작업표시줄 한 줄 플레이어 */}
 {jukeboxSongs.length > 0 && (
-  <div className="flex-1 min-w-0 mx-1 h-[30px] win-inset bg-[#d6d6d6] flex items-center gap-1 px-1">
+  <<div className="flex-1 min-w-0 mx-1 h-[30px] flex items-center gap-1 px-1">
     {/* 곡 제목 — 클릭하면 주크박스 열기 */}
     <button
       type="button"
