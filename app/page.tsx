@@ -6687,6 +6687,9 @@ return (
                 <h3 className="text-base font-bold text-gray-900 mt-1">{randomBook.title}</h3>
                 <p className="text-xs text-gray-600">{randomBook.author || "작자 미상"} · {randomBook.genre}</p>
                 <div className="text-amber-500 font-bold">{randomBook.rating}</div>
+                <div className="text-xs text-gray-500">
+  ✍️ {randomBook.user_name}의 리뷰
+</div>
                 {randomBook.review && (
               <div className="bg-gray-50 p-2 text-xs text-gray-700 win-inset break-words text-left">
   <SpoilerReviewText text={randomBook.review} />
