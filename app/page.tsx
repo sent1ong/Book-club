@@ -3312,7 +3312,7 @@ return (
       unoptimized
     />
     <span className="text-xs font-bold text-[#594173]">
-  {petCareBusy && petCareAction === "feed"
+  {petCareAction === "feed"
     ? currentPet.stage === "egg"
       ? "🥚 알을 보살피는 중..."
       : "🍪 먹이를 주는 중..."
