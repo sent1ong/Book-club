@@ -3692,27 +3692,18 @@ return (
       {petAdopting ? "입양 중..." : "🥚 첫 알 입양하기"}
     </button>
   </div>
-) : currentPet.stage === "dead" ? (
-  <div className="flex flex-col items-center gap-2">
-    <Image
-      src="/pets/deco/grave.png"
-      alt="펫의 묘비"
-      width={150}
-      height={150}
-      unoptimized
-      className="object-contain"
-    />
-    <span className="text-xs font-bold">
-      🕊️ {currentPet.pet_name || "우리 펫"}의 추억
-    </span>
-    <button
-      type="button"
-      onClick={() => void adoptPetEgg()}
-      disabled={petAdopting}
-      className="win-btn px-3 py-1 text-xs font-bold"
-    >
-      {petAdopting ? "입양 중..." : "🥚 새로운 알 입양하기"}
-    </button>
+  ) : currentPet.stage === "dead" ? (
+  <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+      <Image
+        src="/pets/deco/grave.png"
+        alt="펫의 묘비"
+        width={150}
+        height={150}
+        unoptimized
+        className="block object-contain"
+      />
+    </div>
   </div>
 ) : (
 <div
@@ -3776,6 +3767,18 @@ return (
         </div>
   )}
         </div>
+
+        {/* 🥚 사망 후 다음 세대 입양 */}
+{currentPet?.stage === "dead" && (
+  <button
+    type="button"
+    onClick={() => void adoptPetEgg()}
+    disabled={petAdopting}
+    className="win-btn w-full px-3 py-2 text-xs font-bold"
+  >
+    {petAdopting ? "입양 중..." : "🥚 새로운 알 입양하기"}
+  </button>
+)}
 
         {/* 🐾 성인 일차 계산: 성인이 된 순간부터 24시간 단위 */}
         {/* 상태 정보 */}
@@ -5778,7 +5781,7 @@ return (
         onClick={() => setOpenWindow("pets")}
         title="PET.exe 열기"
         aria-label="펫의 묘비 보기"
-        className="absolute bottom-0 right-3 pointer-events-auto"
+        className="absolute -bottom-10 right-3 pointer-events-auto"
       >
         <Image
           src="/pets/deco/grave.png"
