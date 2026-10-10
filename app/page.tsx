@@ -849,6 +849,7 @@ const [petCareCounts, setPetCareCounts] = useState({
 });
 const [petCareLoading, setPetCareLoading] = useState(false);
 const [petCareBusy, setPetCareBusy] = useState(false);
+const [petCareAction, setPetCareAction] = useState<"feed" | "pet" | null>(null);
 const [petCareError, setPetCareError] = useState("");
 
 // PET.exe 현재 세대 불러오기
@@ -1001,6 +1002,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
   if (used >= limit) return;
 
   setPetCareBusy(true);
+  setPetCareAction(actionType);
   setPetCareError("");
 
   try {
@@ -1022,6 +1024,7 @@ const doPetCare = async (actionType: "feed" | "pet") => {
     );
   } finally {
     setPetCareBusy(false);
+    setPetCareAction(null);
   }
 };
   
@@ -3245,9 +3248,9 @@ return (
         {/* 펫이 생활하는 방 */}
         <div className="relative bg-[#f5f0ff] win-inset h-56 overflow-hidden flex items-center justify-center">
           <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
-          {petLoading ? (
+{petLoading && !currentPet ? (
   <span className="text-xs">🐾 펫을 불러오는 중...</span>
-) : petError ? (
+          ) : petError ? (
   <span className="text-xs text-red-700">
     펫을 불러오지 못했어요.
   </span>
@@ -3299,10 +3302,16 @@ return (
       unoptimized
     />
     <span className="text-xs font-bold text-[#594173]">
-      {currentPet.stage === "egg"
-        ? "🥚 새로운 생명을 기다리는 중..."
-        : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
-    </span>
+  {petCareBusy && petCareAction === "feed"
+    ? currentPet.stage === "egg"
+      ? "🥚 알을 보살피는 중..."
+      : "🍪 먹이를 주는 중..."
+    : petCareBusy && petCareAction === "pet"
+    ? "💗 쓰다듬는 중..."
+    : currentPet.stage === "egg"
+    ? "🥚 새로운 생명을 기다리는 중..."
+    : currentPet.pet_name || "🐣 아직 이름이 없는 아기"}
+</span>
   </div>
 )}
         </div>
