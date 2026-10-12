@@ -228,6 +228,20 @@ const BINGO_CELLS_DEFAULT = [
   { id: 9, title: "스포 방지 배려", desc: "후기에 (스포일러) 태그 준수" },
 ];
 
+const BOOK_GENRES = [
+  "소설",
+  "만화",
+  "웹툰",
+  "오디오드라마",
+  "팬픽",
+  "사회/과학",
+  "수필",
+  "실용",
+  "시",
+  "에세이",
+  "철학",
+];
+
 const APP_LIST: AppItem[] = [
   { id: "book-add", name: "기록하기", icon: "/icons/book-add.png" },
   { id: "comments", name: "댓글", icon: "/icons/comments.png" },
@@ -3210,17 +3224,11 @@ const { error } = await supabase.from("book_comments").insert([
             {/* 필터 탭 */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-1">
-                {[
-  "전체",
-  ...Array.from(
-    new Set(
-      reviews
-        .filter((r) => r.group_name === groupName)
-        .map((r) => r.genre)
-        .filter(Boolean)
-    )
-  ),
-].map((genre) => {
+                {BOOK_GENRES.map((genre) => (
+  <option key={genre} value={genre}>
+    {genre}
+  </option>
+))}
                     const isSelected = filterType === "all" && selectedGenre === genre;
                     return (
                       <button
