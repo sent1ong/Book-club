@@ -3222,31 +3222,36 @@ const { error } = await supabase.from("book_comments").insert([
 </div>
 
             {/* 필터 탭 */}
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-1">
-                {BOOK_GENRES.map((genre) => (
-  <option key={genre} value={genre}>
-    {genre}
-  </option>
-))}
-                    const isSelected = filterType === "all" && selectedGenre === genre;
-                    return (
-                      <button
-                        key={genre}
-                        type="button"
-                        onClick={() => {
-                            setFilterType("all");
-                            setSelectedGenre(genre);
-                          }}
-                        className={`px-2 py-0.5 text-xs win-btn ${
-                        isSelected ? "win-inset bg-[#dfdfdf] font-bold" : ""
-                      }`}
-                      >
-                        {genre}
-                      </button>
-                    );
-                  })}
-              </div>
+<div className="space-y-1">
+  <div className="flex flex-wrap items-center gap-1">
+    {[
+      "전체",
+      ...BOOK_GENRES.filter((genre) =>
+        reviews.some(
+          (r) => r.group_name === groupName && r.genre === genre
+        )
+      ),
+    ].map((genre) => {
+      const isSelected =
+        filterType === "all" && selectedGenre === genre;
+
+      return (
+        <button
+          key={genre}
+          type="button"
+          onClick={() => {
+            setFilterType("all");
+            setSelectedGenre(genre);
+          }}
+          className={`px-2 py-0.5 text-xs win-btn ${
+            isSelected ? "win-inset bg-[#dfdfdf] font-bold" : ""
+          }`}
+        >
+          {genre}
+        </button>
+      );
+    })}
+  </div>
 
               <div className="flex flex-wrap items-center gap-1">
                 <button
