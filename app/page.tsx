@@ -5926,12 +5926,28 @@ function BookClubContent() {
                   ))}
                 </select>
 
-                <input
-                  type="date"
-                  value={planDate}
-                  onChange={(e) => setPlanDate(e.target.value)}
-                  className="bg-white win-inset p-2 text-xs flex-1 min-w-0"
-                />
+                <div className="relative flex-1 min-w-[150px]">
+                  {!planDate && (
+          <span     
+            aria-hidden="true"      
+            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 z-10"    
+            >      
+            예정일 입력    
+          </span>  
+        )}
+  
+                  <input    
+                    type="date"    
+                    value={planDate}    
+                    onChange={(e) => setPlanDate(e.target.value)}    
+                    aria-label="읽을 예정일 입력"    
+                    className={`w-full bg-white win-inset p-2 text-xs text-black [color-scheme:light] ${      
+                      !planDate        
+                      ? "[&::-webkit-datetime-edit]:opacity-0"        
+                      : ""    
+                    }`}  
+                    />
+                </div>                
               </div>
 
               {/* 📅 날짜 선택사항 안내 */}
