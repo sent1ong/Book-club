@@ -8068,7 +8068,15 @@ useEffect(() => {
               />
             </button>
           ) : (
-            <div className="absolute -bottom-4 left-0 mini-pet-walk">
+            <div
+  className={`absolute left-0 mini-pet-walk ${
+    miniPet.species === "bogli" &&
+    miniPet.stage === "teen" &&
+    !miniPetPreview
+      ? "-bottom-[14px]"
+      : "-bottom-4"
+  }`}
+>
               <button
                 type="button"
                 onClick={() => setOpenWindow("pets")}
