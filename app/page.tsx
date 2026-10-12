@@ -1697,7 +1697,7 @@ function BookClubContent() {
     setMiniPetSleeping(false);
     if (!miniPet || miniPet.stage === "egg" || miniPet.stage === "dead" ||
         miniPetIsHappy || miniPetIsEating) return;
-    let timer: ReturnType<typeof window.setTimeout>;
+    let timer: number;
     const walk = () => {
       timer = window.setTimeout(() => {
         if (document.visibilityState === "hidden") { walk(); return; }
