@@ -3210,7 +3210,17 @@ const { error } = await supabase.from("book_comments").insert([
             {/* 필터 탭 */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-1">
-                {["전체", "소설", "만화", "웹툰", "오디오드라마"].map((genre) => {
+                {[
+  "전체",
+  ...Array.from(
+    new Set(
+      reviews
+        .filter((r) => r.group_name === groupName)
+        .map((r) => r.genre)
+        .filter(Boolean)
+    )
+  ),
+].map((genre) => {
                     const isSelected = filterType === "all" && selectedGenre === genre;
                     return (
                       <button
@@ -4174,12 +4184,13 @@ const { error } = await supabase.from("book_comments").insert([
                       <option>만화</option>
                       <option>웹툰</option>
                       <option>오디오드라마</option>
-                      <option>수필</option>
-                      <option>시</option>
+                      <option>팬픽</option>
                       <option>사회/과학</option>
-                      <option>철학</option>
+                      <option>수필</option>
                       <option>실용</option>
+                      <option>시</option>
                       <option>에세이</option>
+                      <option>철학</option>                   
                     </select>
                   </div>
                   <div>
