@@ -1289,6 +1289,13 @@ function BookClubContent() {
     created_at: string;
   };
   const [readingPlans, setReadingPlans] = useState<ReadingPlan[]>([]);
+  const [showAllPlans, setShowAllPlans] = useState(false);
+  const [plansFetching, setPlansFetching] = useState(false);
+  const [plansError, setPlansError] = useState("");
+  const [reviewsFetching, setReviewsFetching] = useState(false);
+  const [reviewsError, setReviewsError] = useState("");
+  const plansRequest = React.useRef(0);
+  const reviewsRequest = React.useRef(0);
   const [planTitle, setPlanTitle] = useState("");
   const [planAuthor, setPlanAuthor] = useState("");
   const [planGenre, setPlanGenre] = useState("소설");
@@ -1302,17 +1309,17 @@ function BookClubContent() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   // 📚 NEW 표시용 현재 시간 (1분마다 갱신)
-const [newBadgeNow, setNewBadgeNow] = useState<number | null>(null);
+  const [newBadgeNow, setNewBadgeNow] = useState<number | null>(null);
 
-useEffect(() => {
-  const updateTime = () => setNewBadgeNow(Date.now());
+  useEffect(() => {
+    const updateTime = () => setNewBadgeNow(Date.now());
 
-  updateTime();
+    updateTime();
 
-  const timer = window.setInterval(updateTime, 60000);
+    const timer = window.setInterval(updateTime, 60000);
 
-  return () => window.clearInterval(timer);
-}, []);
+    return () => window.clearInterval(timer);
+  }, []);
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isRevisit, setIsRevisit] = useState(false);
@@ -1978,81 +1985,81 @@ useEffect(() => {
   const [mailBusy, setMailBusy] = useState<number | null>(null);
   const [mailReload, setMailReload] = useState(0);
   // 🔔 모임원별 읽지 않은 우편함 알림
-const [unreadMailByUser, setUnreadMailByUser] = useState<
-  Record<string, boolean>
->({});
+  const [unreadMailByUser, setUnreadMailByUser] = useState<
+    Record<string, boolean>
+  >({});
 
   // 🔔 종 알림 새로고침
-const [mailBellReload, setMailBellReload] = useState(0);
-  
+  const [mailBellReload, setMailBellReload] = useState(0);
+
   // 🔔 모든 기기에서 공유하는 우편함 알림 상태
-useEffect(() => {
-  if (!isValidGroup(groupName)) {
+  useEffect(() => {
+    if (!isValidGroup(groupName)) {
+      setUnreadMailByUser({});
+      return;
+    }
+
+    let cancelled = false;
+    let loading = false;
+
     setUnreadMailByUser({});
-    return;
-  }
 
-  let cancelled = false;
-  let loading = false;
+    const loadUnreadMail = async () => {
+      if (loading || document.visibilityState === "hidden") return;
 
-  setUnreadMailByUser({});
+      loading = true;
 
-  const loadUnreadMail = async () => {
-    if (loading || document.visibilityState === "hidden") return;
+      try {
+        const unread: Record<string, boolean> = {};
 
-    loading = true;
+        for (let offset = 0; ; offset += 200) {
+          const { data, error } = await supabase
+            .from("mailbox_notifications")
+            .select("recipient")
+            .eq("group_name", groupName)
+            .is("read_at", null)
+            .order("id", { ascending: true })
+            .range(offset, offset + 199);
 
-    try {
-      const unread: Record<string, boolean> = {};
+          if (error) throw error;
+          if (cancelled) return;
 
-      for (let offset = 0; ; offset += 200) {
-        const { data, error } = await supabase
-          .from("mailbox_notifications")
-          .select("recipient")
-          .eq("group_name", groupName)
-          .is("read_at", null)
-          .order("id", { ascending: true })
-          .range(offset, offset + 199);
+          for (const item of data || []) {
+            unread[item.recipient] = true;
+          }
 
-        if (error) throw error;
-        if (cancelled) return;
-
-        for (const item of data || []) {
-          unread[item.recipient] = true;
+          if (!data || data.length < 200) break;
         }
 
-        if (!data || data.length < 200) break;
+        if (!cancelled) {
+          setUnreadMailByUser(unread);
+        }
+      } catch (error) {
+        console.error("우편함 종 알림 조회 실패:", error);
+      } finally {
+        loading = false;
       }
+    };
 
-      if (!cancelled) {
-        setUnreadMailByUser(unread);
-      }
-    } catch (error) {
-      console.error("우편함 종 알림 조회 실패:", error);
-    } finally {
-      loading = false;
-    }
-  };
-
-  void loadUnreadMail();
-
-  const refresh = () => {
     void loadUnreadMail();
-  };
 
-  window.addEventListener("focus", refresh);
-  document.addEventListener("visibilitychange", refresh);
+    const refresh = () => {
+      void loadUnreadMail();
+    };
 
-  // 다른 기기에서 읽은 상태도 주기적으로 확인
-  const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
 
-  return () => {
-    cancelled = true;
-    window.clearInterval(timer);
-    window.removeEventListener("focus", refresh);
-    document.removeEventListener("visibilitychange", refresh);
-  };
-}, [groupName, mailBellReload]);
+    // 다른 기기에서 읽은 상태도 주기적으로 확인
+    const timer = window.setInterval(refresh, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [groupName, mailBellReload]);
   const [targetMember, setTargetMember] = useState<string[]>([]);
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(
     null,
@@ -2656,29 +2663,68 @@ useEffect(() => {
   const handleSelectUser = (user: string) => setSelectedUser(user);
 
   // 📌 독서 예고장 목록 불러오기
-  const fetchReadingPlans = async () => {
-    if (!isValidGroup(groupName)) return;
-
-    const { data, error } = await supabase
-      .from("reading_plans")
-      .select("*")
-      .eq("group_name", groupName)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("독서 예고장 불러오기 실패:", error);
+  const fetchReadingPlans = React.useCallback(async () => {
+    const request = ++plansRequest.current;
+    setPlansError("");
+    if (!isValidGroup(groupName)) {
+      setReadingPlans([]);
+      setPlansFetching(false);
       return;
     }
-
-    setReadingPlans(data || []);
-  };
+    setPlansFetching(true);
+    try {
+      const rows: ReadingPlan[] = [];
+      for (let offset = 0; ; offset += 200) {
+        const { data, error } = await supabase
+          .from("reading_plans")
+          .select("*")
+          .eq("group_name", groupName)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(offset, offset + 199);
+        if (request !== plansRequest.current) return;
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 200) break;
+      }
+      setReadingPlans(rows);
+    } catch {
+      if (request === plansRequest.current) {
+        setPlansError(
+          "예고장을 불러오지 못했습니다. 창을 닫고 다시 열어 주세요.",
+        );
+      }
+    } finally {
+      if (request === plansRequest.current) setPlansFetching(false);
+    }
+  }, [groupName]);
 
   useEffect(() => {
+    setReadingPlans([]);
     void fetchReadingPlans();
-  }, [openWindow, groupName]);
+    return () => {
+      ++plansRequest.current;
+    };
+  }, [fetchReadingPlans]);
+
+  // 완독 리뷰가 등록된 예고장은 숨깁니다. 중도하차는 제외합니다.
+  const matchesReadingPlan = (plan: ReadingPlan, review: BookReview) =>
+    plan.group_name === groupName &&
+    review.group_name === groupName &&
+    review.rating !== "중도하차" &&
+    review.user_name === plan.user_name &&
+    normalizeBookTitle(review.title) === normalizeBookTitle(plan.title) &&
+    isSameAuthors(review.author || "", plan.author || "");
+
+  const activeReadingPlans = readingPlans.filter(
+    (plan) =>
+      plan.group_name === groupName &&
+      !reviews.some((review) => matchesReadingPlan(plan, review)),
+  );
 
   // 📌 독서 예고장 등록
   const addReadingPlan = async () => {
+    if (planLoading) return;
     if (!planTitle.trim() || !planAuthor.trim()) {
       alert("작품 제목과 작가를 입력해주세요!");
       return;
@@ -2687,28 +2733,33 @@ useEffect(() => {
     if (selectedUser === "전체" || !isValidGroup(groupName)) return;
 
     setPlanLoading(true);
+    try {
+      const { error } = await supabase.from("reading_plans").insert({
+        group_name: groupName,
+        user_name: selectedUser,
+        title: planTitle.trim(),
+        author: planAuthor.trim(),
+        genre: planGenre,
+        planned_date: planDate || null,
+      });
 
-    const { error } = await supabase.from("reading_plans").insert({
-      group_name: groupName,
-      user_name: selectedUser,
-      title: planTitle.trim(),
-      author: planAuthor.trim(),
-      genre: planGenre,
-      planned_date: planDate || null,
-    });
+      if (error) {
+        alert("예고장 등록 실패: " + error.message);
+        return;
+      }
 
-    setPlanLoading(false);
-
-    if (error) {
-      alert("예고장 등록 실패: " + error.message);
-      return;
+      setPlanTitle("");
+      setPlanAuthor("");
+      setPlanGenre("소설");
+      setPlanDate("");
+      await fetchReadingPlans();
+    } catch {
+      alert(
+        "예고장 등록 중 오류가 발생했습니다. 목록을 확인한 뒤 다시 시도해 주세요.",
+      );
+    } finally {
+      setPlanLoading(false);
     }
-
-    setPlanTitle("");
-    setPlanAuthor("");
-    setPlanGenre("소설");
-    setPlanDate("");
-    await fetchReadingPlans();
   };
 
   // 📌 독서 예고장 삭제
@@ -2825,11 +2876,11 @@ useEffect(() => {
       );
     } catch {
       alert("전체 읽음 저장에 실패했습니다. 다시 시도해 주세요.");
-      } finally {
-  setMailBusy(null);
-  setMailReload((value) => value + 1);
-  setMailBellReload((value) => value + 1);
-}
+    } finally {
+      setMailBusy(null);
+      setMailReload((value) => value + 1);
+      setMailBellReload((value) => value + 1);
+    }
   };
 
   const handleRandomRecommend = () => {
@@ -2864,24 +2915,46 @@ useEffect(() => {
     });
   };
 
-  const fetchReviews = async () => {
-    const rows: BookReview[] = [];
-    for (let offset = 0; ; offset += 200) {
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .eq("group_name", groupName)
-        .order("id", { ascending: false })
-        .range(offset, offset + 199);
-      if (error) {
-        alert("리뷰를 불러오지 못했습니다: " + error.message);
-        return;
-      }
-      rows.push(...(data || []));
-      if (!data || data.length < 200) break;
+  const fetchReviews = React.useCallback(async () => {
+    const request = ++reviewsRequest.current;
+    setReviewsError("");
+    if (!isValidGroup(groupName)) {
+      setReviews([]);
+      setReviewsFetching(false);
+      return;
     }
-    setReviews(rows);
-  };
+    setReviewsFetching(true);
+    try {
+      const rows: BookReview[] = [];
+      for (let offset = 0; ; offset += 200) {
+        const { data, error } = await supabase
+          .from("books")
+          .select("*")
+          .eq("group_name", groupName)
+          .order("id", { ascending: false })
+          .range(offset, offset + 199);
+        if (request !== reviewsRequest.current) return;
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 200) break;
+      }
+      setReviews(rows);
+    } catch {
+      if (request === reviewsRequest.current) {
+        setReviewsError("리뷰를 불러오지 못해 완독 여부를 확인할 수 없습니다.");
+        alert("리뷰를 불러오지 못했습니다. 다시 시도해 주세요.");
+      }
+    } finally {
+      if (request === reviewsRequest.current) setReviewsFetching(false);
+    }
+  }, [groupName]);
+
+  useEffect(() => {
+    if (showAllPlans || openWindow === "reading-plan") {
+      void fetchReadingPlans();
+      void fetchReviews();
+    }
+  }, [showAllPlans, openWindow, fetchReadingPlans, fetchReviews]);
 
   const fetchGoals = async () => {
     const { data, error } = await supabase
@@ -2914,13 +2987,17 @@ useEffect(() => {
   };
 
   useEffect(() => {
+    setReviews([]);
     if (isValidGroup(groupName) && supabaseUrl && supabaseAnonKey) {
-      fetchReviews();
+      void fetchReviews();
       fetchGoals();
       fetchComments();
       setMailReload((value) => value + 1);
     }
-  }, [groupName]);
+    return () => {
+      ++reviewsRequest.current;
+    };
+  }, [groupName, fetchReviews]);
 
   const userList = [
     "전체",
@@ -3880,6 +3957,15 @@ useEffect(() => {
                 >
                   💔 중도하차
                 </button>
+
+                {/* ✉️ 전체 회원의 독서 예고장 */}
+                <button
+                  type="button"
+                  onClick={() => setShowAllPlans(true)}
+                  className="px-2 py-0.5 text-xs win-btn"
+                >
+                  ✉️ 예고장
+                </button>
               </div>
             </div>
 
@@ -3888,30 +3974,32 @@ useEffect(() => {
               {/* 첫 번째 줄: 회원 선택 */}
               <div className="flex flex-wrap gap-1 items-center w-full min-w-0">
                 {userList.map((user) => (
-  <button
-    key={user}
-    type="button"
-    onClick={() => handleSelectUser(user)}
-    className={`relative ${
-  user !== "전체" && unreadMailByUser[user] ? "z-10" : "z-0"
-} px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
-  selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
-}`}
-  >
-    {user}
+                  <button
+                    key={user}
+                    type="button"
+                    onClick={() => handleSelectUser(user)}
+                    className={`relative ${
+                      user !== "전체" && unreadMailByUser[user] ? "z-10" : "z-0"
+                    } px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
+                      selectedUser === user
+                        ? "win-inset bg-[#000080] text-white"
+                        : ""
+                    }`}
+                  >
+                    {user}
 
-    {user !== "전체" && unreadMailByUser[user] && (
-  <span
-    aria-label="읽지 않은 우편함 알림 있음"
-    className="absolute -top-2 -right-2 z-20 text-[13px] leading-none pointer-events-none drop-shadow-sm origin-top"
-  >
-    <span className="inline-block mailbox-bell-ring">
-      🔔
-    </span>
-  </span>
-)}
-  </button>
-))}
+                    {user !== "전체" && unreadMailByUser[user] && (
+                      <span
+                        aria-label="읽지 않은 우편함 알림 있음"
+                        className="absolute -top-2 -right-2 z-20 text-[13px] leading-none pointer-events-none drop-shadow-sm origin-top"
+                      >
+                        <span className="inline-block mailbox-bell-ring">
+                          🔔
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
 
               {/* 두 번째 줄: 영수증과 우편함 */}
@@ -4022,14 +4110,15 @@ useEffect(() => {
                             {book.title}
                           </span>
                           {newBadgeNow !== null &&
-  book.created_at &&
-  Number.isFinite(Date.parse(book.created_at)) &&
-  newBadgeNow >= Date.parse(book.created_at) &&
-  newBadgeNow - Date.parse(book.created_at) < 24 * 60 * 60 * 1000 && (
-    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 leading-none rounded-sm">
-      NEW
-    </span>
-  )}
+                            book.created_at &&
+                            Number.isFinite(Date.parse(book.created_at)) &&
+                            newBadgeNow >= Date.parse(book.created_at) &&
+                            newBadgeNow - Date.parse(book.created_at) <
+                              24 * 60 * 60 * 1000 && (
+                              <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 leading-none rounded-sm">
+                                NEW
+                              </span>
+                            )}
                           {book.is_favorite && (
                             <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
                               👑 인생작
@@ -4040,15 +4129,9 @@ useEffect(() => {
                               🔁 재주행
                             </span>
                           )}
-                          {readingPlans.some((plan) => {
-                            return (
-                              plan.user_name === book.user_name &&
-                              normalizeBookTitle(plan.title) ===
-                                normalizeBookTitle(book.title) &&
-                              isSameAuthors(plan.author, book.author || "") &&
-                              plan.genre === book.genre
-                            );
-                          }) && (
+                          {readingPlans.some((plan) =>
+                            matchesReadingPlan(plan, book),
+                          ) && (
                             <span className="bg-green-100 text-green-800 border border-green-400 font-bold text-xs px-1 rounded">
                               📌 예고 이행!
                             </span>
@@ -5386,7 +5469,7 @@ useEffect(() => {
                   onChange={(e) => setPlanGenre(e.target.value)}
                   className="bg-white win-inset p-2 text-xs flex-1"
                 >
-                  {["소설", "만화", "웹툰", "오디오드라마"].map((genre) => (
+                  {BOOK_GENRES.map((genre) => (
                     <option key={genre} value={genre}>
                       {genre}
                     </option>
@@ -5400,6 +5483,11 @@ useEffect(() => {
                   className="bg-white win-inset p-2 text-xs flex-1 min-w-0"
                 />
               </div>
+
+              {/* 📅 날짜 선택사항 안내 */}
+              <p className="mt-1 text-[10px] text-gray-600">
+                💡 날짜는 선택하지 않아도 예고장을 등록할 수 있어요.
+              </p>
 
               <button
                 type="button"
@@ -5416,60 +5504,68 @@ useEffect(() => {
                 📋 {selectedUser}의 독서 예고 목록
               </strong>
 
-              {readingPlans
-                .filter((plan) => plan.user_name === selectedUser)
-                .map((plan) => {
-                  const completed = reviews.some(
-                    (book) =>
-                      book.user_name === plan.user_name &&
-                      normalizeBookTitle(book.title) ===
-                        normalizeBookTitle(plan.title) &&
-                      isSameAuthors(book.author || "", plan.author) &&
-                      book.genre === plan.genre,
-                  );
-
-                  return (
-                    <div
-                      key={plan.id}
-                      className="bg-white win-inset p-3 text-xs"
-                    >
-                      <div className="font-bold text-[#000080] break-words">
-                        📖 {plan.title}
-                      </div>
-
-                      <div className="text-gray-600 mt-1">
-                        {plan.author} · {plan.genre}
-                      </div>
-
-                      {plan.planned_date && (
-                        <div className="mt-1">
-                          📅 예정일: {plan.planned_date}
-                        </div>
-                      )}
-
-                      <div
-                        className={`mt-2 font-bold ${completed ? "text-green-700" : "text-orange-700"}`}
-                      >
-                        {completed ? "✅ 예고 이행!" : "⏳ 예고 중"}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => void deleteReadingPlan(plan.id)}
-                        className="win-btn px-2 py-1 mt-2 text-xs"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  );
-                })}
-
-              {readingPlans.filter((plan) => plan.user_name === selectedUser)
-                .length === 0 && (
-                <p className="text-xs text-gray-600 text-center py-4">
-                  아직 등록된 독서 예고가 없습니다.
+              {(plansFetching || reviewsFetching) && (
+                <p className="text-xs text-gray-600" role="status">
+                  예고장과 완독 여부를 확인하는 중...
                 </p>
               )}
+              {(plansError || reviewsError) && (
+                <p className="text-xs text-red-700" role="alert">
+                  {plansError || reviewsError}
+                </p>
+              )}
+              {!plansFetching &&
+                !reviewsFetching &&
+                !plansError &&
+                !reviewsError &&
+                activeReadingPlans
+                  .filter((plan) => plan.user_name === selectedUser)
+                  .map((plan) => {
+                    return (
+                      <div
+                        key={plan.id}
+                        className="bg-white win-inset p-3 text-xs"
+                      >
+                        <div className="font-bold text-[#000080] break-words">
+                          📖 {plan.title}
+                        </div>
+
+                        <div className="text-gray-600 mt-1">
+                          {plan.author} · {plan.genre}
+                        </div>
+
+                        {plan.planned_date && (
+                          <div className="mt-1">
+                            📅 예정일: {plan.planned_date}
+                          </div>
+                        )}
+
+                        <div className="mt-2 font-bold text-orange-700">
+                          ⏳ 예고 중
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void deleteReadingPlan(plan.id)}
+                          className="win-btn px-2 py-1 mt-2 text-xs"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    );
+                  })}
+
+              {!plansFetching &&
+                !reviewsFetching &&
+                !plansError &&
+                !reviewsError &&
+                activeReadingPlans.filter(
+                  (plan) => plan.user_name === selectedUser,
+                ).length === 0 && (
+                  <p className="text-xs text-gray-600 text-center py-4">
+                    아직 등록된 독서 예고가 없습니다.
+                  </p>
+                )}
             </div>
           </div>
         </div>
@@ -6071,6 +6167,91 @@ useEffect(() => {
                   )}
                 </div>
               </details>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✉️ 전체 회원 독서 예고장 모아보기 */}
+      {showAllPlans && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3">
+          <div className="w-full max-w-md max-h-[80dvh] flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
+            {/* 제목 표시줄 */}
+            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
+              <span>✉️ NOTICE.exe — 독서 예고장</span>
+
+              <button
+                type="button"
+                onClick={() => setShowAllPlans(false)}
+                className="win-btn text-black w-5 h-5 flex items-center justify-center"
+                aria-label="예고장 닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs px-2 pt-3 pb-2 shrink-0">
+              📬 우리 모임의 독서 예고장을 모아봤어요!
+            </p>
+
+            {/* 예고장 목록만 스크롤 */}
+            <div className="bg-white win-inset mx-2 mb-2 p-2 flex-1 min-h-0 overflow-y-auto space-y-2">
+              {(plansFetching || reviewsFetching) && (
+                <p className="text-xs text-gray-600" role="status">
+                  예고장과 완독 여부를 확인하는 중...
+                </p>
+              )}
+              {(plansError || reviewsError) && (
+                <p className="text-xs text-red-700" role="alert">
+                  {plansError || reviewsError}
+                </p>
+              )}
+              {!plansFetching &&
+                !reviewsFetching &&
+                !plansError &&
+                !reviewsError &&
+                (activeReadingPlans.length === 0 ? (
+                  <p className="text-xs text-center text-gray-500 py-8">
+                    아직 등록된 예고장이 없어요.
+                  </p>
+                ) : (
+                  Array.from(
+                    new Set(activeReadingPlans.map((plan) => plan.user_name)),
+                  ).map((userName) => (
+                    <div key={userName} className="space-y-2">
+                      {/* 회원별 제목 */}
+                      <div className="bg-[#e5dff0] border-b border-[#800080] px-2 py-1.5 text-xs font-bold text-[#000080]">
+                        ✉️ {userName}의 예고
+                      </div>
+
+                      {/* 해당 회원이 등록한 예고장 */}
+                      {activeReadingPlans
+                        .filter((plan) => plan.user_name === userName)
+                        .map((plan) => (
+                          <div
+                            key={plan.id}
+                            className="border border-gray-300 bg-[#f8f6fc] p-3 text-xs"
+                          >
+                            <p className="font-bold">📖 {plan.title}</p>
+
+                            <p className="mt-1 text-gray-700">
+                              ✍️ {plan.author}
+                            </p>
+
+                            <p className="mt-1 text-gray-600">
+                              🏷️ {plan.genre}
+                            </p>
+
+                            {plan.planned_date && (
+                              <p className="mt-1 text-gray-600">
+                                📅 {plan.planned_date}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  ))
+                ))}
             </div>
           </div>
         </div>
@@ -8069,14 +8250,14 @@ useEffect(() => {
             </button>
           ) : (
             <div
-  className={`absolute left-0 mini-pet-walk ${
-    miniPet.species === "bogli" &&
-    miniPet.stage === "teen" &&
-    !miniPetPreview
-      ? "-bottom-[14px]"
-      : "-bottom-4"
-  }`}
->
+              className={`absolute left-0 mini-pet-walk ${
+                miniPet.species === "bogli" &&
+                miniPet.stage === "teen" &&
+                !miniPetPreview
+                  ? "-bottom-[14px]"
+                  : "-bottom-4"
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => setOpenWindow("pets")}
@@ -8125,30 +8306,30 @@ useEffect(() => {
           <div className="flex-1 min-w-0 mx-1 h-[30px] flex items-center gap-1 px-1">
             {/* 곡 제목 — 클릭하면 주크박스 열기 */}
             <button
-  type="button"
-  onClick={() => setOpenWindow("jukebox")}
-  className="min-w-0 flex-1 h-full text-left overflow-hidden flex items-center gap-1"
-  title={
-    jukeboxActive
-      ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
-      : "주크박스 열기"
-  }
->
-  {/* 🎵 재생 중 이퀄라이저 */}
-  <span
-    aria-hidden="true"
-    className={`jukebox-equalizer shrink-0 ${
-      jukeboxPlaying ? "is-playing" : ""
-    }`}
-  >
-    <span />
-    <span />
-    <span />
-    <span />
-  </span>
+              type="button"
+              onClick={() => setOpenWindow("jukebox")}
+              className="min-w-0 flex-1 h-full text-left overflow-hidden flex items-center gap-1"
+              title={
+                jukeboxActive
+                  ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+                  : "주크박스 열기"
+              }
+            >
+              {/* 🎵 재생 중 이퀄라이저 */}
+              <span
+                aria-hidden="true"
+                className={`jukebox-equalizer shrink-0 ${
+                  jukeboxPlaying ? "is-playing" : ""
+                }`}
+              >
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
 
-  <span
-    ref={jukeboxTickerBoxRef}
+              <span
+                ref={jukeboxTickerBoxRef}
                 className="block w-full overflow-hidden whitespace-nowrap text-[10px] sm:text-xs text-black"
               >
                 <span
@@ -8164,8 +8345,8 @@ useEffect(() => {
                   }
                 >
                   {jukeboxActive
-  ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
-  : "재생 중인 곡이 없습니다"}
+                    ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+                    : "재생 중인 곡이 없습니다"}
                 </span>
               </span>
             </button>
