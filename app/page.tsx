@@ -1969,6 +1969,10 @@ function BookClubContent() {
 const [unreadMailByUser, setUnreadMailByUser] = useState<
   Record<string, boolean>
 >({});
+
+  // 🔔 종 알림 새로고침
+const [mailBellReload, setMailBellReload] = useState(0);
+  
   // 🔔 모든 기기에서 공유하는 우편함 알림 상태
 useEffect(() => {
   if (!isValidGroup(groupName)) {
@@ -2037,8 +2041,6 @@ useEffect(() => {
     document.removeEventListener("visibilitychange", refresh);
   };
 }, [groupName, mailBellReload]);
-
-const [mailBellReload, setMailBellReload] = useState(0);
   const [targetMember, setTargetMember] = useState<string[]>([]);
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(
     null,
