@@ -1965,6 +1965,80 @@ function BookClubContent() {
   const [mailSort, setMailSort] = useState<"newest" | "oldest">("newest");
   const [mailBusy, setMailBusy] = useState<number | null>(null);
   const [mailReload, setMailReload] = useState(0);
+  // 🔔 모임원별 읽지 않은 우편함 알림
+const [unreadMailByUser, setUnreadMailByUser] = useState<
+  Record<string, boolean>
+>({});
+  // 🔔 모든 기기에서 공유하는 우편함 알림 상태
+useEffect(() => {
+  if (!isValidGroup(groupName)) {
+    setUnreadMailByUser({});
+    return;
+  }
+
+  let cancelled = false;
+  let loading = false;
+
+  setUnreadMailByUser({});
+
+  const loadUnreadMail = async () => {
+    if (loading || document.visibilityState === "hidden") return;
+
+    loading = true;
+
+    try {
+      const unread: Record<string, boolean> = {};
+
+      for (let offset = 0; ; offset += 200) {
+        const { data, error } = await supabase
+          .from("mailbox_notifications")
+          .select("recipient")
+          .eq("group_name", groupName)
+          .is("read_at", null)
+          .order("id", { ascending: true })
+          .range(offset, offset + 199);
+
+        if (error) throw error;
+        if (cancelled) return;
+
+        for (const item of data || []) {
+          unread[item.recipient] = true;
+        }
+
+        if (!data || data.length < 200) break;
+      }
+
+      if (!cancelled) {
+        setUnreadMailByUser(unread);
+      }
+    } catch (error) {
+      console.error("우편함 종 알림 조회 실패:", error);
+    } finally {
+      loading = false;
+    }
+  };
+
+  void loadUnreadMail();
+
+  const refresh = () => {
+    void loadUnreadMail();
+  };
+
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", refresh);
+
+  // 다른 기기에서 읽은 상태도 주기적으로 확인
+  const timer = window.setInterval(refresh, 15000);
+
+  return () => {
+    cancelled = true;
+    window.clearInterval(timer);
+    window.removeEventListener("focus", refresh);
+    document.removeEventListener("visibilitychange", refresh);
+  };
+}, [groupName, mailBellReload]);
+
+const [mailBellReload, setMailBellReload] = useState(0);
   const [targetMember, setTargetMember] = useState<string[]>([]);
   const [openCommentBookId, setOpenCommentBookId] = useState<number | null>(
     null,
@@ -2703,6 +2777,7 @@ function BookClubContent() {
           row.id === item.id ? { ...row, read_at: data.read_at } : row,
         ),
       );
+      setMailBellReload((value) => value + 1);
     }
     jumpToReview(item.book_id);
   };
@@ -2736,10 +2811,11 @@ function BookClubContent() {
       );
     } catch {
       alert("전체 읽음 저장에 실패했습니다. 다시 시도해 주세요.");
-    } finally {
-      setMailBusy(null);
-      setMailReload((value) => value + 1);
-    }
+      } finally {
+  setMailBusy(null);
+  setMailReload((value) => value + 1);
+  setMailBellReload((value) => value + 1);
+}
   };
 
   const handleRandomRecommend = () => {
@@ -3798,18 +3874,26 @@ function BookClubContent() {
               {/* 첫 번째 줄: 회원 선택 */}
               <div className="flex flex-wrap gap-1 items-center w-full min-w-0">
                 {userList.map((user) => (
-                  <button
-                    key={user}
-                    onClick={() => handleSelectUser(user)}
-                    className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
-                      selectedUser === user
-                        ? "win-inset bg-[#000080] text-white"
-                        : ""
-                    }`}
-                  >
-                    {user}
-                  </button>
-                ))}
+  <button
+    key={user}
+    type="button"
+    onClick={() => handleSelectUser(user)}
+    className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
+      selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
+    }`}
+  >
+    {user}
+
+    {user !== "전체" && unreadMailByUser[user] && (
+      <span
+        aria-label="읽지 않은 우편함 알림 있음"
+        className="absolute -top-2 -right-2 text-[13px] leading-none pointer-events-none drop-shadow-sm"
+      >
+        🔔
+      </span>
+    )}
+  </button>
+))}
               </div>
 
               {/* 두 번째 줄: 영수증과 우편함 */}
