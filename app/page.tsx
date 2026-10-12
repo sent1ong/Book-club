@@ -54,7 +54,7 @@ interface PetGeneration {
 
 // Mini dialogue uses the existing PNG; timestamps must come from persisted rows.
 const MINI_DIALOGUE = {
-  idle: ["헤헤", "히히", "룰루", "냐옹", "심심..", "놀자~", "뭐해?"],
+  idle: ["헤헤", "히히", "룰루", "냐옹", "심심..", "놀자~", "뭐해?", "책 봐?"],
   pet: ["좋아", "꺄!", "히힛", "(행복)", "헤헷", "♡"],
   feed: ["냠냠", "얌얌", "꿀꺽", "쩝쩝", "맛나!", "와앙"],
   sleepy: ["졸려", "하암", "흐암", "(졸림)", "zZ"],
@@ -4112,8 +4112,8 @@ function BookClubContent() {
         @media (min-width: 768px) {
           .mini-pet-chat {
             --mini-chat-size: 88px;
-            --mini-chat-left: -58px;
-            --mini-chat-top: -55px;
+            --mini-chat-left: -68px;
+            --mini-chat-top: -63px;
             --mini-chat-short: 14px;
             --mini-chat-medium: 13px;
             --mini-chat-long: 11px;
