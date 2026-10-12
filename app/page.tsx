@@ -71,6 +71,16 @@ const PET_COLOR_FILTERS: Record<string, string> = {
   butter: "hue-rotate(55deg) saturate(1.1)",
 };
 
+// 세대 번호만으로 표시 색상을 순환하며 저장된 데이터는 변경하지 않습니다.
+const PET_COLOR_ORDER = ["original", "lavender", "mint", "peach", "sky", "butter"] as const;
+function getPetColorFilter(pet: PetGeneration): string {
+  const generation = pet.generation_number;
+  const variant = Number.isInteger(generation) && generation > 0
+    ? PET_COLOR_ORDER[(generation - 1) % PET_COLOR_ORDER.length]
+    : pet.color_variant || "original";
+  return PET_COLOR_FILTERS[variant] || "none";
+}
+
 // 🎀 세대별 펫 장식
 const PET_DECORATIONS: Record<string, string> = {
   star_mark: "/pets/deco/star_mark.png",
@@ -83,12 +93,16 @@ function PetSprite({
   pet,
   stage,
   eating = false,
+  happy = false,
+  sleeping = false,
   size = 150,
   className = "",
 }: {
   pet: PetGeneration;
   stage?: "egg" | "baby" | "teen" | "adult";
   eating?: boolean;
+  happy?: boolean;
+  sleeping?: boolean;
   size?: number;
   className?: string;
 }) {
@@ -112,13 +126,18 @@ function PetSprite({
     return () => window.clearInterval(timer);
   }, [eating, visibleStage]);
 
-  const fileName =
-    eating && visibleStage !== "egg" && chewFrame
-      ? `${visibleStage}_eat`
-      : visibleStage;
+  // 먹는 동안의 일반 프레임에도 happy/sleep이 끼어들지 않습니다.
+  const fileName = visibleStage === "egg" || pet.stage === "dead"
+    ? visibleStage
+    : eating
+      ? chewFrame ? `${visibleStage}_eat` : visibleStage
+      : happy
+        ? `${visibleStage}_happy`
+        : sleeping
+          ? `${visibleStage}_sleep`
+          : visibleStage;
 
-  const colorFilter =
-    PET_COLOR_FILTERS[pet.color_variant || "original"] || "none";
+  const colorFilter = getPetColorFilter(pet);
 
   return (
     <span
@@ -1657,6 +1676,42 @@ function BookClubContent() {
   );
   const [petCareError, setPetCareError] = useState("");
 
+  const [happyPetId, setHappyPetId] = useState<number | null>(null);
+  const happyTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const [miniPetSleeping, setMiniPetSleeping] = useState(false);
+  const miniPetIsHappy = miniPet != null && happyPetId === miniPet.id;
+  const miniPetIsEating = miniPet != null && petCareAction === "feed" &&
+    openWindow === "pets" && currentPet?.id === miniPet.id;
+  const miniPetIsAsleep = miniPetSleeping && !miniPetIsEating && !miniPetIsHappy &&
+    miniPet != null && miniPet.stage !== "egg" && miniPet.stage !== "dead";
+
+  useEffect(() => {
+    setHappyPetId(null);
+    return () => {
+      if (happyTimer.current !== null) window.clearTimeout(happyTimer.current);
+    };
+  }, [groupName]);
+
+  // 미니펫만 25~50초 배회한 뒤 4~7초 쉬고, 돌보기 중에는 깨어납니다.
+  useEffect(() => {
+    setMiniPetSleeping(false);
+    if (!miniPet || miniPet.stage === "egg" || miniPet.stage === "dead" ||
+        miniPetIsHappy || miniPetIsEating) return;
+    let timer: ReturnType<typeof window.setTimeout>;
+    const walk = () => {
+      timer = window.setTimeout(() => {
+        if (document.visibilityState === "hidden") { walk(); return; }
+        setMiniPetSleeping(true);
+        timer = window.setTimeout(() => {
+          setMiniPetSleeping(false);
+          walk();
+        }, 4000 + Math.random() * 3000);
+      }, 25000 + Math.random() * 25000);
+    };
+    walk();
+    return () => window.clearTimeout(timer);
+  }, [miniPet?.id, miniPet?.stage, miniPetIsHappy, miniPetIsEating]);
+
   // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
   useEffect(() => {
     if (!isValidGroup(groupName)) {
@@ -1885,6 +1940,14 @@ function BookClubContent() {
 
     setPetCareBusy(true);
     setPetCareAction(actionType);
+    if (actionType === "pet" && currentPet.stage !== "egg") {
+      if (happyTimer.current !== null) window.clearTimeout(happyTimer.current);
+      setHappyPetId(currentPet.id);
+      happyTimer.current = window.setTimeout(() => {
+        setHappyPetId(null);
+        happyTimer.current = null;
+      }, 2000);
+    }
     setPetCareError("");
 
     const careStartedAt = Date.now();
@@ -1905,7 +1968,7 @@ function BookClubContent() {
       );
     } finally {
       const elapsed = Date.now() - careStartedAt;
-      const remaining = Math.max(0, 1500 - elapsed);
+      const remaining = Math.max(0, (actionType === "pet" ? 2000 : 1500) - elapsed);
 
       if (remaining > 0) {
         await new Promise<void>((resolve) => {
@@ -5763,6 +5826,7 @@ function BookClubContent() {
                             pet={currentPet}
                             size={150}
                             eating={petCareAction === "feed"}
+                            happy={happyPetId === currentPet.id}
                             className={petCareAction ? "" : "mini-pet-hop"}
                           />
                         </div>
@@ -8250,6 +8314,7 @@ function BookClubContent() {
             </button>
           ) : (
             <div
+              style={{ animationPlayState: miniPetIsAsleep ? "paused" : "running" }}
               className={`absolute left-0 mini-pet-walk ${
                 miniPet.species === "bogli" &&
                 miniPet.stage === "teen" &&
@@ -8263,18 +8328,26 @@ function BookClubContent() {
                 onClick={() => setOpenWindow("pets")}
                 title={`${miniPet.pet_name || "우리 펫"} · PET.exe 열기`}
                 aria-label="펫 돌보기 열기"
-                className="relative block pointer-events-auto mini-pet-hop"
+                className={`relative block pointer-events-auto ${miniPetIsAsleep ? "" : "mini-pet-hop"}`}
               >
                 <PetSprite
                   pet={miniPet}
                   stage={miniPetPreview ? "baby" : undefined}
                   size={70}
-                  eating={
-                    petCareAction === "feed" &&
-                    openWindow === "pets" &&
-                    currentPet?.id === miniPet.id
-                  }
+                  eating={miniPetIsEating}
+                  happy={miniPetIsHappy}
+                  sleeping={miniPetIsAsleep}
                 />
+                {miniPetIsAsleep && (
+                  <Image src="/pets/deco/zzz.png" alt="" aria-hidden="true"
+                    width={28} height={28} unoptimized
+                    className="pointer-events-none absolute -top-2 right-0" />
+                )}
+                {miniPetIsHappy && (
+                  <Image src="/pets/deco/heart.png" alt="" aria-hidden="true"
+                    width={25} height={25} unoptimized
+                    className="pointer-events-none absolute -top-2 right-0 pet-heart-float" />
+                )}
               </button>
             </div>
           )}
