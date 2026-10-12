@@ -106,3 +106,59 @@ body {
     animation: none;
   }
 }
+
+/* 🎵 JUKEBOX.exe — 작업 표시줄 재생 이퀄라이저 */
+.jukebox-equalizer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 17px;
+  height: 16px;
+}
+
+.jukebox-equalizer span {
+  display: block;
+  width: 3px;
+  height: 5px;
+  background: #000080;
+  transform-origin: bottom;
+  animation: jukebox-equalizer-bounce 650ms ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+.jukebox-equalizer span:nth-child(2) {
+  animation-duration: 480ms;
+  animation-delay: -200ms;
+}
+
+.jukebox-equalizer span:nth-child(3) {
+  animation-duration: 730ms;
+  animation-delay: -350ms;
+}
+
+.jukebox-equalizer span:nth-child(4) {
+  animation-duration: 560ms;
+  animation-delay: -120ms;
+}
+
+.jukebox-equalizer.is-playing span {
+  animation-play-state: running;
+}
+
+@keyframes jukebox-equalizer-bounce {
+  from {
+    transform: scaleY(0.6);
+  }
+
+  to {
+    transform: scaleY(2.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jukebox-equalizer span {
+    animation: none;
+    transform: none;
+  }
+}
