@@ -8341,22 +8341,34 @@ function BookClubContent() {
               />
             </button>
           ) : (
-            <div
-              style={{ animationPlayState: miniPetIsAsleep ? "paused" : "running" }}
-              className={`absolute left-0 mini-pet-walk ${
-                miniPet.species === "bogli" &&
-                miniPet.stage === "teen" &&
-                !miniPetPreview
-                  ? "-bottom-[14px]"
-                  : "-bottom-4"
-              }`}
-            >
+
+          <div
+  style={{
+    animationPlayState:
+      miniPetIsAsleep ||
+      (petCareAction === "feed" &&
+        openWindow === "pets" &&
+        currentPet?.id === miniPet.id)
+        ? "paused"
+        : "running",
+  }}
+  className={`absolute left-0 mini-pet-walk ${
+    miniPet.species === "bogli" &&
+    miniPet.stage === "teen" &&
+    !miniPetPreview
+      ? "-bottom-[14px]"
+      : "-bottom-4"
+  }`}
+>
+          
               <button
                 type="button"
                 onClick={() => setOpenWindow("pets")}
                 title={`${miniPet.pet_name || "우리 펫"} · PET.exe 열기`}
                 aria-label="펫 돌보기 열기"
-                className={`relative block pointer-events-auto ${miniPetIsAsleep ? "" : "mini-pet-hop"}`}
+                className={`relative block pointer-events-auto ${
+                    miniPetIsAsleep || miniPetIsEating ? "" : "mini-pet-hop"
+                }`}
               >
                 <PetSprite
                   pet={miniPet}
