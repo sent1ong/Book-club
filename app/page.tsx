@@ -4734,15 +4734,17 @@ return (
   }
 >
   {currentPet.stage === "egg" ? (
-    <PetSprite
-      pet={currentPet}
-      size={150}
-      className={
-        petCareAction === "feed"
-          ? "pet-egg-excited"
-          : "pet-egg-bounce"
-      }
-    />
+  <div className="scale-[0.7333] md:scale-100">
+  <PetSprite
+    pet={currentPet}
+    size={150}
+    className={
+      petCareAction === "feed"
+        ? "pet-egg-excited"
+        : "pet-egg-bounce"
+    }
+  />
+</div>
   ) : (
     <div
       className={
@@ -4751,12 +4753,14 @@ return (
           : "pet-room-walk"
       }
     >
-      <PetSprite
-        pet={currentPet}
-        size={150}
-        eating={petCareAction === "feed"}
-        className={petCareAction ? "" : "mini-pet-hop"}
-      />
+      <div className="scale-[0.7333] md:scale-100 origin-bottom">
+  <PetSprite
+    pet={currentPet}
+    size={150}
+    eating={petCareAction === "feed"}
+    className={petCareAction ? "" : "mini-pet-hop"}
+  />
+</div>
     </div>
   )}
 
