@@ -4645,7 +4645,7 @@ useEffect(() => {
         <div
           className={
             openWindow === "jukebox"
-              ? "w-full max-w-lg max-h-[65dvh] sm:max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
+              ? "w-full max-w-lg h-[72dvh] max-h-[calc(100dvh-24px)] sm:h-auto sm:max-h-[85dvh] min-h-0 flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
               : "w-[140px] max-w-[45vw] sm:w-[200px] sm:max-w-[55vw] bg-[#c0c0c0] win-outset p-1 shadow-xl text-black"
           }
         >
@@ -4719,7 +4719,7 @@ useEffect(() => {
           </div>
 
           {/* 유튜브 플레이어: 항상 같은 요소 유지 */}
-          <div className="relative w-full aspect-video bg-black win-inset overflow-hidden">
+          <div className="relative w-full aspect-video shrink-0 bg-black win-inset overflow-hidden">
             <div
               id="jukebox-youtube-player"
               className="absolute inset-0 w-full h-full"
@@ -4819,7 +4819,7 @@ useEffect(() => {
                 🎶 우리 모임 OST ({jukeboxSongs.length}곡)
               </div>
 
-              <div className="bg-white win-inset flex-1 min-h-0 max-h-[140px] sm:max-h-[260px] overflow-y-auto p-2 space-y-1">
+              <div className="bg-white win-inset flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
                 {jukeboxVisibleSongs.length === 0 ? (
                   <p className="text-center text-gray-500 text-xs py-6">
                     {jukeboxSongs.length === 0
