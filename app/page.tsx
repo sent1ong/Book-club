@@ -8808,8 +8808,8 @@ function BookClubContent() {
                     aria-hidden="true"
                     className="mini-pet-chat pointer-events-none absolute"
                     style={{
-                      left: "max(var(--mini-chat-left, -40px), calc(168px - 100vw))",
-                      top: "var(--mini-chat-top, -38px)",
+                      left: "max(var(--mini-chat-left, -50px), calc(168px - 100vw))",
+                      top: "var(--mini-chat-top, -46px)",
                       width: "var(--mini-chat-size, 68px)",
                       height: "var(--mini-chat-size, 68px)",
                       backgroundImage: "url('/pets/deco/chat.png')",
