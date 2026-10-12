@@ -4171,11 +4171,11 @@ const { error } = await supabase.from("book_comments").insert([
                       className="w-full p-1 text-xs bg-white win-inset"
                     >
                       <option>소설</option>
-                      <option>시</option>
                       <option>만화</option>
                       <option>웹툰</option>
                       <option>오디오드라마</option>
                       <option>수필</option>
+                      <option>시</option>
                       <option>사회/과학</option>
                       <option>철학</option>
                       <option>실용</option>
