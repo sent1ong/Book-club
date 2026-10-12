@@ -52,6 +52,46 @@ interface PetGeneration {
   died_at: string | null;
 }
 
+// Mini dialogue uses the existing PNG; timestamps must come from persisted rows.
+const MINI_DIALOGUE = {
+  idle: ["헤헤", "히히", "룰루", "냐옹", "심심..", "놀자~", "뭐해?"],
+  pet: ["좋아", "꺄!", "히힛", "(행복)", "헤헷", "♡"],
+  feed: ["냠냠", "얌얌", "꿀꺽", "쩝쩝", "맛나!", "와앙"],
+  sleepy: ["졸려", "하암", "흐암", "(졸음)", "zZ"],
+  wake: ["응?", "어라", "(하품)", "안녕?", "헤헤"],
+  hungry: ["배고파", "밥 줘", "ㅠㅠ"],
+};
+const seoulDate = (now: number) =>
+  new Date(now).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+const planCountdown = (date: string, now: number | null) => {
+  if (now === null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  const days = Math.round(
+    (Date.parse(date + "T00:00:00Z") -
+      Date.parse(seoulDate(now) + "T00:00:00Z")) /
+      86400000,
+  );
+  return Number.isFinite(days)
+    ? days === 0
+      ? "D-DAY"
+      : days > 0
+        ? `D-${days}`
+        : `D+${-days}`
+    : "";
+};
+const careAgo = (timestamp: string | null, now: number | null) => {
+  if (!timestamp || now === null) return "";
+  const elapsed = now - Date.parse(timestamp);
+  if (!Number.isFinite(elapsed) || elapsed < 0) return "";
+  const minutes = Math.floor(elapsed / 60000);
+  return minutes === 0
+    ? "방금"
+    : minutes < 60
+      ? `${minutes}분 전`
+      : minutes < 1440
+        ? `${Math.floor(minutes / 60)}시간 전`
+        : `${Math.floor(minutes / 1440)}일 전`;
+};
+
 const PET_SPECIES_NAMES: Record<string, string> = {
   bogli: "보글이",
   bosongi: "보송이",
@@ -72,12 +112,20 @@ const PET_COLOR_FILTERS: Record<string, string> = {
 };
 
 // 세대 번호만으로 표시 색상을 순환하며 저장된 데이터는 변경하지 않습니다.
-const PET_COLOR_ORDER = ["original", "lavender", "mint", "peach", "sky", "butter"] as const;
+const PET_COLOR_ORDER = [
+  "original",
+  "lavender",
+  "mint",
+  "peach",
+  "sky",
+  "butter",
+] as const;
 function getPetColorFilter(pet: PetGeneration): string {
   const generation = pet.generation_number;
-  const variant = Number.isInteger(generation) && generation > 0
-    ? PET_COLOR_ORDER[(generation - 1) % PET_COLOR_ORDER.length]
-    : pet.color_variant || "original";
+  const variant =
+    Number.isInteger(generation) && generation > 0
+      ? PET_COLOR_ORDER[(generation - 1) % PET_COLOR_ORDER.length]
+      : pet.color_variant || "original";
   return PET_COLOR_FILTERS[variant] || "none";
 }
 
@@ -127,15 +175,18 @@ function PetSprite({
   }, [eating, visibleStage]);
 
   // 먹는 동안의 일반 프레임에도 happy/sleep이 끼어들지 않습니다.
-  const fileName = visibleStage === "egg" || pet.stage === "dead"
-    ? visibleStage
-    : eating
-      ? chewFrame ? `${visibleStage}_eat` : visibleStage
-      : happy
-        ? `${visibleStage}_happy`
-        : sleeping
-          ? `${visibleStage}_sleep`
-          : visibleStage;
+  const fileName =
+    visibleStage === "egg" || pet.stage === "dead"
+      ? visibleStage
+      : eating
+        ? chewFrame
+          ? `${visibleStage}_eat`
+          : visibleStage
+        : happy
+          ? `${visibleStage}_happy`
+          : sleeping
+            ? `${visibleStage}_sleep`
+            : visibleStage;
 
   const colorFilter = getPetColorFilter(pet);
 
@@ -464,8 +515,8 @@ function buildReviewQuiz(
     seen.add(row.id);
     return Boolean(
       row.user_name?.trim() &&
-        row.title?.trim() &&
-        row.review?.replace(/\(스포일러\)/g, "").trim(),
+      row.title?.trim() &&
+      row.review?.replace(/\(스포일러\)/g, "").trim(),
     );
   });
   const titlesByUser = new Map<string, Set<string>>();
@@ -1336,8 +1387,14 @@ function BookClubContent() {
     updateTime();
 
     const timer = window.setInterval(updateTime, 60000);
-
-    return () => window.clearInterval(timer);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") updateTime();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -1679,11 +1736,151 @@ function BookClubContent() {
   const [happyPetId, setHappyPetId] = useState<number | null>(null);
   const happyTimer = React.useRef<number | null>(null);
   const [miniPetSleeping, setMiniPetSleeping] = useState(false);
+  const [wakeSequence, setWakeSequence] = useState(0);
+  const [miniChat, setMiniChat] = useState<{ id: number; text: string } | null>(
+    null,
+  );
+  const miniChatTimer = React.useRef<number | null>(null);
+  const miniChatPriorityUntil = React.useRef(0);
+  const [careTimes, setCareTimes] = useState<
+    Record<number, { feed: string | null; pet: string | null }>
+  >({});
+  const careTimesRef = React.useRef(careTimes);
+  careTimesRef.current = careTimes;
+  const [careTimesError, setCareTimesError] = useState("");
+  const [planCelebration, setPlanCelebration] = useState<{
+    group: string;
+    user: string;
+    title: string;
+  } | null>(null);
+  const submitBusy = React.useRef(false);
+  const showMiniChat = React.useCallback(
+    (id: number, kind: keyof typeof MINI_DIALOGUE) => {
+      if (
+        (kind === "idle" || kind === "hungry" || kind === "sleepy") &&
+        Date.now() < miniChatPriorityUntil.current
+      )
+        return;
+      if (kind === "feed" || kind === "pet" || kind === "wake")
+        miniChatPriorityUntil.current = Date.now() + 2500;
+      if (miniChatTimer.current !== null)
+        window.clearTimeout(miniChatTimer.current);
+      const lines = MINI_DIALOGUE[kind];
+      setMiniChat({
+        id,
+        text: lines[Math.floor(Math.random() * lines.length)],
+      });
+      miniChatTimer.current = window.setTimeout(() => {
+        setMiniChat(null);
+        miniChatTimer.current = null;
+      }, 2500);
+    },
+    [],
+  );
+  useEffect(() => {
+    setMiniChat(null);
+    miniChatPriorityUntil.current = 0;
+    return () => {
+      if (miniChatTimer.current !== null)
+        window.clearTimeout(miniChatTimer.current);
+    };
+  }, [groupName, miniPet?.id]);
+  useEffect(() => {
+    if (!planCelebration) return;
+    const timer = window.setTimeout(() => setPlanCelebration(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [planCelebration]);
+  // All members' care, scoped to the actual generation. A date alone is not a time.
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        [
+          miniPet?.id,
+          currentPet?.group_name === groupName ? currentPet.id : undefined,
+        ].filter((id): id is number => id !== undefined),
+      ),
+    );
+    if (!isValidGroup(groupName) || !ids.length) return;
+    setCareTimes({});
+    let cancelled = false;
+    let inFlight = false;
+    const load = async () => {
+      if (inFlight || document.visibilityState === "hidden") return;
+      inFlight = true;
+      try {
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            const times: { feed: string | null; pet: string | null } = {
+              feed: null,
+              pet: null,
+            };
+            for (let offset = 0; ; offset += 200) {
+              const { data, error } = await supabase
+                .from("pet_care_actions")
+                .select("*")
+                .eq("generation_id", id)
+                .order("id", { ascending: false })
+                .range(offset, offset + 199);
+              if (error) throw error;
+              for (const row of data || []) {
+                // created_at is optional: never substitute action_date or client time.
+                const stamp = row.created_at;
+                if (
+                  (row.action_type === "feed" || row.action_type === "pet") &&
+                  typeof stamp === "string" &&
+                  /T|\d{2}:\d{2}/.test(stamp) &&
+                  /(Z|[+-]\d{2}:?\d{2})$/.test(stamp) &&
+                  Number.isFinite(Date.parse(stamp))
+                ) {
+                  const kind = row.action_type as "feed" | "pet";
+                  if (
+                    !times[kind] ||
+                    Date.parse(stamp) > Date.parse(times[kind]!)
+                  )
+                    times[kind] = stamp;
+                }
+              }
+              if (!data || data.length < 200) break;
+            }
+            return [id, times] as const;
+          }),
+        );
+        if (!cancelled) {
+          setCareTimes(Object.fromEntries(results));
+          setCareTimesError("");
+        }
+      } catch {
+        if (!cancelled) {
+          setCareTimes({});
+          setCareTimesError("돌봄 시각을 확인하지 못했어요.");
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 30000);
+    const onVisible = () => void load();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [groupName, miniPet?.id, currentPet?.id, petReload]);
   const miniPetIsHappy = miniPet != null && happyPetId === miniPet.id;
-  const miniPetIsEating = miniPet != null && petCareAction === "feed" &&
-    openWindow === "pets" && currentPet?.id === miniPet.id;
-  const miniPetIsAsleep = miniPetSleeping && !miniPetIsEating && !miniPetIsHappy &&
-    miniPet != null && miniPet.stage !== "egg" && miniPet.stage !== "dead";
+  const miniPetIsEating =
+    miniPet != null &&
+    petCareAction === "feed" &&
+    openWindow === "pets" &&
+    currentPet?.id === miniPet.id;
+  const miniPetIsAsleep =
+    miniPetSleeping &&
+    !miniPetIsEating &&
+    !miniPetIsHappy &&
+    miniPet != null &&
+    miniPet.stage !== "egg" &&
+    miniPet.stage !== "dead";
 
   useEffect(() => {
     setHappyPetId(null);
@@ -1695,22 +1892,97 @@ function BookClubContent() {
   // 미니펫만 25~50초 배회한 뒤 4~7초 쉬고, 돌보기 중에는 깨어납니다.
   useEffect(() => {
     setMiniPetSleeping(false);
-    if (!miniPet || miniPet.stage === "egg" || miniPet.stage === "dead" ||
-        miniPetIsHappy || miniPetIsEating) return;
+    if (
+      !miniPet ||
+      miniPet.stage === "egg" ||
+      miniPet.stage === "dead" ||
+      miniPetIsHappy ||
+      miniPetIsEating
+    )
+      return;
     let timer: number;
     const walk = () => {
-      timer = window.setTimeout(() => {
-        if (document.visibilityState === "hidden") { walk(); return; }
-        setMiniPetSleeping(true);
-        timer = window.setTimeout(() => {
-          setMiniPetSleeping(false);
-          walk();
-        }, 4000 + Math.random() * 3000);
-      }, 25000 + Math.random() * 25000);
+      timer = window.setTimeout(
+        () => {
+          if (document.visibilityState === "hidden") {
+            walk();
+            return;
+          }
+          showMiniChat(miniPet.id, "sleepy");
+          timer = window.setTimeout(() => {
+            setMiniPetSleeping(true);
+            timer = window.setTimeout(
+              () => {
+                setMiniPetSleeping(false);
+                showMiniChat(miniPet.id, "wake");
+                walk();
+              },
+              4000 + Math.random() * 3000,
+            );
+          }, 2500);
+        },
+        25000 + Math.random() * 25000,
+      );
     };
     walk();
     return () => window.clearTimeout(timer);
-  }, [miniPet?.id, miniPet?.stage, miniPetIsHappy, miniPetIsEating]);
+  }, [
+    miniPet?.id,
+    miniPet?.stage,
+    miniPetIsHappy,
+    miniPetIsEating,
+    wakeSequence,
+    showMiniChat,
+  ]);
+  useEffect(() => {
+    if (
+      !miniPet ||
+      miniPet.stage === "egg" ||
+      miniPet.stage === "dead" ||
+      miniPetIsAsleep ||
+      miniPetIsEating ||
+      miniPetIsHappy
+    )
+      return;
+    let timer: number;
+    const schedule = () => {
+      timer = window.setTimeout(
+        () => {
+          if (document.visibilityState !== "hidden") {
+            const fed = careTimesRef.current[miniPet.id]?.feed;
+            // Hunger is only inferred from a verified last meal, after 6 hours.
+            const hungry = fed && Date.now() - Date.parse(fed) >= 6 * 3600000;
+            showMiniChat(miniPet.id, hungry ? "hungry" : "idle");
+          }
+          schedule();
+        },
+        20000 + Math.random() * 20000,
+      );
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, [
+    miniPet?.id,
+    miniPet?.stage,
+    miniPetIsAsleep,
+    miniPetIsEating,
+    miniPetIsHappy,
+    showMiniChat,
+  ]);
+  const openMiniPet = () => {
+    if (miniPetIsAsleep && miniPet) {
+      setMiniPetSleeping(false);
+      setWakeSequence((value) => value + 1);
+      if (happyTimer.current !== null) window.clearTimeout(happyTimer.current);
+      setHappyPetId(miniPet.id);
+      happyTimer.current = window.setTimeout(() => {
+        setHappyPetId(null);
+        happyTimer.current = null;
+      }, 1500);
+      showMiniChat(miniPet.id, "wake");
+    }
+    setOpenWindow("pets");
+  };
 
   // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
   useEffect(() => {
@@ -1940,6 +2212,9 @@ function BookClubContent() {
 
     setPetCareBusy(true);
     setPetCareAction(actionType);
+    setMiniPetSleeping(false);
+    if (currentPet.stage !== "egg" && miniPet?.id === currentPet.id)
+      showMiniChat(currentPet.id, actionType);
     if (actionType === "pet" && currentPet.stage !== "egg") {
       if (happyTimer.current !== null) window.clearTimeout(happyTimer.current);
       setHappyPetId(currentPet.id);
@@ -1968,7 +2243,10 @@ function BookClubContent() {
       );
     } finally {
       const elapsed = Date.now() - careStartedAt;
-      const remaining = Math.max(0, (actionType === "pet" ? 2000 : 1500) - elapsed);
+      const remaining = Math.max(
+        0,
+        (actionType === "pet" ? 2000 : 1500) - elapsed,
+      );
 
       if (remaining > 0) {
         await new Promise<void>((resolve) => {
@@ -3119,6 +3397,7 @@ function BookClubContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitBusy.current || loading) return;
     if (!formData.title) return alert("제목을 입력해주세요!");
     if (!formData.user_name) return alert("작성자 이름을 입력해주세요!");
 
@@ -3170,74 +3449,132 @@ function BookClubContent() {
     if (targetMember.some((name) => !userList.includes(name))) {
       return alert("기존 멤버를 선택해주세요!");
     }
+    submitBusy.current = true;
     setLoading(true);
-    const finalReview = serializeReview(formData.review || "", isSpoiler);
+    try {
+      const finalReview = serializeReview(formData.review || "", isSpoiler);
 
-    if (editingId) {
-      const { error } = await supabase
-        .from("books")
-        .update({
-          ...formData,
-          review: finalReview,
-          target_member:
-            targetMember.length > 0 ? targetMember.join(",") : null,
-          is_favorite: isFavorite,
-          is_revisit: isRevisit,
-        })
-        .eq("id", editingId);
+      if (editingId) {
+        const { error } = await supabase
+          .from("books")
+          .update({
+            ...formData,
+            review: finalReview,
+            target_member:
+              targetMember.length > 0 ? targetMember.join(",") : null,
+            is_favorite: isFavorite,
+            is_revisit: isRevisit,
+          })
+          .eq("id", editingId);
 
-      if (error) {
-        alert("수정 실패: " + error.message);
-      } else {
-        playRetroDing();
-        alert("기록이 수정되었습니다!");
-        setRevealedSpoilers((previous) =>
-          previous.filter((id) => id !== editingId),
-        );
-        setEditingId(null);
-        resetForm();
-        setOpenWindow(null);
-        fetchReviews();
-        setMailReload((value) => value + 1);
-      }
-    } else {
-      const { error } = await supabase.from("books").insert([
-        {
-          ...formData,
-          review: finalReview,
-          target_member:
-            targetMember.length > 0 ? targetMember.join(",") : null,
-          group_name: groupName,
-          is_favorite: isFavorite,
-          is_revisit: isRevisit,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (error) {
-        alert("저장 실패: " + error.message);
-      } else {
-        const userGoal = goals.find((g) => g.user_name === formData.user_name);
-        const currentCount =
-          reviews.filter((r) => r.user_name === formData.user_name).length + 1;
-
-        if (userGoal && currentCount >= userGoal.target_count) {
-          playCelebrationSound();
+        if (error) {
+          alert("수정 실패: " + error.message);
         } else {
           playRetroDing();
+          alert("기록이 수정되었습니다!");
+          setRevealedSpoilers((previous) =>
+            previous.filter((id) => id !== editingId),
+          );
+          setEditingId(null);
+          resetForm();
+          setOpenWindow(null);
+          fetchReviews();
+          setMailReload((value) => value + 1);
         }
+      } else {
+        // Refresh before saving so an already fulfilled plan does not celebrate again.
+        const loadCompletionSnapshot = async (
+          table: "reading_plans" | "books",
+        ) => {
+          const rows: any[] = [];
+          try {
+            for (let offset = 0; ; offset += 200) {
+              const { data, error } = await supabase
+                .from(table)
+                .select("*")
+                .eq("group_name", groupName)
+                .eq("user_name", formData.user_name)
+                .order("id", { ascending: true })
+                .range(offset, offset + 199);
+              if (error) return { data: [], error: true };
+              rows.push(...(data || []));
+              if (!data || data.length < 200)
+                return { data: rows, error: false };
+            }
+          } catch {
+            return { data: [], error: true };
+          }
+        };
+        const [planSnapshot, reviewSnapshot] = await Promise.all([
+          loadCompletionSnapshot("reading_plans"),
+          loadCompletionSnapshot("books"),
+        ]);
+        const candidate = { ...formData, group_name: groupName } as BookReview;
+        const fulfilledPlan =
+          !planSnapshot.error &&
+          !reviewSnapshot.error &&
+          (planSnapshot.data || []).find(
+            (plan: ReadingPlan) =>
+              matchesReadingPlan(plan, candidate) &&
+              !(reviewSnapshot.data || []).some((review: BookReview) =>
+                matchesReadingPlan(plan, review),
+              ),
+          );
+        const { error } = await supabase.from("books").insert([
+          {
+            ...formData,
+            review: finalReview,
+            target_member:
+              targetMember.length > 0 ? targetMember.join(",") : null,
+            group_name: groupName,
+            is_favorite: isFavorite,
+            is_revisit: isRevisit,
+            created_at: new Date().toISOString(),
+          },
+        ]);
 
-        alert(`[${groupName}] 에 기록이 등록되었습니다!`);
-        resetForm();
-        setIsSpoiler(false);
-        setIsFavorite(false);
-        setIsRevisit(false);
-        setOpenWindow(null);
-        fetchReviews();
-        setMailReload((value) => value + 1);
+        if (error) {
+          alert("저장 실패: " + error.message);
+        } else {
+          const userGoal = goals.find(
+            (g) => g.user_name === formData.user_name,
+          );
+          const currentCount =
+            reviews.filter((r) => r.user_name === formData.user_name).length +
+            1;
+
+          if (userGoal && currentCount >= userGoal.target_count) {
+            playCelebrationSound();
+          } else {
+            playRetroDing();
+          }
+
+          if (fulfilledPlan) {
+            setPlanCelebration({
+              group: groupName,
+              user: formData.user_name,
+              title: formData.title,
+            });
+          } else {
+            alert(`[${groupName}] 에 기록이 등록되었습니다!`);
+          }
+          resetForm();
+          setIsSpoiler(false);
+          setIsFavorite(false);
+          setIsRevisit(false);
+          setOpenWindow(null);
+          fetchReviews();
+          setMailReload((value) => value + 1);
+        }
       }
+    } catch {
+      alert(
+        "저장 결과를 확인하지 못했습니다. 목록을 확인한 뒤 다시 시도해 주세요.",
+      );
+    } finally {
+      submitBusy.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleGoalSubmit = async (e: React.FormEvent) => {
@@ -3707,190 +4044,197 @@ function BookClubContent() {
   return (
     <main className="relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
       <style jsx global>{`
-  @keyframes petEggBounce {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    22% {
-      transform: translateY(-17px);
-    }
-    46% {
-      transform: translateY(0);
-    }
-    55% {
-      transform: translateY(-4px);
-    }
-    68%, 100% {
-      transform: translateY(0);
-    }
-  }
+        @keyframes petEggBounce {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          22% {
+            transform: translateY(-17px);
+          }
+          46% {
+            transform: translateY(0);
+          }
+          55% {
+            transform: translateY(-4px);
+          }
+          68%,
+          100% {
+            transform: translateY(0);
+          }
+        }
 
-  .pet-egg-bounce {
-    animation: petEggBounce 0.7s linear infinite;
-    will-change: transform;
-  }
+        .pet-egg-bounce {
+          animation: petEggBounce 0.7s linear infinite;
+          will-change: transform;
+        }
 
-  @media (prefers-reduced-motion: reduce) {
-    .pet-egg-bounce {
-      animation: none;
-    }
-  }
-  /* 🐾 미니 펫: 정해진 구역 안에서 좌우 배회 */
-@keyframes miniPetWalk {
-  0%, 5% {
-    transform: translateX(0);
-  }
-  45%, 55% {
-    transform: translateX(90px);
-  }
-  95%, 100% {
-    transform: translateX(0);
-  }
-}
+        @media (prefers-reduced-motion: reduce) {
+          .pet-egg-bounce {
+            animation: none;
+          }
+        }
+        /* 🐾 미니 펫: 정해진 구역 안에서 좌우 배회 */
+        @keyframes miniPetWalk {
+          0%,
+          5% {
+            transform: translateX(0);
+          }
+          45%,
+          55% {
+            transform: translateX(90px);
+          }
+          95%,
+          100% {
+            transform: translateX(0);
+          }
+        }
 
-/* 🐾 미니 펫: 걷는 동안 통통 뛰기 */
-@keyframes miniPetHop {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  45% {
-    transform: translateY(-12px);
-  }
-}
+        /* 🐾 미니 펫: 걷는 동안 통통 뛰기 */
+        @keyframes miniPetHop {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          45% {
+            transform: translateY(-12px);
+          }
+        }
 
-.mini-pet-walk {
-  animation: miniPetWalk 4s linear infinite;
-}
+        .mini-pet-walk {
+          animation: miniPetWalk 4s linear infinite;
+        }
 
-.mini-pet-hop {
-  animation: miniPetHop 0.6s ease-in-out infinite;
-}
+        .mini-pet-hop {
+          animation: miniPetHop 0.6s ease-in-out infinite;
+        }
 
-/* 🐾 PET.exe 방 안에서 좌우로 돌아다니기 */
-@keyframes petRoomWalk {
-  0%, 5% {
-    left: 0;
-  }
+        /* 🐾 PET.exe 방 안에서 좌우로 돌아다니기 */
+        @keyframes petRoomWalk {
+          0%,
+          5% {
+            left: 0;
+          }
 
-  45%, 55% {
-    left: calc(100% - 150px);
-  }
+          45%,
+          55% {
+            left: calc(100% - 150px);
+          }
 
-  95%, 100% {
-    left: 0;
-  }
-}
+          95%,
+          100% {
+            left: 0;
+          }
+        }
 
-.pet-room-walk {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  animation: petRoomWalk 5s linear infinite;
-}
+        .pet-room-walk {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          animation: petRoomWalk 5s linear infinite;
+        }
 
-@media (prefers-reduced-motion: reduce) {
-  .mini-pet-walk,
-  .mini-pet-hop {
-    animation: none;
-  }
-}
-/* 🥚 알 보살피기: 평소보다 빠른 통통 */
-.pet-egg-excited {
-  animation: petEggBounce 0.38s linear infinite;
-  will-change: transform;
-}
+        @media (prefers-reduced-motion: reduce) {
+          .mini-pet-walk,
+          .mini-pet-hop {
+            animation: none;
+          }
+        }
+        /* 🥚 알 보살피기: 평소보다 빠른 통통 */
+        .pet-egg-excited {
+          animation: petEggBounce 0.38s linear infinite;
+          will-change: transform;
+        }
 
-/* 💗 쓰다듬기: 하트가 위로 떠오름 */
-@keyframes petHeartFloat {
-  0% {
-    transform: translateY(8px) scale(0.7);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-35px) scale(1.15);
-    opacity: 0;
-  }
-}
+        /* 💗 쓰다듬기: 하트가 위로 떠오름 */
+        @keyframes petHeartFloat {
+          0% {
+            transform: translateY(8px) scale(0.7);
+            opacity: 0;
+          }
+          20% {
+            opacity: 1;
+          }
+          80% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-35px) scale(1.15);
+            opacity: 0;
+          }
+        }
 
-.pet-heart-float {
-  animation: petHeartFloat 0.9s ease-out infinite;
-}
+        .pet-heart-float {
+          animation: petHeartFloat 0.9s ease-out infinite;
+        }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-egg-excited,
-  .pet-heart-float {
-    animation: none;
-  }
-}
-/* ✨ 성장 반짝임 */
-@keyframes petGrowthSparkle {
-  0% {
-    opacity: 0;
-    transform: scale(0.5) rotate(-15deg);
-  }
-  30% {
-    opacity: 1;
-    transform: scale(1.1) rotate(5deg);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.3) rotate(15deg);
-  }
-}
+        @media (prefers-reduced-motion: reduce) {
+          .pet-egg-excited,
+          .pet-heart-float {
+            animation: none;
+          }
+        }
+        /* ✨ 성장 반짝임 */
+        @keyframes petGrowthSparkle {
+          0% {
+            opacity: 0;
+            transform: scale(0.5) rotate(-15deg);
+          }
+          30% {
+            opacity: 1;
+            transform: scale(1.1) rotate(5deg);
+          }
+          70% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1.3) rotate(15deg);
+          }
+        }
 
-.pet-growth-sparkle {
-  animation: petGrowthSparkle 1.8s ease-in-out forwards;
-}
+        .pet-growth-sparkle {
+          animation: petGrowthSparkle 1.8s ease-in-out forwards;
+        }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-growth-sparkle {
-    animation: none;
-    opacity: 0;
-  }
-}
+        @media (prefers-reduced-motion: reduce) {
+          .pet-growth-sparkle {
+            animation: none;
+            opacity: 0;
+          }
+        }
 
-/* 🎵 실제 넘치는 제목만 이동 */
-@keyframes jukeboxTickerMove {
-  0%, 12% {
-    transform: translateX(0);
-  }
+        /* 🎵 실제 넘치는 제목만 이동 */
+        @keyframes jukeboxTickerMove {
+          0%,
+          12% {
+            transform: translateX(0);
+          }
 
-  45%, 55% {
-    transform: translateX(
-      calc(-1 * var(--jukebox-overflow))
-    );
-  }
+          45%,
+          55% {
+            transform: translateX(calc(-1 * var(--jukebox-overflow)));
+          }
 
-  88%, 100% {
-    transform: translateX(0);
-  }
-}
+          88%,
+          100% {
+            transform: translateX(0);
+          }
+        }
 
-.jukebox-ticker-moving {
-  animation: jukeboxTickerMove
-    var(--jukebox-duration)
-    ease-in-out
-    infinite;
-  will-change: transform;
-}
+        .jukebox-ticker-moving {
+          animation: jukeboxTickerMove var(--jukebox-duration) ease-in-out
+            infinite;
+          will-change: transform;
+        }
 
-@media (prefers-reduced-motion: reduce) {
-  .jukebox-ticker-moving {
-    animation: none;
-  }
-}
-
-`}</style>
+        @media (prefers-reduced-motion: reduce) {
+          .jukebox-ticker-moving {
+            animation: none;
+          }
+        }
+      `}</style>
 
       {/* 바탕화면 메인 스크롤 영역 */}
       <div
@@ -3929,13 +4273,25 @@ function BookClubContent() {
           <div className="p-2 space-y-2 bg-[#d4d8dc] lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
             {/* 🔍 검색창 + 🎲 랜덤 추천 버튼 */}
             <div className="flex items-center gap-1.5 w-full min-w-0">
-              <input
-                type="text"
-                placeholder="🔍 제목, 작가, 리뷰 내용 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-0 text-xs p-1.5 win-inset bg-white focus:outline-none placeholder-gray-500"
-              />
+              <div className="relative flex-1 min-w-0">
+                <input
+                  type="text"
+                  placeholder="🔍 제목, 작가, 리뷰 내용 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full min-w-0 text-xs p-1.5 pr-7 win-inset bg-white focus:outline-none placeholder-gray-500"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="검색어 지우기"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 text-sm text-gray-600"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -4131,7 +4487,27 @@ function BookClubContent() {
             <div className="mt-1 space-y-2 max-h-[420px] overflow-y-auto pr-0.5 win-inset p-1 bg-[#808080] lg:max-h-none lg:flex-1 lg:min-h-0">
               {displayedReviews.length === 0 ? (
                 <div className="bg-white p-4 text-center text-xs text-gray-500">
-                  해당하는 독서 기록이 없습니다.
+                  {reviewsFetching
+                    ? "독서 기록을 불러오는 중입니다."
+                    : reviewsError
+                      ? reviewsError
+                      : reviews.length === 0
+                        ? "아직 등록된 독서 기록이 없습니다."
+                        : "검색 또는 필터 조건에 맞는 독서 기록이 없습니다."}
+                  {!reviewsFetching && !reviewsError && reviews.length > 0 && (
+                    <button
+                      type="button"
+                      className="win-btn block mx-auto mt-2 px-3 py-1 text-xs text-black"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedUser("전체");
+                        setSelectedGenre("전체");
+                        setFilterType("all");
+                      }}
+                    >
+                      전체 보기
+                    </button>
+                  )}
                 </div>
               ) : (
                 displayedReviews.map((book) => {
@@ -5599,7 +5975,8 @@ function BookClubContent() {
 
                         {plan.planned_date && (
                           <div className="mt-1">
-                            📅 예정일: {plan.planned_date}
+                            📅 예정일: {plan.planned_date}{" "}
+                            {planCountdown(plan.planned_date, newBadgeNow)}
                           </div>
                         )}
 
@@ -5814,52 +6191,52 @@ function BookClubContent() {
                         />
                       </div>
                     ) : (
-  <div
-    className={
-      petCareAction ||
-      (miniPetSleeping && miniPet?.id === currentPet.id)
-        ? "absolute bottom-0 left-1/2 -translate-x-1/2"
-        : "pet-room-walk"
-    }
-  >
-    <div className="relative scale-[0.7333] md:scale-100 origin-bottom">
-      <PetSprite
-        pet={currentPet}
-        size={150}
-        eating={petCareAction === "feed"}
-        happy={happyPetId === currentPet.id}
-        sleeping={
-          miniPetSleeping &&
-          miniPet?.id === currentPet.id &&
-          !petCareAction &&
-          happyPetId !== currentPet.id
-        }
-        className={
-          petCareAction ||
-          (miniPetSleeping && miniPet?.id === currentPet.id)
-            ? ""
-            : "mini-pet-hop"
-        }
-      />
+                      <div
+                        className={
+                          petCareAction ||
+                          (miniPetSleeping && miniPet?.id === currentPet.id)
+                            ? "absolute bottom-0 left-1/2 -translate-x-1/2"
+                            : "pet-room-walk"
+                        }
+                      >
+                        <div className="relative scale-[0.7333] md:scale-100 origin-bottom">
+                          <PetSprite
+                            pet={currentPet}
+                            size={150}
+                            eating={petCareAction === "feed"}
+                            happy={happyPetId === currentPet.id}
+                            sleeping={
+                              miniPetSleeping &&
+                              miniPet?.id === currentPet.id &&
+                              !petCareAction &&
+                              happyPetId !== currentPet.id
+                            }
+                            className={
+                              petCareAction ||
+                              (miniPetSleeping && miniPet?.id === currentPet.id)
+                                ? ""
+                                : "mini-pet-hop"
+                            }
+                          />
 
-      {/* 😴 큰 펫 수면 효과 */}
-      {miniPetSleeping &&
-        miniPet?.id === currentPet.id &&
-        !petCareAction &&
-        happyPetId !== currentPet.id && (
-          <Image
-            src="/pets/deco/zzz.png"
-            alt=""
-            aria-hidden="true"
-            width={45}
-            height={45}
-            unoptimized
-            className="absolute -top-3 right-0 pointer-events-none"
-          />
-        )}
-    </div>
-  </div>
-)}
+                          {/* 😴 큰 펫 수면 효과 */}
+                          {miniPetSleeping &&
+                            miniPet?.id === currentPet.id &&
+                            !petCareAction &&
+                            happyPetId !== currentPet.id && (
+                              <Image
+                                src="/pets/deco/zzz.png"
+                                alt=""
+                                aria-hidden="true"
+                                width={45}
+                                height={45}
+                                unoptimized
+                                className="absolute -top-3 right-0 pointer-events-none"
+                              />
+                            )}
+                        </div>
+                      </div>
+                    )}
 
                     {petCareAction === "pet" && (
                       <Image
@@ -5914,8 +6291,32 @@ function BookClubContent() {
                       </div>
 
                       {currentPet.pet_name && (
-                        <div className="mt-1 text-sm text-[#800080] break-words">
+                        <div
+                          className="mt-1 text-sm text-[#800080] whitespace-nowrap overflow-x-auto max-w-full"
+                          title={
+                            careTimesError || "기록된 돌봄 시각만 표시합니다."
+                          }
+                        >
                           💗 {currentPet.pet_name}
+                          {(() => {
+                            const times = careTimes[currentPet.id];
+                            const labels = [
+                              times?.feed && careAgo(times.feed, newBadgeNow)
+                                ? `🍪 ${careAgo(times.feed, newBadgeNow)}`
+                                : "",
+                              times?.pet && careAgo(times.pet, newBadgeNow)
+                                ? `💗 ${careAgo(times.pet, newBadgeNow)}`
+                                : "",
+                            ].filter(Boolean);
+                            return labels.length ? (
+                              <span
+                                className="ml-1 text-[9px] whitespace-nowrap"
+                                title="모임 전체 회원의 마지막 돌봄"
+                              >
+                                ({labels.join(" · ")})
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                     </div>
@@ -6336,7 +6737,8 @@ function BookClubContent() {
 
                             {plan.planned_date && (
                               <p className="mt-1 text-gray-600">
-                                📅 {plan.planned_date}
+                                📅 {plan.planned_date}{" "}
+                                {planCountdown(plan.planned_date, newBadgeNow)}
                               </p>
                             )}
                           </div>
@@ -8266,6 +8668,20 @@ function BookClubContent() {
         </div>
       )}
 
+      {planCelebration?.group === groupName && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-[100] max-w-[calc(100%_-_16px)] w-max pointer-events-none bg-[#c0c0c0] win-outset p-1 text-xs text-black shadow-[2px_2px_0_#000]"
+        >
+          <div className="bg-[#000080] text-white font-bold px-2 py-1">
+            🎉 독서 예고 달성!
+          </div>
+          <div className="px-2 py-2 break-words">
+            {planCelebration.user}님이 『{planCelebration.title}』을 완독했어요!
+          </div>
+        </div>
+      )}
       {/* 🐾 작업표시줄 위 상주 미니 펫 */}
       {miniPet && (
         <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
@@ -8341,33 +8757,31 @@ function BookClubContent() {
               />
             </button>
           ) : (
-
-          <div
-  style={{
-    animationPlayState:
-      miniPetIsAsleep ||
-      (petCareAction === "feed" &&
-        openWindow === "pets" &&
-        currentPet?.id === miniPet.id)
-        ? "paused"
-        : "running",
-  }}
-  className={`absolute left-0 mini-pet-walk ${
-    miniPet.species === "bogli" &&
-    miniPet.stage === "teen" &&
-    !miniPetPreview
-      ? "-bottom-[14px]"
-      : "-bottom-4"
-  }`}
->
-          
+            <div
+              style={{
+                animationPlayState:
+                  miniPetIsAsleep ||
+                  (petCareAction === "feed" &&
+                    openWindow === "pets" &&
+                    currentPet?.id === miniPet.id)
+                    ? "paused"
+                    : "running",
+              }}
+              className={`absolute left-0 mini-pet-walk ${
+                miniPet.species === "bogli" &&
+                miniPet.stage === "teen" &&
+                !miniPetPreview
+                  ? "-bottom-[14px]"
+                  : "-bottom-4"
+              }`}
+            >
               <button
                 type="button"
-                onClick={() => setOpenWindow("pets")}
+                onClick={openMiniPet}
                 title={`${miniPet.pet_name || "우리 펫"} · PET.exe 열기`}
                 aria-label="펫 돌보기 열기"
                 className={`relative block pointer-events-auto ${
-                    miniPetIsAsleep || miniPetIsEating ? "" : "mini-pet-hop"
+                  miniPetIsAsleep || miniPetIsEating ? "" : "mini-pet-hop"
                 }`}
               >
                 <PetSprite
@@ -8378,15 +8792,55 @@ function BookClubContent() {
                   happy={miniPetIsHappy}
                   sleeping={miniPetIsAsleep}
                 />
+                {miniChat?.id === miniPet.id && !miniPetIsAsleep && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -top-[38px] w-[68px] h-[68px]"
+                    style={{
+                      left: "max(-40px, calc(168px - 100vw))",
+                      backgroundImage: "url('/pets/deco/chat.png')",
+                      backgroundSize: "contain",
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  >
+                    <span
+                      className="absolute left-[18%] top-[37%] w-[64%] h-[28%] flex items-center justify-center whitespace-nowrap font-bold"
+                      style={{
+                        color: "#2b0b45",
+                        fontSize:
+                          miniChat.text.length >= 4
+                            ? 8
+                            : miniChat.text.length >= 3
+                              ? 9
+                              : 10,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {miniChat.text}
+                    </span>
+                  </span>
+                )}
                 {miniPetIsAsleep && (
-                  <Image src="/pets/deco/zzz.png" alt="" aria-hidden="true"
-                    width={28} height={28} unoptimized
-                    className="pointer-events-none absolute -top-2 right-0" />
+                  <Image
+                    src="/pets/deco/zzz.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={28}
+                    height={28}
+                    unoptimized
+                    className="pointer-events-none absolute -top-2 right-0"
+                  />
                 )}
                 {miniPetIsHappy && (
-                  <Image src="/pets/deco/heart.png" alt="" aria-hidden="true"
-                    width={25} height={25} unoptimized
-                    className="pointer-events-none absolute -top-2 right-0 pet-heart-float" />
+                  <Image
+                    src="/pets/deco/heart.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={25}
+                    height={25}
+                    unoptimized
+                    className="pointer-events-none absolute -top-2 right-0 pet-heart-float"
+                  />
                 )}
               </button>
             </div>
