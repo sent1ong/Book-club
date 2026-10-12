@@ -4010,7 +4010,7 @@ const { error } = await supabase.from("book_comments").insert([
 
     {/* 주크박스 전체 창에서만 표시 */}
     {openWindow === "jukebox" && (
-      <div className="p-3 space-y-3 overflow-y-auto min-h-0">
+      <div className="p-3 flex flex-col gap-3 min-h-0 flex-1 overflow-hidden">
         {jukeboxError && (
           <p role="alert" className="bg-white win-inset p-2 text-xs text-red-700">
             {jukeboxError}
@@ -4078,7 +4078,7 @@ const { error } = await supabase.from("book_comments").insert([
           🎶 우리 모임 OST ({jukeboxSongs.length}곡)
         </div>
 
-        <div className="bg-white win-inset max-h-[140px] sm:max-h-[260px] overflow-y-auto p-2 space-y-1">
+        <div className="bg-white win-inset flex-1 min-h-0 max-h-[140px] sm:max-h-[260px] overflow-y-auto p-2 space-y-1">
           {jukeboxVisibleSongs.length === 0 ? (
             <p className="text-center text-gray-500 text-xs py-6">
               {jukeboxSongs.length === 0
