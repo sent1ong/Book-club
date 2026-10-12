@@ -4109,6 +4109,17 @@ function BookClubContent() {
           animation: miniPetHop 0.6s ease-in-out infinite;
         }
 
+        @media (min-width: 768px) {
+          .mini-pet-chat {
+            --mini-chat-size: 88px;
+            --mini-chat-left: -58px;
+            --mini-chat-top: -55px;
+            --mini-chat-short: 14px;
+            --mini-chat-medium: 13px;
+            --mini-chat-long: 11px;
+          }
+        }
+
         /* 🐾 PET.exe 방 안에서 좌우로 돌아다니기 */
         @keyframes petRoomWalk {
           0%,
@@ -8795,9 +8806,12 @@ function BookClubContent() {
                 {miniChat?.id === miniPet.id && !miniPetIsAsleep && (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -top-[38px] w-[68px] h-[68px]"
+                    className="mini-pet-chat pointer-events-none absolute"
                     style={{
-                      left: "max(-40px, calc(168px - 100vw))",
+                      left: "max(var(--mini-chat-left, -40px), calc(168px - 100vw))",
+                      top: "var(--mini-chat-top, -38px)",
+                      width: "var(--mini-chat-size, 68px)",
+                      height: "var(--mini-chat-size, 68px)",
                       backgroundImage: "url('/pets/deco/chat.png')",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
@@ -8809,10 +8823,10 @@ function BookClubContent() {
                         color: "#2b0b45",
                         fontSize:
                           miniChat.text.length >= 4
-                            ? 8
+                            ? "var(--mini-chat-long, 8px)"
                             : miniChat.text.length >= 3
-                              ? 9
-                              : 10,
+                              ? "var(--mini-chat-medium, 9px)"
+                              : "var(--mini-chat-short, 10px)",
                         lineHeight: 1,
                       }}
                     >
