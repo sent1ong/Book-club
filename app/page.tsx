@@ -8117,17 +8117,30 @@ useEffect(() => {
           <div className="flex-1 min-w-0 mx-1 h-[30px] flex items-center gap-1 px-1">
             {/* 곡 제목 — 클릭하면 주크박스 열기 */}
             <button
-              type="button"
-              onClick={() => setOpenWindow("jukebox")}
-              className="min-w-0 flex-1 h-full text-left overflow-hidden"
-              title={
-                jukeboxActive
-                  ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
-                  : "주크박스 열기"
-              }
-            >
-              <span
-                ref={jukeboxTickerBoxRef}
+  type="button"
+  onClick={() => setOpenWindow("jukebox")}
+  className="min-w-0 flex-1 h-full text-left overflow-hidden flex items-center gap-1"
+  title={
+    jukeboxActive
+      ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+      : "주크박스 열기"
+  }
+>
+  {/* 🎵 재생 중 이퀄라이저 */}
+  <span
+    aria-hidden="true"
+    className={`jukebox-equalizer shrink-0 ${
+      jukeboxPlaying ? "is-playing" : ""
+    }`}
+  >
+    <span />
+    <span />
+    <span />
+    <span />
+  </span>
+
+  <span
+    ref={jukeboxTickerBoxRef}
                 className="block w-full overflow-hidden whitespace-nowrap text-[10px] sm:text-xs text-black"
               >
                 <span
