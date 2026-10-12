@@ -4673,10 +4673,10 @@ return (
         </button>
       </div>
 
-      <div className="p-3 space-y-3 overflow-y-auto">
+      <div className="p-2 space-y-2 md:p-3 md:space-y-3 overflow-y-auto min-h-0">
 
         {/* 펫이 생활하는 방 */}
-        <div className="relative bg-[#f5f0ff] win-inset h-56 overflow-hidden flex items-center justify-center">
+        <div className="relative bg-[#f5f0ff] win-inset h-[176px] md:h-56 overflow-hidden flex items-center justify-center">
           <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
           {/* ✨ 성장 반짝임 */}
 {petGrowthEffect && currentPet && (
@@ -4803,7 +4803,7 @@ return (
         {/* 🐾 성인 일차 계산: 성인이 된 순간부터 24시간 단위 */}
         {/* 상태 정보 */}
         {currentPet && (
-  <div className="bg-white win-inset p-3 text-xs space-y-2">
+  <div className="bg-white win-inset p-2 text-xs space-y-1.5 md:p-3 md:space-y-2">
     <div className="flex justify-between items-start font-bold">
   <div className="min-w-0">
     <div>
@@ -4931,7 +4931,7 @@ return (
   )}
         
         {/* 🐾 돌보는 사람 선택 */}
-<div className="bg-white win-inset p-2 text-xs space-y-2">
+<div className="bg-white win-inset p-2 text-xs space-y-1 md:space-y-2">
   <label
     htmlFor="pet-caretaker"
     className="block font-bold text-[#000080]"
@@ -4939,6 +4939,8 @@ return (
     🐾 돌보는 사람
   </label>
 
+  {/* 📱 아이폰·안드로이드·PC 공통 Win98 드롭다운 */}
+<div className="relative w-full min-w-0">
   <select
     id="pet-caretaker"
     value={userList.includes(petCaretaker) ? petCaretaker : ""}
@@ -4949,7 +4951,7 @@ return (
         e.target.value
       );
     }}
-    className="w-full bg-white win-inset p-2 text-xs"
+    className="block w-full min-w-0 appearance-none rounded-none bg-white win-inset pl-2 pr-9 py-2 text-xs text-black outline-none"
   >
     <option value="">닉네임을 선택해 주세요</option>
 
@@ -4961,11 +4963,17 @@ return (
         </option>
       ))}
   </select>
+
+  {/* ▼ 윈도우 98 스타일 화살표 */}
+  <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none win-btn w-6 h-6 flex items-center justify-center text-black">
+    <span className="text-[11px] leading-none">▼</span>
+  </div>
+</div>
 </div>
 
         {/* 🐾 실제 돌보기 버튼 */}
-<div className="space-y-2">
-  <div className="grid grid-cols-2 gap-2">
+<div className="space-y-1 md:space-y-2">
+  <div className="grid grid-cols-2 gap-1.5 md:gap-2">
     <button
       type="button"
       onClick={() => void doPetCare("feed")}
@@ -4978,7 +4986,7 @@ return (
         !!petCareError ||
         petCareCounts.feed >= 3
       }
-      className="win-btn py-2 px-1 text-xs font-bold disabled:opacity-50"
+      className="win-btn py-1 px-1 md:py-2 text-xs font-bold disabled:opacity-50"
     >
       <div>
         {currentPet?.stage === "egg"
