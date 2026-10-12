@@ -3887,13 +3887,15 @@ useEffect(() => {
     {user}
 
     {user !== "전체" && unreadMailByUser[user] && (
-      <span
-        aria-label="읽지 않은 우편함 알림 있음"
-        className="absolute -top-2 -right-2 text-[13px] leading-none pointer-events-none drop-shadow-sm"
-      >
-        🔔
-      </span>
-    )}
+  <span
+    aria-label="읽지 않은 우편함 알림 있음"
+    className="absolute -top-2 -right-2 text-[13px] leading-none pointer-events-none drop-shadow-sm origin-top"
+  >
+    <span className="inline-block mailbox-bell-ring">
+      🔔
+    </span>
+  </span>
+)}
   </button>
 ))}
               </div>
