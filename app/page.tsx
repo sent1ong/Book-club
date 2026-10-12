@@ -1301,6 +1301,18 @@ function BookClubContent() {
   const [sortOrder, setSortOrder] = useState<string>("최신순");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // 📚 NEW 표시용 현재 시간 (1분마다 갱신)
+const [newBadgeNow, setNewBadgeNow] = useState<number | null>(null);
+
+useEffect(() => {
+  const updateTime = () => setNewBadgeNow(Date.now());
+
+  updateTime();
+
+  const timer = window.setInterval(updateTime, 60000);
+
+  return () => window.clearInterval(timer);
+}, []);
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isRevisit, setIsRevisit] = useState(false);
@@ -3880,16 +3892,18 @@ useEffect(() => {
     key={user}
     type="button"
     onClick={() => handleSelectUser(user)}
-    className={`relative px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
-      selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
-    }`}
+    className={`relative ${
+  user !== "전체" && unreadMailByUser[user] ? "z-10" : "z-0"
+} px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
+  selectedUser === user ? "win-inset bg-[#000080] text-white" : ""
+}`}
   >
     {user}
 
     {user !== "전체" && unreadMailByUser[user] && (
   <span
     aria-label="읽지 않은 우편함 알림 있음"
-    className="absolute -top-2 -right-2 text-[13px] leading-none pointer-events-none drop-shadow-sm origin-top"
+    className="absolute -top-2 -right-2 z-20 text-[13px] leading-none pointer-events-none drop-shadow-sm origin-top"
   >
     <span className="inline-block mailbox-bell-ring">
       🔔
@@ -4007,6 +4021,15 @@ useEffect(() => {
                                   : "📖 "}
                             {book.title}
                           </span>
+                          {newBadgeNow !== null &&
+  book.created_at &&
+  Number.isFinite(Date.parse(book.created_at)) &&
+  newBadgeNow >= Date.parse(book.created_at) &&
+  newBadgeNow - Date.parse(book.created_at) < 24 * 60 * 60 * 1000 && (
+    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 leading-none rounded-sm">
+      NEW
+    </span>
+  )}
                           {book.is_favorite && (
                             <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
                               👑 인생작
