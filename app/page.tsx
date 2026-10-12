@@ -8156,8 +8156,8 @@ useEffect(() => {
                   }
                 >
                   {jukeboxActive
-                    ? `♫ ${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
-                    : "♫ 주크박스"}
+  ? `${jukeboxActive.ost_title} — ${jukeboxActive.ost_artist}`
+  : "재생 중인 곡이 없습니다"}
                 </span>
               </span>
             </button>
