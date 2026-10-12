@@ -5814,24 +5814,52 @@ function BookClubContent() {
                         />
                       </div>
                     ) : (
-                      <div
-                        className={
-                          petCareAction
-                            ? "absolute bottom-0 left-1/2 -translate-x-1/2"
-                            : "pet-room-walk"
-                        }
-                      >
-                        <div className="scale-[0.7333] md:scale-100 origin-bottom">
-                          <PetSprite
-                            pet={currentPet}
-                            size={150}
-                            eating={petCareAction === "feed"}
-                            happy={happyPetId === currentPet.id}
-                            className={petCareAction ? "" : "mini-pet-hop"}
-                          />
-                        </div>
-                      </div>
-                    )}
+  <div
+    className={
+      petCareAction ||
+      (miniPetSleeping && miniPet?.id === currentPet.id)
+        ? "absolute bottom-0 left-1/2 -translate-x-1/2"
+        : "pet-room-walk"
+    }
+  >
+    <div className="relative scale-[0.7333] md:scale-100 origin-bottom">
+      <PetSprite
+        pet={currentPet}
+        size={150}
+        eating={petCareAction === "feed"}
+        happy={happyPetId === currentPet.id}
+        sleeping={
+          miniPetSleeping &&
+          miniPet?.id === currentPet.id &&
+          !petCareAction &&
+          happyPetId !== currentPet.id
+        }
+        className={
+          petCareAction ||
+          (miniPetSleeping && miniPet?.id === currentPet.id)
+            ? ""
+            : "mini-pet-hop"
+        }
+      />
+
+      {/* 😴 큰 펫 수면 효과 */}
+      {miniPetSleeping &&
+        miniPet?.id === currentPet.id &&
+        !petCareAction &&
+        happyPetId !== currentPet.id && (
+          <Image
+            src="/pets/deco/zzz.png"
+            alt=""
+            aria-hidden="true"
+            width={45}
+            height={45}
+            unoptimized
+            className="absolute -top-3 right-0 pointer-events-none"
+          />
+        )}
+    </div>
+  </div>
+)}
 
                     {petCareAction === "pet" && (
                       <Image
