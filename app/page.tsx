@@ -1677,7 +1677,7 @@ function BookClubContent() {
   const [petCareError, setPetCareError] = useState("");
 
   const [happyPetId, setHappyPetId] = useState<number | null>(null);
-  const happyTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const happyTimer = React.useRef<number | null>(null);
   const [miniPetSleeping, setMiniPetSleeping] = useState(false);
   const miniPetIsHappy = miniPet != null && happyPetId === miniPet.id;
   const miniPetIsEating = miniPet != null && petCareAction === "feed" &&
