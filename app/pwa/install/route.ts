@@ -26,7 +26,7 @@ export function GET(request: Request) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#008080">
-    <title>모임 설치 - Book Club 98</title>
+    <title>앱 설치 방법 - Book Club 98</title>
     <link rel="manifest" href="/pwa/manifest?${escapeHtml(query)}">
     <style>
       body { background: #008080; font-family: sans-serif; padding: 24px; }
@@ -38,17 +38,32 @@ export function GET(request: Request) {
   </head>
   <body>
     <main>
-      <h1>이 모임 설치</h1>
+      <h1>앱 설치 방법</h1>
       <p>${escapeHtml(group)}</p>
-      <p id="status" role="status">안드로이드 Chrome 일반 탭에서 이 주소를 여세요. 설치 버튼이 나타나지 않으면 Chrome 메뉴의 ‘홈 화면에 추가’ 또는 ‘앱 설치’를 확인하세요. 여러 모임 설치는 기기와 Chrome의 지원에 따라 제한될 수 있습니다.</p>
-      <button id="install" type="button" hidden>이 모임 설치</button>
+      <section id="android-guide">
+        <h2>안드로이드</h2>
+        <p>모임별로 설치하려면 Chrome에서 열어주세요. 삼성 인터넷에서는 다른 모임도 이미 설치한 앱으로 표시되어 추가 설치가 제한될 수 있습니다.</p>
+        <p>Chrome 일반 탭에서 원하는 모임을 연 뒤, 시작 → 앱 설치 방법으로 들어오세요. 아래 설치 버튼 또는 Chrome 메뉴의 ‘홈 화면에 추가’ → ‘설치’를 이용하세요. 메뉴 이름은 버전에 따라 다를 수 있습니다.</p>
+        <p id="status" role="status">설치 후 각 아이콘을 눌러 해당 모임으로 열리는지 확인해 주세요.</p>
+        <button id="install" type="button" hidden>이 모임 설치</button>
+      </section>
+      <section>
+        <h2>iPhone · iPad</h2>
+        <p>Safari에서 원하는 모임을 열고 공유 버튼 → ‘홈 화면에 추가’ → ‘추가’를 눌러주세요. ‘웹 앱으로 열기’ 항목이 보이면 켜주세요. 공유 버튼은 Safari 버전에 따라 더 보기 메뉴 안에 있을 수 있습니다.</p>
+        <p>이 안내 화면 대신 아래 버튼으로 모임 화면으로 돌아간 뒤 추가해 주세요.</p>
+        <a href="/?${escapeHtml(query)}">모임 화면으로 이동해서 홈 화면에 추가</a>
+      </section>
       <a href="/?${escapeHtml(query)}">모임으로 돌아가기</a>
     </main>
     <script>
       let pending = null;
       const button = document.getElementById("install");
       const status = document.getElementById("status");
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      if (isIOS) document.getElementById("android-guide").hidden = true;
       window.addEventListener("beforeinstallprompt", (event) => {
+        if (isIOS) return;
         event.preventDefault();
         pending = event;
         button.hidden = false;
