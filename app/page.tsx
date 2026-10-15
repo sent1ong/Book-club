@@ -8672,7 +8672,6 @@ function BookClubContent() {
             </span>
           </div>
           <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs">
-            <AndroidGroupInstall groupName={groupName} />
             {APP_LIST.map((app) => (
               <button
                 key={app.id}
@@ -8691,6 +8690,7 @@ function BookClubContent() {
                 <span className="truncate">{app.name}</span>
               </button>
             ))}
+            <AndroidGroupInstall groupName={groupName} />
           </div>
         </div>
       )}
