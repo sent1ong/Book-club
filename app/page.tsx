@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
+import AndroidGroupInstall from "./AndroidGroupInstall";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import html2canvas from "html2canvas";
@@ -515,8 +516,8 @@ function buildReviewQuiz(
     seen.add(row.id);
     return Boolean(
       row.user_name?.trim() &&
-      row.title?.trim() &&
-      row.review?.replace(/\(스포일러\)/g, "").trim(),
+        row.title?.trim() &&
+        row.review?.replace(/\(스포일러\)/g, "").trim(),
     );
   });
   const titlesByUser = new Map<string, Set<string>>();
@@ -5928,26 +5929,24 @@ function BookClubContent() {
 
                 <div className="relative flex-1 min-w-[150px]">
                   {!planDate && (
-          <span     
-            aria-hidden="true"      
-            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 z-10"    
-            >      
-            예정일 입력    
-          </span>  
-        )}
-  
-                  <input    
-                    type="date"    
-                    value={planDate}    
-                    onChange={(e) => setPlanDate(e.target.value)}    
-                    aria-label="읽을 예정일 입력"    
-                    className={`w-full bg-white win-inset p-2 text-xs text-black [color-scheme:light] ${      
-                      !planDate        
-                      ? "[&::-webkit-datetime-edit]:opacity-0"        
-                      : ""    
-                    }`}  
-                    />
-                </div>                
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 z-10"
+                    >
+                      예정일 입력
+                    </span>
+                  )}
+
+                  <input
+                    type="date"
+                    value={planDate}
+                    onChange={(e) => setPlanDate(e.target.value)}
+                    aria-label="읽을 예정일 입력"
+                    className={`w-full bg-white win-inset p-2 text-xs text-black [color-scheme:light] ${
+                      !planDate ? "[&::-webkit-datetime-edit]:opacity-0" : ""
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* 📅 날짜 선택사항 안내 */}
@@ -8673,6 +8672,7 @@ function BookClubContent() {
             </span>
           </div>
           <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs">
+            <AndroidGroupInstall groupName={groupName} />
             {APP_LIST.map((app) => (
               <button
                 key={app.id}
