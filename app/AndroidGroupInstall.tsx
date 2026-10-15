@@ -1,28 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function AndroidGroupInstall({
   groupName,
 }: {
   groupName: string;
 }) {
-  const [android, setAndroid] = useState(false);
+  const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
-    setAndroid(/Android/i.test(navigator.userAgent));
+    setMobile(
+      /Android|iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1),
+    );
   }, []);
 
-  if (!android) return null;
+  if (!mobile) return null;
 
   return (
     <a
       href={
         "/pwa/install?" + new URLSearchParams({ group: groupName }).toString()
       }
-      className="win-btn block px-3 py-2 text-left"
+      className="flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors"
     >
-      📲 이 모임 설치 안내
+      <div className="relative w-5 h-5 flex-shrink-0">
+        <Image
+          src="/icons/question.png"
+          alt=""
+          fill
+          sizes="20px"
+          className="object-contain"
+        />
+      </div>
+      <span className="truncate">앱 설치 방법</span>
     </a>
   );
 }
