@@ -142,7 +142,13 @@ export async function POST(request: NextRequest) {
         plan.columns,
         plan.count ? { count: "exact" } : undefined,
       );
-    else if (plan.action === "insert") query = query.insert(plan.rows);
+    else if (plan.action === "insert") {
+      // Book timestamps are server-owned; clients cannot submit or change them.
+      const rows = plan.table === "books"
+        ? plan.rows.map((row) => ({ ...row, created_at: new Date().toISOString() }))
+        : plan.rows;
+      query = query.insert(rows);
+    }
     else if (plan.action === "upsert")
       query = query.upsert(plan.rows, { onConflict: plan.conflict });
     else if (plan.action === "update") query = query.update(plan.rows[0]);

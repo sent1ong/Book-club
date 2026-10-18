@@ -3524,7 +3524,6 @@ function BookClubContent() {
             group_name: groupName,
             is_favorite: isFavorite,
             is_revisit: isRevisit,
-            created_at: new Date().toISOString(),
           },
         ]);
 
