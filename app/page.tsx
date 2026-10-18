@@ -4220,7 +4220,7 @@ function BookClubContent() {
                 })}
               </div>
 
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="flex flex-nowrap overflow-x-auto items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap pb-1" aria-label="독서 필터 및 공동책장">
                 <button
                   type="button"
                   onClick={() =>
@@ -4260,7 +4260,7 @@ function BookClubContent() {
                       : ""
                   }`}
                 >
-                  💔 중도하차
+                  💗 중도하차
                 </button>
 
                 {/* ✉️ 전체 회원의 독서 예고장 */}
@@ -4271,6 +4271,9 @@ function BookClubContent() {
                 >
                   ✉️ 예고장
                 </button>
+                <SharedShelfHub key={`shelf:${groupName}`} group={groupName} member={selectedUser}
+                  ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
+                  blocked={!!openWindow || !!receiptData || !!randomBook || !!planCelebration || diaryOpen || idOpenFor !== null || showAllPlans || startMenuOpen || loading || editingId !== null || !!commentForm.content.trim() || !!formData.title.trim() || !!formData.review.trim()} />
               </div>
             </div>
 
@@ -4352,9 +4355,6 @@ function BookClubContent() {
                     📌 {selectedUser}의 예고장
                   </button>
                 </>}
-                <SharedShelfHub key={`shelf:${groupName}`} group={groupName} member={selectedUser}
-                  ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
-                  blocked={!!openWindow || !!receiptData || !!randomBook || !!planCelebration || diaryOpen || idOpenFor !== null || showAllPlans || startMenuOpen || loading || editingId !== null || !!commentForm.content.trim() || !!formData.title.trim() || !!formData.review.trim()} />
                 <AwardsHub key={groupName} group={groupName} member={selectedUser}
                   author={userList.includes(commentForm.user_name) ? commentForm.user_name : formData.user_name}
                   ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
@@ -4671,7 +4671,7 @@ function BookClubContent() {
                         </div>
                       )}
 
-                      <ReviewObjections group={groupName} book={String(book.id)}
+                      <ReviewObjections group={groupName} book={String(book.id)} title={book.title} reviewAuthor={book.user_name}
                         members={userList.filter(name => name !== "전체")}
                         author={userList.includes(commentForm.user_name) ? commentForm.user_name : formData.user_name} />
 

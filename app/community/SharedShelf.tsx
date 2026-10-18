@@ -3,12 +3,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "../pets/PetDiary";
 import { community, readShelf, type Shelf } from "./client";
 import { autoModal } from "./autoModal";
+export const SHELF_UI = { button: "📚 공동책장", window: "SHARED_SHELF.exe", heading: "우리 모임이 함께 남기는 올해의 작품들!", item: "대표 작품", choose: "리뷰한 작품 선택" } as const;
 
 export function ShelfRows({ data, final = false }: { data: Shelf; final?: boolean }) {
   return <section className="space-y-3">
     <h2 className="font-bold text-base">📚 {data.operating_year} 공동책장</h2>
-    <p>우리 모임이 함께 남기는 올해의 책들!</p>
-    <p className="font-bold">{data.picks.length} / {data.members.length}권</p>
+    <p>{SHELF_UI.heading}</p>
+    <p className="font-bold">{data.picks.length} / {data.members.length}명</p>
     {!data.members.length && <p>아직 리뷰를 등록한 모임원이 없어요.</p>}
     {data.members.map(member => {
       const pick = data.picks.find(row => row.user_name === member);
@@ -36,6 +37,7 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
   const [book, setBook] = useState(""), [reason, setReason] = useState(""), [version, setVersion] = useState<string | null>(null);
   const [busy, setBusy] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
+  const [readError, setReadError] = useState("");
   const locked = useRef(false), submission = useRef<{ payload: string; id: string } | null>(null);
   useEffect(() => {
     const abort = new AbortController(); let running = false;
@@ -53,16 +55,18 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
     return () => { abort.abort(); clearInterval(timer); window.removeEventListener("focus", focus); };
   }, [group]);
   useEffect(() => {
-    const abort = new AbortController(); setBusy(true); setError(""); setBook(""); setReason(""); setVersion(null); submission.current = null;
+    const abort = new AbortController(); setBusy(true); setReadError(""); setError(""); setData(current => current ? { ...current, candidates: [], candidate_count: 0 } : current); setBook(""); setReason(""); setVersion(null); submission.current = null;
     void readShelf(group, member || undefined, abort.signal).then(next => {
       if (abort.signal.aborted) return;
       setData(next);
       const pick = next.picks.find(row => row.user_name === member);
       setBook(pick && next.candidates.some(row => row.id === pick.book_id) ? pick.book_id : ""); setReason(pick?.reason || ""); setVersion(pick?.version || null);
-    }).catch(e => { if (!abort.signal.aborted) setError(e.message); }).finally(() => { if (!abort.signal.aborted) setBusy(false); });
+    }).catch(e => { if (!abort.signal.aborted) setReadError(e.message); }).finally(() => { if (!abort.signal.aborted) setBusy(false); });
     return () => abort.abort();
   }, [group, member, retry]);
-  const valid = !!data?.can_edit && data.members.includes(member) && data.candidates.some(row => row.id === book) && !!reason.trim() && Array.from(reason.trim()).length <= 200;
+  const candidateLabels = new Map<string, number>();
+  data?.candidates.forEach(row => { const key = JSON.stringify([row.title, row.author]); candidateLabels.set(key, (candidateLabels.get(key) || 0) + 1); });
+  const valid = !readError && !busy && !!data?.can_edit && data.members.includes(member) && data.candidates.some(row => row.id === book) && !!reason.trim() && Array.from(reason.trim()).length <= 200;
   const save = async (event: React.FormEvent) => {
     event.preventDefault(); if (!valid || locked.current) return;
     locked.current = true; setSaving(true); setError(""); setNotice("");
@@ -74,19 +78,20 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setSaving(false); }
   };
-  return <PetPopup title="SHARED_SHELF.exe" close={() => { if (!locked.current) close(); }}>
+  return <PetPopup title={SHELF_UI.window} close={() => { if (!locked.current) close(); }}>
     <div className="space-y-3">
       {busy && <p role="status">공동책장을 불러오는 중…</p>}
+      {readError && <p role="alert" className="text-red-800">작품 목록을 불러오지 못했어요. {readError} <button className="win-btn px-1" disabled={saving || busy} onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p>}
       {error && <p role="alert" className="text-red-800">{error} <button className="win-btn px-1" disabled={saving || busy} onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p>}
       {notice && <p role="status">{notice}</p>}
       {data && <><ShelfRows data={data} final={!data.can_edit} />
-        <p className="leading-5">한 사람당 한 권 · {data.operating_year}년에 등록한 본인의 리뷰에서 골라 주세요.<br />중도하차 기록은 제외하며, 12월 31일 00:00(한국 시간)부터는 열람만 할 수 있어요.</p>
+        <p className="leading-5">한 사람당 한 작품을 선정할 수 있어요.<br />{data.operating_year}년 본인의 리뷰에서 골라 주세요.<br />중도하차 기록은 제외하며, 12월 31일 00:00(한국 시간)부터는 열람만 할 수 있어요.</p>
         {data.can_edit ? <form onSubmit={save} className="win-inset p-3 bg-white space-y-3">
-          <label className="block">모임원<select aria-label="공동책장 모임원" className="block win-inset bg-white w-full p-2 mt-1" value={member} disabled={busy || saving} onChange={e => { setMember(e.target.value); setNotice(""); }} required><option value="">본인 이름 선택</option>{data.members.map(name => <option key={name}>{name}</option>)}</select></label>
-          <label className="block">대표 도서<select aria-label="대표 도서" className="block win-inset bg-white w-full p-2 mt-1" value={book} disabled={busy || saving || !member} onChange={e => setBook(e.target.value)} required><option value="">리뷰한 책 선택</option>{data.candidates.map(row => <option key={row.id} value={row.id}>{row.title} · {row.author}</option>)}</select></label>
-          {!busy && member && !data.candidates.length && <p>해당 연도에 등록한 선정 가능 리뷰가 없어요.</p>}
+          <label className="block">모임원<select aria-label="공동책장 모임원" className="block win-inset bg-white w-full p-2 mt-1" value={member} disabled={busy || saving} onChange={e => { setMember(e.target.value); setNotice(""); }} required><option value="">본인 이름 선택</option>{data.members.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+          <label className="block">{SHELF_UI.item}<select aria-label={SHELF_UI.item} className="block win-inset bg-white w-full p-2 mt-1" value={book} disabled={busy || saving || !!readError || !member} onChange={e => setBook(e.target.value)} required><option value="">{SHELF_UI.choose}</option>{data.candidates.map(row => <option key={row.id} value={row.id}>{row.title} · {row.author}{(candidateLabels.get(JSON.stringify([row.title, row.author])) || 0) > 1 ? ` · #${row.id}` : ""}</option>)}</select></label>
+          {!busy && !readError && member && !data.candidates.length && <p role="status">선택 가능한 작품이 없습니다. 해당 운영 연도의 리뷰와 중도하차 여부를 확인해 주세요.</p>}
           <label className="block">선정 이유 · {Array.from(reason.trim()).length}/200<textarea className="win-inset bg-white w-full p-2 mt-1 text-base sm:text-xs" rows={3} value={reason} disabled={busy || saving} onChange={e => setReason(e.target.value)} required /></label>
-          <button className="win-btn px-3 py-2" disabled={!valid || busy || saving}>{saving ? "저장 중…" : version ? "선정 변경하기" : "공동책장에 등록"}</button>
+          <button className="win-btn px-3 py-2" disabled={!valid || busy || saving}>{saving ? "저장 중…" : version ? "선정 변경하기" : "작품 등록"}</button>
         </form> : <p className="font-bold">이 모임의 공동책장은 열람 전용이에요.</p>}
       </>}
     </div>
@@ -118,8 +123,8 @@ export function SharedShelfHub({ group, member, ready, blocked }: { group: strin
   }, [intro, group]);
   const dismiss = () => { setIntro(null); autoModal.release(token.current); };
   return <>
-    {member !== "전체" && <button type="button" className="win-btn shrink-0 whitespace-nowrap px-2 py-0.5 text-xs font-bold" onClick={() => setOpen(true)}>📚 공동책장</button>}
-    {intro !== null && <PetPopup title={`📚 ${intro} 공동책장`} close={dismiss}><p className="leading-6">우리 모임이 올해 남기고 싶은 책을 한 권씩 모아요!</p><p className="my-3 leading-6">한 사람당 한 권만 고를 수 있고, 12월 30일까지 언제든 변경할 수 있어요.</p><div className="flex flex-wrap gap-2"><button className="win-btn px-3 py-2" onClick={() => { dismiss(); setOpen(true); }}>공동책장 구경하기</button><button className="win-btn px-3 py-2" onClick={dismiss}>나중에</button></div></PetPopup>}
+    <button type="button" className="win-btn shrink-0 whitespace-nowrap px-2 py-0.5 text-xs" onClick={() => setOpen(true)}>{SHELF_UI.button}</button>
+    {intro !== null && <PetPopup title={`📚 ${intro} 공동책장`} close={dismiss}><p className="leading-6">우리 모임이 올해 남기고 싶은 작품을 하나씩 모아요!</p><p className="my-3 leading-6">한 사람당 한 작품만 고를 수 있고, 12월 30일까지 언제든 변경할 수 있어요.</p><div className="flex flex-wrap gap-2"><button className="win-btn px-3 py-2" onClick={() => { dismiss(); setOpen(true); }}>공동책장 구경하기</button><button className="win-btn px-3 py-2" onClick={dismiss}>나중에</button></div></PetPopup>}
     {open && <ShelfEditor group={group} initialMember={member} close={() => setOpen(false)} />}
   </>;
 }

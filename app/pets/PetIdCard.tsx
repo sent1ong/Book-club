@@ -67,7 +67,7 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
   const actualItem=memento?.group_name===pet.group_name && String(memento?.generation_id)===String(pet.id) && memento?.species===pet.species ? memento:undefined;
   return <article aria-label={`${pet.generation_number}세대 펫 신분증`} className="w-full min-w-0 border-2 border-[#a58cb1] p-3 text-xs leading-5 shadow-sm" style={{backgroundColor:COLORS[colorVariant]||COLORS.original}}>
     <header className="mb-2 flex flex-wrap items-center justify-between gap-x-2 border-b border-[#b9a6c4] pb-1 text-[#594173]">
-      <div><p className="font-bold tracking-wide">BOOK CLUB 98</p><p className="text-xs">PET ID CARD</p></div>
+      <div><p className="font-bold tracking-wide">PET ID CARD</p></div>
       <strong className="font-mono text-xs">{petRegistration(pet.generation_number)}</strong>
     </header>
     <div className="flex items-start gap-2">

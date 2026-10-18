@@ -1,7 +1,7 @@
-export type Objection = { id: string; book_id: string; user_name: string; content: string; created_at: string };
+export type Objection = { id: string; book_id: string; user_name: string; content: string; created_at: string; can_manage: boolean; updated_at: string | null };
 export type Objections = { counts: Record<string, number>; items: Objection[]; total_count: number };
 export type ShelfPick = { user_name: string; book_id: string; title: string; author: string; reason: string; version: string; created_at: string; updated_at: string };
-export type Shelf = { group_name: string; operating_year: number; server_now: string; can_edit: boolean; members: string[]; picks: ShelfPick[]; candidates: { id: string; title: string; author: string; created_at: string }[]; candidate_count: number };
+export type Shelf = { group_name: string; operating_year: number; server_now: string; can_edit: boolean; members: string[]; picks: ShelfPick[]; candidates: { id: string; title: string; author: string; created_at: string | null }[]; candidate_count: number };
 
 export async function community<T>(group: string, body: object, signal?: AbortSignal): Promise<T> {
   const response = await fetch("/api/bookclub/community", { method: "POST", cache: "no-store", signal,
