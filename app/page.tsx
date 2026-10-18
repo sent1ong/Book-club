@@ -8,6 +8,7 @@ import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
+import { AwardsHub } from "./awards/Awards";
 import { PetDiary } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
@@ -4341,8 +4342,8 @@ function BookClubContent() {
               </div>
 
               {/* 두 번째 줄: 영수증과 우편함 */}
-              {selectedUser !== "전체" && (
-                <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+              <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                {selectedUser !== "전체" && <>
                   <button
                     type="button"
                     onClick={() => {
@@ -4384,8 +4385,12 @@ function BookClubContent() {
                   >
                     📌 {selectedUser}의 예고장
                   </button>
-                </div>
-              )}
+                </>}
+                <AwardsHub key={groupName} group={groupName} member={selectedUser}
+                  author={userList.includes(commentForm.user_name) ? commentForm.user_name : formData.user_name}
+                  ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
+                  blocked={!!openWindow || !!receiptData || !!randomBook || !!planCelebration || diaryOpen || idOpenFor !== null || showAllPlans || startMenuOpen || loading || editingId !== null || !!commentForm.content.trim() || !!formData.title.trim() || !!formData.review.trim()} />
+              </div>
 
               {/* 세 번째 줄: 정렬 */}
               <div className="flex justify-end w-full">
