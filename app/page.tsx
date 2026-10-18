@@ -6056,12 +6056,12 @@ function BookClubContent() {
                 <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
                 <button type="button" onClick={() => setDiaryOpen(true)}
                   title="비밀 일기장" aria-label="PET_DIARY.exe 열기"
-                  className="absolute bottom-1 right-1 z-40 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#000080]">
-                  <Image src="/pets/deco/diary.png" alt="비밀 일기장" width={60} height={60} unoptimized />
+                  className="absolute bottom-0 right-1 z-10 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#000080]">
+                  <Image src="/pets/deco/diary.png" alt="비밀 일기장" width={54} height={54} unoptimized />
                 </button>
                 {/* ✨ 성장 반짝임 */}
                 {petGrowthEffect && currentPet && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
                     <Image
                       src="/pets/deco/sparkle.png"
                       alt=""
@@ -6094,7 +6094,7 @@ function BookClubContent() {
                     </button>
                   </div>
                 ) : currentPet.stage === "dead" ? (
-                  <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 z-20 pointer-events-none">
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
                       <Image
                         src="/pets/deco/grave.png"
@@ -6110,8 +6110,8 @@ function BookClubContent() {
                   <div
                     className={
                       currentPet.stage === "egg"
-                        ? "flex flex-col items-center gap-2"
-                        : "absolute inset-x-0 bottom-5 h-[170px] pointer-events-none"
+                        ? "relative z-20 flex flex-col items-center gap-2"
+                        : "absolute inset-x-0 bottom-5 z-20 h-[170px] pointer-events-none"
                     }
                   >
                     {currentPet.stage === "egg" ? (
