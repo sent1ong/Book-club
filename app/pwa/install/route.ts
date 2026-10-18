@@ -1,4 +1,6 @@
 import { groupQuery, readGroup } from "../group";
+import { NextRequest } from "next/server";
+import { authorize, fail } from "../../security/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +17,14 @@ function escapeHtml(value: string): string {
   });
 }
 
-export function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const group = readGroup(request.url);
   if (group === null) return new Response("Invalid group", { status: 400 });
+  try {
+    await authorize(request, group);
+  } catch (error) {
+    return fail(error);
+  }
   const query = groupQuery(group);
   // A route response bypasses layout metadata: exactly one manifest, in initial HTML.
   const html = `<!doctype html>
@@ -27,7 +34,7 @@ export function GET(request: Request) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#008080">
     <title>앱 설치 방법 - Book Club 98</title>
-    <link rel="manifest" href="/pwa/manifest?${escapeHtml(query)}">
+    <link rel="manifest" crossorigin="use-credentials" href="/pwa/manifest?${escapeHtml(query)}">
     <style>
       body { background: #008080; font-family: sans-serif; padding: 24px; }
       main { max-width: 480px; margin: auto; padding: 24px; background: #c0c0c0; border: 3px outset white; }
