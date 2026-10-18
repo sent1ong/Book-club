@@ -82,13 +82,13 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
     </div>}
     {adult && <footer className="mt-2 border-t border-[#cabbcf] pt-2">
       <p className="text-xs font-bold tracking-wide text-[#80628e]">MY FAVORITE THING ♡</p>
-      {actualItem ? <><p className="mt-1 break-words font-bold">애장품 · {actualItem.emoji === "🔘" ? (
-        <span role="img" aria-label="연보라색 단추" style={{display:"inline-grid",verticalAlign:"-2px",width:14,height:14,
+      {actualItem ? <><p className="mt-1 flex items-center gap-1 font-bold"><span className="shrink-0">애장품 ·</span>{actualItem.emoji === "🔘" ? (
+        <span role="img" aria-label="연보라색 단추" style={{display:"grid",flexShrink:0,width:14,height:14,
           gridTemplateColumns:"repeat(2, 2px)",gap:2,alignContent:"center",justifyContent:"center",
           borderRadius:"50%",background:"#e5d3f7",border:"1px solid #b89ace",boxShadow:"inset 1px 1px 0 #fff4ff"}}>
           {[0,1,2,3].map(hole=><span key={hole} style={{width:2,height:2,borderRadius:"50%",background:"#9470ae"}} />)}
         </span>
-      ) : actualItem.emoji} {actualItem.item_name}</p>
+      ) : <span className="shrink-0">{actualItem.emoji}</span>}<span className="min-w-0 break-words">{actualItem.item_name}</span></p>
         <p className="mt-1 break-words">{actualItem.introduction}</p>
         <p className="mt-1 text-xs leading-5 text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
       </> : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>}
