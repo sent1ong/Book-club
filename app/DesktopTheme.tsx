@@ -2,6 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { TITLE_LIMIT, type ExplorerTitle } from "./explorerTitle";
 import { PetPopup } from "./pets/PetDiary";
+import { EffectsEditor } from "./desktop/Effects";
 
 export const BACKGROUNDS = [
   ["클래식 틸", "#008080"], ["라벤더", "#BCA9DC"], ["베이비 블루", "#A9CEED"], ["민트", "#B7DDC6"],
@@ -112,12 +113,15 @@ function TitleEditor({ title, count, close, back }: { title: ExplorerTitle; coun
   </div>;
 }
 export function DesktopThemeWindow({ close, explorerTitle, bookCount }: { close: () => void; explorerTitle: ExplorerTitle; bookCount: number }) {
-  const [menu, setMenu] = useState<"index" | "colors" | "title">("index");
+  const [menu, setMenu] = useState<"index" | "colors" | "title" | "sound" | "cursor">("index");
   return <PetPopup title="DESKTOP_THEME.exe — 화면 꾸미기" close={close}>
     {menu === "index" ? <div className="space-y-3">
-      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("colors")}><strong>1. 색상 꾸미기</strong><span className="block mt-1">바탕화면과 창 제목 표시줄 색상</span></button>
-      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("title")}><strong>2. 서재 창 제목 꾸미기</strong><span className="block mt-1">나만의 서재 이름 짓기</span></button>
+      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("colors")}><strong>1. 배경 / 타이틀바 색상</strong><span className="block mt-1">바탕화면과 창 제목 표시줄 색상</span></button>
+      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("title")}><strong>2. EXPLORER 제목 꾸미기</strong><span className="block mt-1">나만의 서재 이름 짓기</span></button>
+      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("sound")}><strong>3. 시스템 효과음</strong><span className="block mt-1">효과음 켜기와 볼륨</span></button>
+      <button type="button" className="win-btn w-full text-left p-3" onClick={() => setMenu("cursor")}><strong>4. 마우스 커서</strong><span className="block mt-1">움직이는 나만의 커서</span></button>
     </div> : menu === "colors" ? <ColorEditor close={close} back={() => setMenu("index")} />
+      : menu === "sound" || menu === "cursor" ? <EffectsEditor kind={menu} close={close} back={() => setMenu("index")} />
       : <TitleEditor title={explorerTitle} count={bookCount} close={close} back={() => setMenu("index")} />}
   </PetPopup>;
 }

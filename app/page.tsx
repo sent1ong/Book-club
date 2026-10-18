@@ -15,6 +15,9 @@ import { usePetFarewells } from "./pets/farewell";
 import { DesktopThemeWindow } from "./DesktopTheme";
 import { usePetPersonalities } from "./pets/personality";
 import { AwardsHub } from "./awards/Awards";
+import { ObjectionCounts, ReviewObjections } from "./community/Objections";
+import { SharedShelfHub } from "./community/SharedShelf";
+import { systemSound } from "./desktop/sounds";
 import { PetDiary, PetPopup } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
@@ -448,59 +451,9 @@ function isValidGroup(name: string | null) {
   return isRegisteredGroup(name);
 }
 
-const playRetroDing = () => {
-  try {
-    const AudioContext =
-      window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+const playRetroDing = () => { systemSound("notice"); };
 
-    const playTone = (freq: number, start: number, dur: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        ctx.currentTime + start + dur,
-      );
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + dur);
-    };
-
-    playTone(523.25, 0, 0.2);
-    playTone(1046.5, 0.08, 0.4);
-  } catch (e) {}
-};
-
-const playCelebrationSound = () => {
-  try {
-    const AudioContext =
-      window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51];
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        ctx.currentTime + idx * 0.08 + 0.35,
-      );
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + idx * 0.08);
-      osc.stop(ctx.currentTime + idx * 0.08 + 0.35);
-    });
-  } catch (e) {}
-};
+const playCelebrationSound = () => { systemSound("celebrate"); };
 
 function shuffleQuizItems<T>(items: readonly T[]): T[] {
   const result = [...items];
@@ -3963,6 +3916,7 @@ function BookClubContent() {
   }
 
   return (
+    <ObjectionCounts key={groupName} group={groupName} ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}>
     <main className="desktop-surface relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
       <style jsx global>{`
         @keyframes petEggBounce {
@@ -4354,7 +4308,7 @@ function BookClubContent() {
               </div>
 
               {/* 두 번째 줄: 영수증과 우편함 */}
-              <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+              <div className="flex flex-nowrap overflow-x-auto items-center gap-2 w-full min-w-0 pb-1" aria-label="모임원 기능">
                 {selectedUser !== "전체" && <>
                   <button
                     type="button"
@@ -4398,6 +4352,9 @@ function BookClubContent() {
                     📌 {selectedUser}의 예고장
                   </button>
                 </>}
+                <SharedShelfHub key={`shelf:${groupName}`} group={groupName} member={selectedUser}
+                  ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
+                  blocked={!!openWindow || !!receiptData || !!randomBook || !!planCelebration || diaryOpen || idOpenFor !== null || showAllPlans || startMenuOpen || loading || editingId !== null || !!commentForm.content.trim() || !!formData.title.trim() || !!formData.review.trim()} />
                 <AwardsHub key={groupName} group={groupName} member={selectedUser}
                   author={userList.includes(commentForm.user_name) ? commentForm.user_name : formData.user_name}
                   ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}
@@ -4714,32 +4671,9 @@ function BookClubContent() {
                         </div>
                       )}
 
-                      {/* 이모지 반응 */}
-                      <div className="flex flex-wrap items-center gap-1.5 my-2 pt-1 border-t border-dashed border-gray-200">
-                        {["❤️", "📌", "😭", "😡", "👏"].map((emoji) => {
-                          const count =
-                            (reactions[book.id] && reactions[book.id][emoji]) ||
-                            0;
-                          return (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReactionClick(book.id, emoji);
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs win-btn"
-                            >
-                              <span>{emoji}</span>
-                              {count > 0 && (
-                                <span className="text-[11px] font-bold text-gray-700">
-                                  {count}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <ReviewObjections group={groupName} book={String(book.id)}
+                        members={userList.filter(name => name !== "전체")}
+                        author={userList.includes(commentForm.user_name) ? commentForm.user_name : formData.user_name} />
 
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-100 text-[11px]">
                         <button
@@ -8880,6 +8814,7 @@ function BookClubContent() {
         </div>
       </footer>
     </main>
+    </ObjectionCounts>
   );
 }
 

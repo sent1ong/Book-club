@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FinalShelf } from "../community/SharedShelf";
+import { autoModal } from "../community/autoModal";
 
 export type Award = { id: string; recipient: string; giver: string; title: string; reason: string; given_at: string };
 type Snapshot = { group_name: string; operating_year: number; server_now: string; can_issue: boolean;
@@ -72,6 +74,9 @@ function Schedule({ data }: { data: Snapshot }) {
 export function AwardsHub({ group, member, author, ready, blocked }: { group: string; member: string; author: string; ready: boolean; blocked: boolean }) {
   const [meta, setMeta] = useState<Snapshot | null>(null);
   const [data, setData] = useState<Snapshot | null>(null);
+  const autoToken = useRef({});
+  const [ceremonyTab, setCeremonyTab] = useState<"awards" | "shelf">("awards");
+  useEffect(() => () => autoModal.release(autoToken.current), []);
   const [mode, setMode] = useState<"member" | "ceremony" | null>(null);
   const [recipient, setRecipient] = useState("");
   const [stage, setStage] = useState<"list" | "edit" | "preview">("list");
@@ -91,7 +96,7 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
   useEffect(() => () => autoRequest.current?.abort(), []);
   const guard = useRef({ blocked, mode, ready }); guard.current = { blocked, mode, ready };
   const isTyping = () => !!document.activeElement?.closest("input,textarea,select,[contenteditable='true']");
-  const canAuto = () => guard.current.ready && !guard.current.blocked && !guard.current.mode && !isTyping() &&
+  const canAuto = () => autoModal.available() && guard.current.ready && !guard.current.blocked && !guard.current.mode && !isTyping() &&
     document.visibilityState === "visible" && !document.querySelector('[role="dialog"], [aria-modal="true"]');
   const seen = (year: number) => {
     try { return localStorage.getItem(`awards_year_end_seen:${group}:${year}`) === "1"; } catch { return false; }
@@ -130,10 +135,11 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
     locked.current = true;
     void readAwards(group, abort.signal).then(next => {
       if (abort.signal.aborted || !canAuto() || !next.auto_ceremony_day || !next.total_count || seen(next.operating_year)) return;
-      setData(next); setMeta(next); setAutomatic(true); setMode("ceremony");
+      if (!autoModal.claim(autoToken.current)) return;
+      setCeremonyTab("awards"); setData(next); setMeta(next); setAutomatic(true); setMode("ceremony");
     }).catch(() => {}).finally(() => { locked.current = false; });
   }, [meta, tick, blocked, ready, mode, group]);
-  const close = () => { if (!locked.current) { setMode(null); setError(""); setNotice(""); setAutomatic(false); } };
+  const close = () => { if (!locked.current) { autoModal.release(autoToken.current); setMode(null); setError(""); setNotice(""); setAutomatic(false); } };
   const load = async () => {
     setBusy(true); setError("");
     try { const next = await readAwards(group); setData(next); setMeta(next); }
@@ -142,7 +148,7 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
   };
   const open = (next: "member" | "ceremony") => {
     if (locked.current) return;
-    setAutomatic(false); setRecipient(member); setStage("list"); setIndex(0); setNotice(""); setData(null); setMode(next); void load();
+    setCeremonyTab("awards"); setAutomatic(false); setRecipient(member); setStage("list"); setIndex(0); setNotice(""); setData(null); setMode(next); void load();
   };
   const rows = data?.awards.filter(row => row.recipient === recipient) ?? [];
   const self = giver === recipient;
@@ -162,8 +168,8 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
   };
   return <>
     <div className="contents">
-      {member !== "전체" && <button type="button" className="win-btn px-2 py-0.5 text-xs font-bold whitespace-nowrap" onClick={() => open("member")}>🏆 {member}의 상장</button>}
-      {meta?.ceremony_available && <button type="button" className="win-btn px-2 py-0.5 text-xs font-bold" onClick={() => open("ceremony")}>🏆 연말 시상식 보기</button>}
+      {member !== "전체" && <button type="button" className="win-btn px-2 py-0.5 text-xs font-bold whitespace-nowrap shrink-0" onClick={() => open("member")}>🏆 {member}의 상장</button>}
+      {meta?.ceremony_available && <button type="button" className="win-btn px-2 py-0.5 text-xs font-bold whitespace-nowrap shrink-0" onClick={() => open("ceremony")}>🏆 연말 시상식 보기</button>}
     </div>
     {mode && <AwardsWindow title={mode === "ceremony" ? "🏆 YEAR_END_AWARDS.exe" : `🏆 AWARDS_98.exe — ${recipient}의 상장`} close={close}
       onShown={automatic && data ? () => {
@@ -176,12 +182,15 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
       {data && <>
         {mode === "ceremony" ? <>
           <h2 className="text-center text-lg font-bold">🏆 {data.operating_year} 연말 시상식 🏆</h2>
+          <div role="tablist" aria-label="연말 결과" className="flex gap-2"><button type="button" role="tab" aria-selected={ceremonyTab === "awards"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("awards")}>🏆 받은 상장</button><button type="button" role="tab" aria-selected={ceremonyTab === "shelf"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("shelf")}>📚 공동책장</button></div>
+          {ceremonyTab === "shelf" ? <FinalShelf group={group} year={data.operating_year} /> : <>
           <p className="text-center">BOOK CLUB 98 · 총 {data.total_count}장 · 수상자 {new Set(data.awards.map(row => row.recipient)).size}명</p>
           {!data.total_count && <p>아직 수여된 상장이 없어요.</p>}
           {data.awards.map((award, i) => <section key={award.id} className="space-y-2">
             {(i === 0 || data.awards[i - 1].recipient !== award.recipient) && <h3 className="font-bold pt-2">🏆 {award.recipient}의 상장</h3>}
             <Certificate award={award} />
           </section>)}
+          </>}
         </> : <>
           <h2 className="font-bold">{recipient} · 받은 상장 {rows.length}장</h2><Schedule data={data} />
           {stage === "list" ? <>
