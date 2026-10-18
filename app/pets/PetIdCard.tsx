@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "./PetDiary";
 import { petMemory } from "./memoryCache";
 import { secureClient } from "../security/client";
+import { matchingSnack, type PetSnack } from "./snack";
 import { matchingFarewell, type PetFarewell } from "./farewell";
 import { matchingPersonality, type PetPersonality } from "./personality";
 import type { PetSnapshot } from "./petData";
@@ -56,9 +57,10 @@ export function usePetMementos(group:string, active:boolean, pet:PetSnapshot|nul
   return {...current,byId,retry:()=>setRetry(x=>x+1)};
 }
 
-export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,personality,personalityLoading,personalityError,farewell,farewellLoading,farewellError}: {
-  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;farewell?:PetFarewell;farewellLoading?:boolean;farewellError?:string;
+export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,personality,personalityLoading,personalityError,farewell,farewellLoading,farewellError,snack,snackLoading,snackError}: {
+  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;farewell?:PetFarewell;farewellLoading?:boolean;farewellError?:string;snack?:PetSnack;snackLoading?:boolean;snackError?:string;
 }) {
+  const favoriteSnack=matchingSnack(pet,snack);
   const lastWords=matchingFarewell(pet,farewell);
   const profile=matchingPersonality(pet,personality);
   const adult=pet.stage==="adult"||pet.stage==="dead"||!!pet.died_at;
@@ -87,18 +89,24 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
       <p>✨ 성인이 된 날: {dateLabel(pet.adult_at)}</p>
       <p>🪦 무지개다리를 건넌 날: {dateLabel(pet.died_at)}</p>
     </div>}
-    {adult && <footer className="mt-2 border-t border-[#cabbcf] pt-2">
+    {pet.stage!=="egg" && <footer className="mt-2 border-t border-[#cabbcf] pt-2">
       <p className="text-xs font-bold tracking-wide text-[#80628e]">MY FAVORITE THING ♡</p>
-      {actualItem ? <><p className="mt-1 flex items-center gap-1 font-bold"><span className="shrink-0">애장품 ·</span>{actualItem.emoji === "🔘" ? (
+      {adult && (actualItem ? <p className="mt-1 flex items-center gap-1 font-bold"><span className="shrink-0">애장품 ·</span>{actualItem.emoji === "🔘" ? (
         <span role="img" aria-label="연보라색 단추" style={{display:"grid",flexShrink:0,width:14,height:14,
           gridTemplateColumns:"repeat(2, 2px)",gap:2,alignContent:"center",justifyContent:"center",
           borderRadius:"50%",background:"#e5d3f7",border:"1px solid #b89ace",boxShadow:"inset 1px 1px 0 #fff4ff"}}>
           {[0,1,2,3].map(hole=><span key={hole} style={{width:2,height:2,borderRadius:"50%",background:"#9470ae"}} />)}
         </span>
       ) : <span className="shrink-0">{actualItem.emoji}</span>}<span className="min-w-0 break-words">{actualItem.item_name}</span></p>
+        : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>)}
+      <p className="mt-1 flex items-start gap-1" aria-label="좋아하는 간식"><span className="shrink-0">좋아하는 간식 ·</span>
+        {favoriteSnack ? <span className="min-w-0 break-words">{favoriteSnack.emoji} {favoriteSnack.snack_name}</span>
+          : <span role="status" className="min-w-0 text-[#75647d]">{snackLoading?"확인 중…":snackError||"준비 중이에요."}</span>}
+      </p>
+      {adult && actualItem && <>
         <p className="mt-1 break-words">{actualItem.introduction}</p>
         <p className="mt-1 text-xs leading-5 text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
-      </> : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>}
+      </>}
     </footer>}
     {(pet.stage==="dead"||pet.died_at) && <section className="mt-2 border-t border-[#cabbcf] pt-2" aria-label="마지막 한마디">
       <p className="font-bold">💌 마지막 한마디</p>
@@ -109,11 +117,12 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
   </article>;
 }
 
-export function PetIdPopup({pet,sprite,colorVariant,memento,loading,error,retry,close,personality,personalityLoading,personalityError,personalityRetry}:{
-  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading:boolean;error:string;retry:()=>void;close:()=>void;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;personalityRetry?:()=>void;
+export function PetIdPopup({pet,sprite,colorVariant,memento,loading,error,retry,close,personality,personalityLoading,personalityError,personalityRetry,snack,snackLoading,snackError,snackRetry}:{
+  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading:boolean;error:string;retry:()=>void;close:()=>void;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;personalityRetry?:()=>void;snack?:PetSnack;snackLoading?:boolean;snackError?:string;snackRetry?:()=>void;
 }) {
   return <PetPopup title="PET.exe — 펫 신분증" close={close} front>
-    <PetIdCard pet={pet} sprite={sprite} colorVariant={colorVariant} memento={memento} loading={loading} error={error} personality={personality} personalityLoading={personalityLoading} personalityError={personalityError}/>
+    <PetIdCard pet={pet} sprite={sprite} colorVariant={colorVariant} memento={memento} loading={loading} error={error} personality={personality} personalityLoading={personalityLoading} personalityError={personalityError} snack={snack} snackLoading={snackLoading} snackError={snackError}/>
+    {snackError && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={snackRetry}>간식 다시 확인</button>}
     {personalityError && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalityRetry}>성격 다시 확인</button>}
     {error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={retry}>애장품 다시 확인</button>}
   </PetPopup>;

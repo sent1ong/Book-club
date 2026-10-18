@@ -8,6 +8,8 @@ import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
+import { StartMenuBand } from "./StartMenuBand";
+import { usePetSnacks } from "./pets/snack";
 import { useExplorerTitle } from "./explorerTitle";
 import { usePetFarewells } from "./pets/farewell";
 import { DesktopThemeWindow } from "./DesktopTheme";
@@ -1692,6 +1694,7 @@ function BookClubContent() {
   useEffect(() => { if (openWindow !== "pets") setArchiveOpen(false); }, [openWindow]);
   useEffect(() => { setArchiveOpen(false); }, [groupName]);
   const [idOpenFor, setIdOpenFor] = useState<number | null>(null);
+  const snacks = usePetSnacks(groupName, openWindow === "pets", currentPet, petReload);
   const personalities = usePetPersonalities(groupName, openWindow === "pets", currentPet, petReload);
   const mementos = usePetMementos(groupName, openWindow === "pets", currentPet, petReload);
   useEffect(() => { setIdOpenFor(null); }, [groupName]);
@@ -6056,6 +6059,7 @@ function BookClubContent() {
         <PetIdPopup pet={currentPet} close={() => setIdOpenFor(null)}
           sprite={<PetSprite pet={currentPet} size={76} />}
           colorVariant={PET_COLOR_ORDER[(currentPet.generation_number - 1) % PET_COLOR_ORDER.length] || currentPet.color_variant || "original"}
+          snack={snacks.byId[String(currentPet.id)]} snackLoading={snacks.loading} snackError={snacks.error} snackRetry={snacks.retry}
           personality={personalities.byId[String(currentPet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error} personalityRetry={personalities.retry}
           memento={mementos.byId[String(currentPet.id)]} loading={mementos.loading} error={mementos.error} retry={mementos.retry} />
       )}
@@ -6065,6 +6069,7 @@ function BookClubContent() {
                   : <PetIdGallery pets={petHistory} renderCard={pet => (
                     <PetIdCard pet={pet} sprite={<PetSprite pet={pet} stage="adult" size={76} />}
                       colorVariant={PET_COLOR_ORDER[(pet.generation_number - 1) % PET_COLOR_ORDER.length] || pet.color_variant || "original"}
+                      snack={snacks.byId[String(pet.id)]} snackLoading={snacks.loading} snackError={snacks.error}
                       farewell={farewells.byId[String(pet.id)]} farewellLoading={farewells.loading} farewellError={farewells.error}
                       personality={personalities.byId[String(pet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error}
                       memento={mementos.byId[String(pet.id)]} loading={mementos.loading} error={mementos.error} />
@@ -6072,6 +6077,7 @@ function BookClubContent() {
                 {personalities.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalities.retry}>성격 다시 확인</button>}
                 {mementos.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={mementos.retry}>애장품 다시 확인</button>}
 
+                {snacks.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={snacks.retry}>간식 다시 확인</button>}
                 {farewells.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={farewells.retry}>마지막 한마디 다시 확인</button>}
       </PetPopup>}
       {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
@@ -8545,12 +8551,8 @@ function BookClubContent() {
           className="absolute bottom-10 left-0 z-50 w-60 bg-[#c0c0c0] win-outset flex shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 좌측 사이드바 */}
-          <div className="w-8 bg-gradient-to-t from-[#000080] via-[#1084d0] to-[#000080] flex items-center justify-center relative overflow-hidden select-none">
-            <span className="text-white font-extrabold text-xs -rotate-90 whitespace-nowrap tracking-widest drop-shadow">
-              BOOK CLUB 98
-            </span>
-          </div>
+          {/* 좌측 사이드바: 실제 모임 이름과 기존 표시줄 테마 */}
+          <StartMenuBand group={groupName} />
           <div className="flex-1 min-w-0 p-1 flex flex-col space-y-0.5 text-xs max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
             {APP_LIST.map((app) => (
               <button
