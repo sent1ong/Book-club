@@ -8,12 +8,13 @@ import {
   readBody,
 } from "../../security/server";
 import { planQuery, positiveId, text } from "../../security/query-policy";
+import { isRegisteredGroup } from "../../security/groups";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ok = (data: unknown) =>
+const ok = (data: unknown, count?: number | null) =>
   Response.json(
-    { data, error: null },
+    { data, error: null, ...(typeof count === "number" ? { count } : {}) },
     { headers: { "Cache-Control": "no-store" } },
   );
 
@@ -33,9 +34,14 @@ async function rowInGroup(table: string, id: unknown, group: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await readBody(request);
-    const found = await authorize(request, body.group);
+    if (typeof body.group !== "string" || !isRegisteredGroup(body.group))
+      throw new ApiError("등록되지 않은 모임입니다.", 404);
+    // Both checks must finish before any application data is queried or changed.
+    const [found] = await Promise.all([
+      authorize(request, body.group),
+      rateLimit(request, body.group, "requests", 240),
+    ]);
     const group = found.group_name;
-    await rateLimit(request, group, "requests", 240);
     const db = admin();
 
     if (body.kind === "comment") {
@@ -131,7 +137,11 @@ export async function POST(request: NextRequest) {
       return ok(null);
     }
     let query: any = db.from(plan.table);
-    if (plan.action === "select") query = query.select(plan.columns);
+    if (plan.action === "select")
+      query = query.select(
+        plan.columns,
+        plan.count ? { count: "exact" } : undefined,
+      );
     else if (plan.action === "insert") query = query.insert(plan.rows);
     else if (plan.action === "upsert")
       query = query.upsert(plan.rows, { onConflict: plan.conflict });
@@ -158,7 +168,7 @@ export async function POST(request: NextRequest) {
         "데이터를 처리하지 못했습니다. 입력 내용을 확인해 주세요.",
         400,
       );
-    return ok(result.data);
+    return ok(result.data, plan.count ? result.count : undefined);
   } catch (error) {
     return fail(error);
   }

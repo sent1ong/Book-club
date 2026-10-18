@@ -1,6 +1,10 @@
 "use client";
 
-type Result = { data: any; error: { message: string } | null };
+type Result = {
+  data: any;
+  error: { message: string } | null;
+  count?: number | null;
+};
 
 async function send(body: Record<string, unknown>): Promise<Result> {
   try {
@@ -38,8 +42,9 @@ class Query implements PromiseLike<Result> {
       orders: [],
     };
   }
-  select(columns = "*") {
+  select(columns = "*", options?: { count?: "exact" }) {
     this.body.columns = columns;
+    if (options?.count) this.body.count = options.count;
     return this;
   }
   insert(rows: any) {

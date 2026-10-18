@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { isRegisteredGroup } from "./groups";
@@ -13,13 +13,17 @@ export class ApiError extends Error {
   }
 }
 
+let sharedClient: SupabaseClient<any> | undefined;
+
 export function admin() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new ApiError("서버 설정을 확인해 주세요.", 503);
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  if (!sharedClient)
+    sharedClient = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  return sharedClient;
 }
 
 export const sha256 = (value: string) =>

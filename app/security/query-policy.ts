@@ -145,6 +145,11 @@ export function planQuery(body: Record<string, any>, group: string) {
   )
     throw new ApiError("허용되지 않은 작업입니다.", 403);
   const available = readColumns[table];
+  if (
+    body.count !== undefined &&
+    (action !== "select" || body.count !== "exact")
+  )
+    throw new ApiError("잘못된 개수 조회입니다.");
   const requested = body.columns ?? "*";
   if (typeof requested !== "string") throw new ApiError("잘못된 조회입니다.");
   const columns =
@@ -325,6 +330,7 @@ export function planQuery(body: Record<string, any>, group: string) {
   if (action === "upsert" && body.conflict !== conflicts[table])
     throw new ApiError("잘못된 저장 방식입니다.");
   return {
+    count: body.count === "exact",
     table,
     action,
     columns: columns.join(","),

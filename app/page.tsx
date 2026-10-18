@@ -3260,17 +3260,20 @@ function BookClubContent() {
     setReviewsFetching(true);
     try {
       const rows: BookReview[] = [];
-      for (let offset = 0; ; offset += 200) {
-        const { data, error } = await supabase
+      for (let offset = 0; ; ) {
+        const { data, error, count } = await supabase
           .from("books")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("group_name", groupName)
           .order("id", { ascending: false })
-          .range(offset, offset + 199);
+          .range(offset, offset + 999);
         if (request !== reviewsRequest.current) return;
         if (error) throw error;
-        rows.push(...(data || []));
-        if (!data || data.length < 200) break;
+        if (!data || data.length === 0) break;
+        rows.push(...data);
+        offset += data.length;
+        // Respect a lower Supabase row cap without mistaking it for the last page.
+        if (typeof count === "number" && offset >= count) break;
       }
       setReviews(rows);
     } catch {
