@@ -58,7 +58,7 @@ function AwardsWindow({ title, close, children, onShown }: { title: string; clos
           else if (!event.shiftKey && (document.activeElement === last || document.activeElement === box.current)) { event.preventDefault(); first.focus(); }
         }
       }}>
-      <div className="bg-[#000080] text-white text-xs font-bold flex justify-between items-center px-2 py-1 gap-2">
+      <div className="desktop-titlebar bg-[#000080] text-white text-xs font-bold flex justify-between items-center px-2 py-1 gap-2">
         <span className="min-w-0 break-words">{title}</span><button className="win-btn text-black px-1 shrink-0" type="button" aria-label="상장 창 닫기" onClick={close}>✕</button>
       </div><div className="p-3 min-h-0 overflow-y-auto text-xs space-y-3">{children}</div>
     </div>

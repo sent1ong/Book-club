@@ -8,6 +8,8 @@ import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
+import { DesktopThemeWindow } from "./DesktopTheme";
+import { usePetPersonalities } from "./pets/personality";
 import { AwardsHub } from "./awards/Awards";
 import { PetDiary } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
@@ -662,7 +664,7 @@ function ReviewQuizWindow({
         aria-labelledby="review-quiz-title"
         className="w-full max-w-lg max-h-[90dvh] overflow-y-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
       >
-        <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+        <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
           <span id="review-quiz-title">리뷰 퀴즈.exe</span>
           <button
             type="button"
@@ -933,7 +935,7 @@ function CollectorWindow({
         aria-labelledby="collector-title"
         className="w-full max-w-3xl max-h-[90dvh] flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black"
       >
-        <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
+        <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
           <span id="collector-title">카드 도감.exe</span>
           <button
             type="button"
@@ -1683,6 +1685,7 @@ function BookClubContent() {
   const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const [diaryOpen, setDiaryOpen] = useState(false);
   const [idOpenFor, setIdOpenFor] = useState<number | null>(null);
+  const personalities = usePetPersonalities(groupName, openWindow === "pets", currentPet, petReload);
   const mementos = usePetMementos(groupName, openWindow === "pets", currentPet, petReload);
   useEffect(() => { setIdOpenFor(null); }, [groupName]);
   const secretNote = useSecretNote(groupName, miniPet);
@@ -3931,9 +3934,9 @@ function BookClubContent() {
 
   if (!isAllowedGroup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#008080] p-4 select-none">
+      <div className="desktop-surface min-h-screen flex items-center justify-center bg-[#008080] p-4 select-none">
         <div className="bg-[#c0c0c0] win-outset p-4 max-w-sm w-full text-center">
-          <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold text-left mb-3">
+          <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 text-xs font-bold text-left mb-3">
             SYSTEM ERROR
           </div>
           <div className="text-3xl mb-2">🔒</div>
@@ -3951,7 +3954,7 @@ function BookClubContent() {
   }
 
   return (
-    <main className="relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
+    <main className="desktop-surface relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
       <style jsx global>{`
         @keyframes petEggBounce {
           0%,
@@ -4163,7 +4166,7 @@ function BookClubContent() {
       >
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
-          <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
+          <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
             <span>
               📚 EXPLORER - {groupName}의 서재 목록 ({displayedReviews.length}
               권)
@@ -5096,7 +5099,7 @@ function BookClubContent() {
           }
         >
           {/* 제목 표시줄 */}
-          <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between gap-2 text-xs font-bold">
+          <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between gap-2 text-xs font-bold">
             <span className="flex items-center gap-1 min-w-0">
               <Image
                 src="/icons/music.png"
@@ -5306,7 +5309,7 @@ function BookClubContent() {
       {openWindow === "book-add" && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>{editingId ? "EDITING_BOOK.exe" : "ADD_BOOK.exe"}</span>
               <button
                 onClick={() => setOpenWindow(null)}
@@ -5583,7 +5586,7 @@ function BookClubContent() {
       {openWindow === "goals" && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>🎯 GOALS_TRACKER.exe</span>
               <button
                 onClick={() => setOpenWindow(null)}
@@ -5683,7 +5686,7 @@ function BookClubContent() {
             aria-labelledby="mailbox-title"
             className="w-full max-w-lg bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85dvh] text-black"
           >
-            <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
               <span id="mailbox-title">BOOK CLUB 98 MAILBOX.exe</span>
               <button
                 type="button"
@@ -5796,7 +5799,7 @@ function BookClubContent() {
       {openWindow === "reading-plan" && selectedUser !== "전체" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-lg max-h-[85dvh] bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col text-black">
-            <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold">
               <span>📌 COMING_SOON.exe - {selectedUser}의 예고장</span>
               <button
                 type="button"
@@ -5953,7 +5956,7 @@ function BookClubContent() {
       {openWindow === "comments" && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
           <div className="w-full max-w-md bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>💬 COMMENTS_BOARD.exe</span>
               <button
                 onClick={() => setOpenWindow(null)}
@@ -6046,6 +6049,7 @@ function BookClubContent() {
         <PetIdPopup pet={currentPet} close={() => setIdOpenFor(null)}
           sprite={<PetSprite pet={currentPet} size={76} />}
           colorVariant={PET_COLOR_ORDER[(currentPet.generation_number - 1) % PET_COLOR_ORDER.length] || currentPet.color_variant || "original"}
+          personality={personalities.byId[String(currentPet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error} personalityRetry={personalities.retry}
           memento={mementos.byId[String(currentPet.id)]} loading={mementos.loading} error={mementos.error} retry={mementos.retry} />
       )}
       {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
@@ -6053,7 +6057,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
           <div className="w-full max-w-md max-h-[85dvh] bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col text-black">
             {/* 제목 표시줄 */}
-            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>🐾 PET.exe</span>
               <button
                 type="button"
@@ -6546,8 +6550,10 @@ function BookClubContent() {
                   : <PetIdGallery pets={petHistory} renderCard={pet => (
                     <PetIdCard pet={pet} sprite={<PetSprite pet={pet} stage="adult" size={76} />}
                       colorVariant={PET_COLOR_ORDER[(pet.generation_number - 1) % PET_COLOR_ORDER.length] || pet.color_variant || "original"}
+                      personality={personalities.byId[String(pet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error}
                       memento={mementos.byId[String(pet.id)]} loading={mementos.loading} error={mementos.error} />
                   )} />}
+                {personalities.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalities.retry}>성격 다시 확인</button>}
                 {mementos.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={mementos.retry}>애장품 다시 확인</button>}
               </details>
             </div>
@@ -6560,7 +6566,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3">
           <div className="w-full max-w-md max-h-[80dvh] flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black">
             {/* 제목 표시줄 */}
-            <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold shrink-0">
               <span>✉️ NOTICE.exe — 독서 예고장</span>
 
               <button
@@ -6667,7 +6673,7 @@ function BookClubContent() {
         ].includes(openWindow) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
             <div className="w-full max-w-sm bg-[#c0c0c0] win-outset p-1 shadow-2xl flex flex-col">
-              <div className="bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
+              <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
                 <span>
                   {APP_LIST.find((a) => a.id === openWindow)?.name}.exe
                 </span>
@@ -6714,7 +6720,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-gray-800 to-gray-600 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-gray-800 to-gray-600 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>🪦</span>
                 <span>GRAVEYARD.exe - 중도하차 묘지 아카이브</span>
@@ -6817,7 +6823,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-teal-900 to-teal-700 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-teal-900 to-teal-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>🏷️</span>
                 <span>KEYWORDS.exe - 작품 키워드 모음</span>
@@ -6968,7 +6974,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-lg bg-[#c0c0c0] p-1 flex flex-col max-h-[85vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-blue-900 to-indigo-700 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-blue-900 to-indigo-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>📊</span>
                 <span>GENRE_DIAG.exe - 장르 분석</span>
@@ -7147,7 +7153,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-md bg-[#c0c0c0] p-1 flex flex-col shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-amber-800 to-amber-600 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-amber-800 to-amber-600 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>🎰</span>
                 <span>VENDING.exe - 키워드 캡슐 자판기</span>
@@ -7315,7 +7321,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-md bg-[#c0c0c0] p-1 flex flex-col shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-pink-900 to-rose-700 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-pink-900 to-rose-700 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>💘</span>
                 <span>SOULMATE.exe - 취향 도플갱어 탐색기</span>
@@ -7444,7 +7450,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[88vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-red-800 via-purple-900 to-blue-900 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-red-800 via-purple-900 to-blue-900 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>⚔️</span>
                 <span>BATTLE.exe - 희대의 호불호 논쟁작 매치</span>
@@ -7666,7 +7672,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[88vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-900 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1 bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-900 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span>🏆</span>
                 <span>AWARDS.exe - 정기 결산 명예의 전당</span>
@@ -7770,7 +7776,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full min-w-0 max-w-xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-orange-800 via-amber-700 to-yellow-800 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-orange-800 via-amber-700 to-yellow-800 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span className="text-base">📢</span>
                 <span className="text-xs">
@@ -7918,7 +7924,7 @@ function BookClubContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="win-box w-full max-w-2xl bg-[#c0c0c0] p-1 flex flex-col max-h-[90vh] shadow-2xl">
             {/* 타이틀 바 */}
-            <div className="win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-emerald-800 via-teal-700 to-cyan-900 text-white font-bold text-xs select-none">
+            <div className="desktop-titlebar win-title flex justify-between items-center px-2 py-1.5 bg-gradient-to-r from-emerald-800 via-teal-700 to-cyan-900 text-white font-bold text-xs select-none">
               <span className="flex items-center gap-1.5">
                 <span className="text-base">🏎️</span>
                 <span className="text-xs">
@@ -8073,7 +8079,7 @@ function BookClubContent() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
           <div className="bg-[#c0c0c0] win-outset p-1 w-full max-w-md shadow-2xl text-black">
             {/* 타이틀 바 */}
-            <div className="bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center select-none">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center select-none">
               <span className="flex items-center gap-1.5">
                 <Image
                   src="/icons/bingo.png"
@@ -8474,7 +8480,7 @@ function BookClubContent() {
             className="bg-[#c0c0c0] win-outset max-w-xs w-full p-1 text-center select-none shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold mb-2">
+            <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex justify-between items-center text-xs font-bold mb-2">
               <span>RANDOM_PICK.exe</span>
               <button
                 onClick={() => setRandomBook(null)}
@@ -8523,6 +8529,7 @@ function BookClubContent() {
         </div>
       )}
 
+      {openWindow === "desktop-theme" && <DesktopThemeWindow close={() => setOpenWindow(null)} />}
       {/* 시작 메뉴 팝업 */}
       {startMenuOpen && (
         <div
@@ -8535,7 +8542,7 @@ function BookClubContent() {
               BOOK CLUB 98
             </span>
           </div>
-          <div className="flex-1 p-1 flex flex-col space-y-0.5 text-xs">
+          <div className="flex-1 min-w-0 p-1 flex flex-col space-y-0.5 text-xs max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
             {APP_LIST.map((app) => (
               <button
                 key={app.id}
@@ -8554,6 +8561,11 @@ function BookClubContent() {
                 <span className="truncate">{app.name}</span>
               </button>
             ))}
+            <button type="button" onClick={() => { setStartMenuOpen(false); setOpenWindow("desktop-theme"); }}
+              className="flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors">
+              <div className="relative w-5 h-5 flex-shrink-0"><Image src="/icons/theme.png" alt="" fill sizes="20px" className="object-contain" /></div>
+              <span className="truncate">화면 꾸미기</span>
+            </button>
             <AndroidGroupInstall groupName={groupName} />
           </div>
         </div>
@@ -8565,7 +8577,7 @@ function BookClubContent() {
           aria-live="polite"
           className="absolute top-3 left-1/2 -translate-x-1/2 z-[100] max-w-[calc(100%_-_16px)] w-max pointer-events-none bg-[#c0c0c0] win-outset p-1 text-xs text-black shadow-[2px_2px_0_#000]"
         >
-          <div className="bg-[#000080] text-white font-bold px-2 py-1">
+          <div className="desktop-titlebar bg-[#000080] text-white font-bold px-2 py-1">
             🎉 독서 예고 달성!
           </div>
           <div className="px-2 py-2 break-words">

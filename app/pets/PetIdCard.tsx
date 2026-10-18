@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "./PetDiary";
 import { petMemory } from "./memoryCache";
 import { secureClient } from "../security/client";
+import { matchingPersonality, type PetPersonality } from "./personality";
 import type { PetSnapshot } from "./petData";
 
 export type PetMemento = {
@@ -54,9 +55,10 @@ export function usePetMementos(group:string, active:boolean, pet:PetSnapshot|nul
   return {...current,byId,retry:()=>setRetry(x=>x+1)};
 }
 
-export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
-  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;
+export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,personality,personalityLoading,personalityError}: {
+  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;
 }) {
+  const profile=matchingPersonality(pet,personality);
   const adult=pet.stage==="adult"||pet.stage==="dead"||!!pet.died_at;
   const actualItem=memento?.group_name===pet.group_name && String(memento?.generation_id)===String(pet.id) && memento?.species===pet.species ? memento:undefined;
   return <article aria-label={`${pet.generation_number}세대 펫 신분증`} className="w-full min-w-0 border-2 border-[#a58cb1] p-3 text-xs leading-5 shadow-sm" style={{backgroundColor:COLORS[colorVariant]||COLORS.original}}>
@@ -73,6 +75,10 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
         <dt className="whitespace-nowrap text-xs">이름 지어준 사람</dt><dd className="break-all">{pet.named_by?.trim()||"기록 없음"}</dd>
       </dl>
     </div>
+    {pet.stage!=="egg" && <section className="mt-2 border-t border-[#cabbcf] pt-1 text-xs leading-5" aria-label="펫 성격">
+      {profile ? <><p><strong>성격 · {profile.personality_name}</strong></p><p className="break-words">✦ {profile.description}</p></>
+        : <p role="status" className="text-[#75647d]">{personalityLoading?"성격 기록을 확인하고 있어요.":personalityError||"성격 기록을 준비하고 있어요."}</p>}
+    </section>}
     {(pet.stage==="dead"||pet.died_at) && <div className="mt-2 border-t border-[#cabbcf] pt-1 text-xs leading-5 text-[#5f5268]">
       <p>최종 경험치: {pet.xp} XP</p>
       <p>🥚 태어난 날(알 입양): {dateLabel(pet.born_at)}</p>
@@ -95,11 +101,12 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
   </article>;
 }
 
-export function PetIdPopup({pet,sprite,colorVariant,memento,loading,error,retry,close}:{
-  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading:boolean;error:string;retry:()=>void;close:()=>void;
+export function PetIdPopup({pet,sprite,colorVariant,memento,loading,error,retry,close,personality,personalityLoading,personalityError,personalityRetry}:{
+  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading:boolean;error:string;retry:()=>void;close:()=>void;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;personalityRetry?:()=>void;
 }) {
   return <PetPopup title="PET.exe — 펫 신분증" close={close} front>
-    <PetIdCard pet={pet} sprite={sprite} colorVariant={colorVariant} memento={memento} loading={loading} error={error}/>
+    <PetIdCard pet={pet} sprite={sprite} colorVariant={colorVariant} memento={memento} loading={loading} error={error} personality={personality} personalityLoading={personalityLoading} personalityError={personalityError}/>
+    {personalityError && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalityRetry}>성격 다시 확인</button>}
     {error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={retry}>애장품 다시 확인</button>}
   </PetPopup>;
 }

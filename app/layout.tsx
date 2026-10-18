@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { DesktopThemeProvider } from './DesktopTheme';
 
 export const metadata: Metadata = {
   title: 'Book Club 98',
@@ -27,8 +28,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="overflow-hidden select-none bg-[#008080] text-black">
-        {children}
+      <body className="desktop-surface overflow-hidden select-none bg-[#008080] text-black">
+        <DesktopThemeProvider>{children}</DesktopThemeProvider>
       </body>
     </html>
   );

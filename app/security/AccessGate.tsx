@@ -91,7 +91,7 @@ export default function AccessGate({
     group !== "forgaedus26" &&
     group !== "nogmbdj26";
   return (
-    <main className="min-h-[100dvh] flex items-center justify-center bg-[#008080] p-6">
+    <main className="desktop-surface min-h-[100dvh] flex items-center justify-center bg-[#008080] p-6">
       <div className="win-outset bg-[#c0c0c0] p-5 max-w-md text-sm">
         <h1 className="font-bold mb-3">BOOK CLUB 98</h1>
         <p role="status">{checking ? "모임을 불러오고 있어요." : message}</p>

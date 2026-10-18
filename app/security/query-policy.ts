@@ -54,6 +54,7 @@ export const readColumns: Record<string, string[]> = {
     "created_at",
     "read_at",
   ],
+  pet_personalities: ["generation_id", "group_name", "species", "personality_key", "personality_name", "description"],
   pet_mementos: ["generation_id", "group_name", "species", "item_key", "item_name", "emoji", "introduction", "confirmed_at", "is_commemorative"],
   pet_diaries: ["id", "group_name", "generation_id", "generation_number", "diary_date", "species", "display_name", "stage", "title", "body", "is_final", "is_first", "template_version", "created_at"],
   pet_generations: [
@@ -124,6 +125,7 @@ const actions: Record<string, string[]> = {
   reading_plans: ["select", "insert", "delete"],
   mailbox_notifications: ["select", "update"],
   book_comments: ["select", "insert"],
+  pet_personalities: ["select"],
   pet_mementos: ["select"],
   pet_diaries: ["select"],
   pet_generations: ["select"],

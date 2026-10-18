@@ -33,7 +33,7 @@ export function PetPopup({ title, close, children, front = false }: {
           else if (!event.shiftKey && (document.activeElement === last || document.activeElement === box.current)) { event.preventDefault(); first.focus(); }
         }
       }} className="w-full max-w-md max-h-[85dvh] flex flex-col bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black outline-none">
-      <div className="flex items-center justify-between bg-[#000080] px-2 py-1 text-xs font-bold text-white">
+      <div className="desktop-titlebar flex items-center justify-between bg-[#000080] px-2 py-1 text-xs font-bold text-white">
         <span>{title}</span><button type="button" onClick={close} aria-label={`${title} 닫기`} className="win-btn flex h-5 w-5 items-center justify-center text-black">✕</button>
       </div>
       <div className="min-h-0 overflow-y-auto p-3 text-xs">{children}</div>
