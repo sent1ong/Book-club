@@ -91,6 +91,10 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
     </div>}
     {pet.stage!=="egg" && <footer className="mt-2 border-t border-[#cabbcf] pt-2">
       <p className="text-xs font-bold tracking-wide text-[#80628e]">MY FAVORITE THING ♡</p>
+      <p className="mt-1 flex items-start gap-1 font-bold" aria-label="좋아하는 간식"><span className="shrink-0">좋아하는 간식 ·</span>
+        {favoriteSnack ? <span className="min-w-0 break-words">{favoriteSnack.emoji} {favoriteSnack.snack_name}</span>
+          : <span role="status" className="min-w-0 text-[#75647d]">{snackLoading?"확인 중…":snackError||"준비 중이에요."}</span>}
+      </p>
       {adult && (actualItem ? <p className="mt-1 flex items-center gap-1 font-bold"><span className="shrink-0">애장품 ·</span>{actualItem.emoji === "🔘" ? (
         <span role="img" aria-label="연보라색 단추" style={{display:"grid",flexShrink:0,width:14,height:14,
           gridTemplateColumns:"repeat(2, 2px)",gap:2,alignContent:"center",justifyContent:"center",
@@ -99,10 +103,6 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
         </span>
       ) : <span className="shrink-0">{actualItem.emoji}</span>}<span className="min-w-0 break-words">{actualItem.item_name}</span></p>
         : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>)}
-      <p className="mt-1 flex items-start gap-1" aria-label="좋아하는 간식"><span className="shrink-0">좋아하는 간식 ·</span>
-        {favoriteSnack ? <span className="min-w-0 break-words">{favoriteSnack.emoji} {favoriteSnack.snack_name}</span>
-          : <span role="status" className="min-w-0 text-[#75647d]">{snackLoading?"확인 중…":snackError||"준비 중이에요."}</span>}
-      </p>
       {adult && actualItem && <>
         <p className="mt-1 break-words">{actualItem.introduction}</p>
         <p className="mt-1 text-xs leading-5 text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
