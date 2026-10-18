@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "./PetDiary";
 import { petMemory } from "./memoryCache";
 import { secureClient } from "../security/client";
+import { matchingFarewell, type PetFarewell } from "./farewell";
 import { matchingPersonality, type PetPersonality } from "./personality";
 import type { PetSnapshot } from "./petData";
 
@@ -55,9 +56,10 @@ export function usePetMementos(group:string, active:boolean, pet:PetSnapshot|nul
   return {...current,byId,retry:()=>setRetry(x=>x+1)};
 }
 
-export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,personality,personalityLoading,personalityError}: {
-  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;
+export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,personality,personalityLoading,personalityError,farewell,farewellLoading,farewellError}: {
+  pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;farewell?:PetFarewell;farewellLoading?:boolean;farewellError?:string;
 }) {
+  const lastWords=matchingFarewell(pet,farewell);
   const profile=matchingPersonality(pet,personality);
   const adult=pet.stage==="adult"||pet.stage==="dead"||!!pet.died_at;
   const actualItem=memento?.group_name===pet.group_name && String(memento?.generation_id)===String(pet.id) && memento?.species===pet.species ? memento:undefined;
@@ -98,6 +100,12 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
         <p className="mt-1 text-xs leading-5 text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
       </> : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>}
     </footer>}
+    {(pet.stage==="dead"||pet.died_at) && <section className="mt-2 border-t border-[#cabbcf] pt-2" aria-label="마지막 한마디">
+      <p className="font-bold">💌 마지막 한마디</p>
+      {lastWords ? <><p className="mt-1 whitespace-pre-wrap break-words">{lastWords.body}</p>
+        {lastWords.is_commemorative && <p className="mt-1 text-[11px] text-[#75647d]">새로 추가한 기념 문구</p>}</>
+        : <p role="status" className="mt-1 text-[#75647d]">{farewellLoading?"마지막 한마디를 확인하고 있어요.":farewellError||"마지막 한마디를 준비하고 있어요."}</p>}
+    </section>}
   </article>;
 }
 
@@ -115,19 +123,22 @@ export function PetIdGallery({pets,renderCard}:{pets:PetSnapshot[];renderCard:(p
   const ordered=archivedPets(pets);
   const container=useRef<HTMLDivElement>(null);
   const [height,setHeight]=useState<number>();
+  const [snap,setSnap]=useState(true);
   useEffect(()=>{
     const box=container.current;if(!box)return;
     const cards=Array.from(box.children) as HTMLElement[];
     const measure=()=>{
       const max=Math.max(0,...cards.map(card=>card.firstElementChild?.getBoundingClientRect().height||0));
-      if(max>0)setHeight(Math.ceil(max));
+      const available=Math.max(100,Math.floor((window.visualViewport?.height||window.innerHeight)*.85)-100);
+      if(max>0){setHeight(Math.min(Math.ceil(max),available));setSnap(max<=available);}
     };
     measure();const observer=new ResizeObserver(measure);
     cards.forEach(card=>{if(card.firstElementChild)observer.observe(card.firstElementChild);});
-    return()=>observer.disconnect();
+    window.addEventListener("resize",measure);window.visualViewport?.addEventListener("resize",measure);
+    return()=>{observer.disconnect();window.removeEventListener("resize",measure);window.visualViewport?.removeEventListener("resize",measure);};
   },[pets]);
   if(!ordered.length)return <p className="mt-3 text-gray-600">아직 기록된 이전 세대가 없어요.</p>;
-  return <div ref={container} className="mt-3 snap-y snap-proximity overflow-y-auto overscroll-contain" style={{height:height||340}} aria-label="오래된 세대순 역대 펫 신분증">
+  return <div ref={container} className="mt-3 snap-y snap-proximity overflow-y-auto overscroll-contain" style={{height:height||340,scrollSnapType:snap?"y proximity":"none"}} tabIndex={0} aria-label="오래된 세대순 역대 펫 신분증">
     {ordered.map(pet=><div key={pet.id} className="w-full snap-start" style={{minHeight:height}}>{renderCard(pet)}</div>)}
   </div>;
 }

@@ -8,10 +8,12 @@ import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
+import { useExplorerTitle } from "./explorerTitle";
+import { usePetFarewells } from "./pets/farewell";
 import { DesktopThemeWindow } from "./DesktopTheme";
 import { usePetPersonalities } from "./pets/personality";
 import { AwardsHub } from "./awards/Awards";
-import { PetDiary } from "./pets/PetDiary";
+import { PetDiary, PetPopup } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
 import { petMemory } from "./pets/memoryCache";
@@ -1345,6 +1347,7 @@ function useSupabaseBingo(groupName: string) {
 function BookClubContent() {
   const searchParams = useSearchParams();
   const groupName = searchParams.get("group") || "기본모임";
+  const explorerTitle = useExplorerTitle(groupName);
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
   // 화면과 입력 상태
@@ -1684,6 +1687,10 @@ function BookClubContent() {
   // 🐾 작업표시줄 위 미니 펫
   const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const [diaryOpen, setDiaryOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const farewells = usePetFarewells(groupName, openWindow === "pets" && archiveOpen, currentPet, petReload);
+  useEffect(() => { if (openWindow !== "pets") setArchiveOpen(false); }, [openWindow]);
+  useEffect(() => { setArchiveOpen(false); }, [groupName]);
   const [idOpenFor, setIdOpenFor] = useState<number | null>(null);
   const personalities = usePetPersonalities(groupName, openWindow === "pets", currentPet, petReload);
   const mementos = usePetMementos(groupName, openWindow === "pets", currentPet, petReload);
@@ -2048,11 +2055,11 @@ function BookClubContent() {
     if (openWindow !== "pets") return;
     let cancelled = false;
     const cached = petMemory.peek<PetSnapshot[]>(groupName, "generations");
-    setPetHistory(cached ? cached.value.filter(pet => pet.died_at !== null) : []);
+    setPetHistory(cached ? cached.value.filter(pet => pet.stage === "dead" || pet.died_at !== null) : []);
     setPetHistoryLoading(!cached);
     setPetHistoryError("");
     void loadPetGenerations(groupName).then(rows => {
-      if (!cancelled) setPetHistory(rows.filter(pet => pet.died_at !== null));
+      if (!cancelled) setPetHistory(rows.filter(pet => pet.stage === "dead" || pet.died_at !== null));
     }).catch(() => {
       if (!cancelled && !cached) setPetHistoryError("역대 펫 기록을 불러오지 못했어요.");
     }).finally(() => { if (!cancelled) setPetHistoryLoading(false); });
@@ -4167,12 +4174,12 @@ function BookClubContent() {
         {/* 📚 서재 목록 (바탕화면 내장 탐색기 창) */}
         <div className="max-w-4xl mx-auto bg-[#c0c0c0] win-outset p-1 shadow-2xl text-black lg:max-w-[1100px] lg:h-[calc(100dvh-104px)] lg:flex lg:flex-col">
           <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 text-xs font-bold flex justify-between items-center">
-            <span>
-              📚 EXPLORER - {groupName}의 서재 목록 ({displayedReviews.length}
-              권)
+            <span className="flex min-w-0 flex-1 items-center gap-1 mr-2">
+              <span className="truncate min-w-0" title={explorerTitle.text}>📚 {explorerTitle.text}</span>
+              <span className="shrink-0">({displayedReviews.length}권)</span>
             </span>
 
-            <div className="flex items-center gap-[2px]">
+            <div className="flex shrink-0 items-center gap-[2px]">
               {["─", "□", "×"].map((symbol) => (
                 <span
                   key={symbol}
@@ -6052,6 +6059,21 @@ function BookClubContent() {
           personality={personalities.byId[String(currentPet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error} personalityRetry={personalities.retry}
           memento={mementos.byId[String(currentPet.id)]} loading={mementos.loading} error={mementos.error} retry={mementos.retry} />
       )}
+      {openWindow === "pets" && archiveOpen && <PetPopup title="PET_ARCHIVE.exe — 역대 펫 기록" close={() => setArchiveOpen(false)} front>
+                {petHistoryLoading ? <p className="mt-3 text-gray-600">기록을 불러오는 중...</p>
+                  : petHistoryError ? <p className="mt-3 text-red-700">{petHistoryError}</p>
+                  : <PetIdGallery pets={petHistory} renderCard={pet => (
+                    <PetIdCard pet={pet} sprite={<PetSprite pet={pet} stage="adult" size={76} />}
+                      colorVariant={PET_COLOR_ORDER[(pet.generation_number - 1) % PET_COLOR_ORDER.length] || pet.color_variant || "original"}
+                      farewell={farewells.byId[String(pet.id)]} farewellLoading={farewells.loading} farewellError={farewells.error}
+                      personality={personalities.byId[String(pet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error}
+                      memento={mementos.byId[String(pet.id)]} loading={mementos.loading} error={mementos.error} />
+                  )} />}
+                {personalities.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalities.retry}>성격 다시 확인</button>}
+                {mementos.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={mementos.retry}>애장품 다시 확인</button>}
+
+                {farewells.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={farewells.retry}>마지막 한마디 다시 확인</button>}
+      </PetPopup>}
       {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
       {openWindow === "pets" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
@@ -6539,23 +6561,10 @@ function BookClubContent() {
                 </div>
               </details>
 
-              {/* 🪦 역대 펫 기록 — 오래된 세대순 신분증 한 장 높이 */}
-              <details className="bg-white win-inset p-2 text-xs">
-                <summary className="cursor-pointer font-bold">
-                  🪦 역대 펫 기록
-                  {petHistory.length > 0 && ` (${petHistory.length}마리)`}
-                </summary>
-                {petHistoryLoading ? <p className="mt-3 text-gray-600">기록을 불러오는 중...</p>
-                  : petHistoryError ? <p className="mt-3 text-red-700">{petHistoryError}</p>
-                  : <PetIdGallery pets={petHistory} renderCard={pet => (
-                    <PetIdCard pet={pet} sprite={<PetSprite pet={pet} stage="adult" size={76} />}
-                      colorVariant={PET_COLOR_ORDER[(pet.generation_number - 1) % PET_COLOR_ORDER.length] || pet.color_variant || "original"}
-                      personality={personalities.byId[String(pet.id)]} personalityLoading={personalities.loading} personalityError={personalities.error}
-                      memento={mementos.byId[String(pet.id)]} loading={mementos.loading} error={mementos.error} />
-                  )} />}
-                {personalities.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={personalities.retry}>성격 다시 확인</button>}
-                {mementos.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={mementos.retry}>애장품 다시 확인</button>}
-              </details>
+              {/* 🪦 역대 펫 기록 — 별도 창으로 열기 */}
+              <button type="button" className="w-full text-left bg-white win-inset p-2 text-xs font-bold" onClick={() => setArchiveOpen(true)}>
+                🪦 역대 펫 기록{petHistory.length > 0 && ` (${petHistory.length}마리)`}
+              </button>
             </div>
           </div>
         </div>
@@ -8529,7 +8538,7 @@ function BookClubContent() {
         </div>
       )}
 
-      {openWindow === "desktop-theme" && <DesktopThemeWindow close={() => setOpenWindow(null)} />}
+      {openWindow === "desktop-theme" && <DesktopThemeWindow close={() => setOpenWindow(null)} explorerTitle={explorerTitle} bookCount={displayedReviews.length} />}
       {/* 시작 메뉴 팝업 */}
       {startMenuOpen && (
         <div
