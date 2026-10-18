@@ -8,6 +8,9 @@ import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
+import { PetDiary } from "./pets/PetDiary";
+import { useSecretNote } from "./pets/useSecretNote";
+import { isPetNight, NIGHT_LINES } from "./pets/secrets";
 
 declare global {
   namespace JSX {
@@ -1674,6 +1677,9 @@ function BookClubContent() {
   const [petNamingError, setPetNamingError] = useState("");
   // 🐾 작업표시줄 위 미니 펫
   const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
+  const [diaryOpen, setDiaryOpen] = useState(false);
+  const secretNote = useSecretNote(groupName, miniPet);
+  useEffect(() => { setDiaryOpen(false); }, [groupName]);
   const miniPetPreview = false; // 테스트할 때만 true
   const petNamingPreview = false; // 🧪 이름 짓기 화면 테스트
   // ✨ 펫 성장 반짝임 연출
@@ -1730,7 +1736,7 @@ function BookClubContent() {
   const happyTimer = React.useRef<number | null>(null);
   const [miniPetSleeping, setMiniPetSleeping] = useState(false);
   const [wakeSequence, setWakeSequence] = useState(0);
-  const [miniChat, setMiniChat] = useState<{ id: number; text: string } | null>(
+  const [miniChat, setMiniChat] = useState<{ id: number; text: string; automatic: boolean; night: boolean } | null>(
     null,
   );
   const miniChatTimer = React.useRef<number | null>(null);
@@ -1758,10 +1764,13 @@ function BookClubContent() {
         miniChatPriorityUntil.current = Date.now() + 2500;
       if (miniChatTimer.current !== null)
         window.clearTimeout(miniChatTimer.current);
-      const lines = MINI_DIALOGUE[kind];
+      const automatic = kind === "idle" || kind === "hungry" || kind === "sleepy";
+      const night = isPetNight();
+      const lines = automatic && night ? NIGHT_LINES : MINI_DIALOGUE[kind];
       setMiniChat({
         id,
         text: lines[Math.floor(Math.random() * lines.length)],
+        automatic, night,
       });
       miniChatTimer.current = window.setTimeout(() => {
         setMiniChat(null);
@@ -1783,6 +1792,12 @@ function BookClubContent() {
     const timer = window.setTimeout(() => setPlanCelebration(null), 3000);
     return () => window.clearTimeout(timer);
   }, [planCelebration]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMiniChat(previous => previous?.automatic && previous.night !== isPetNight() ? null : previous);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   // All members' care, scoped to the actual generation. A date alone is not a time.
   useEffect(() => {
     const ids = Array.from(
@@ -1963,6 +1978,7 @@ function BookClubContent() {
     showMiniChat,
   ]);
   const openMiniPet = () => {
+    secretNote.discover(miniPet);
     if (miniPetIsAsleep && miniPet) {
       setMiniPetSleeping(false);
       setWakeSequence((value) => value + 1);
@@ -6075,6 +6091,8 @@ function BookClubContent() {
         />
       )}
 
+      {diaryOpen && <PetDiary key={groupName} group={groupName} close={() => setDiaryOpen(false)} />}
+      {secretNote.popup}
       {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
       {openWindow === "pets" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
@@ -6096,6 +6114,11 @@ function BookClubContent() {
               {/* 펫이 생활하는 방 */}
               <div className="relative bg-[#f5f0ff] win-inset h-[176px] md:h-56 overflow-hidden flex items-center justify-center">
                 <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
+                <button type="button" onClick={() => setDiaryOpen(true)}
+                  title="비밀 일기장" aria-label="PET_DIARY.exe 열기"
+                  className="absolute bottom-2 right-2 z-40 p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#000080]">
+                  <Image src="/pets/deco/diary.png" alt="비밀 일기장" width={38} height={38} unoptimized />
+                </button>
                 {/* ✨ 성장 반짝임 */}
                 {petGrowthEffect && currentPet && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
@@ -8659,6 +8682,7 @@ function BookClubContent() {
       {/* 🐾 작업표시줄 위 상주 미니 펫 */}
       {miniPet && (
         <div className="absolute bottom-10 right-2 z-30 w-[160px] h-[90px] pointer-events-none">
+          {secretNote.icon}
           {/* ✨ 미니 펫 성장 반짝임 */}
           {petGrowthEffect && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
