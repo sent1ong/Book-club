@@ -253,7 +253,7 @@ interface Comment {
 interface MailNotification {
   id: number;
   recipient: string;
-  kind: "comment" | "mention";
+  kind: "comment" | "mention" | "objection";
   book_id: number;
   sender: string;
   book_title: string;
@@ -2239,7 +2239,7 @@ function BookClubContent() {
   const [mailStatus, setMailStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
-  const [mailFilter, setMailFilter] = useState<"all" | "comment" | "mention">(
+  const [mailFilter, setMailFilter] = useState<"all" | "comment" | "mention" | "objection">(
     "all",
   );
   const [mailSort, setMailSort] = useState<"newest" | "oldest">("newest");
@@ -2252,6 +2252,15 @@ function BookClubContent() {
 
   // 🔔 종 알림 새로고침
   const [mailBellReload, setMailBellReload] = useState(0);
+
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      if ((event as CustomEvent).detail?.group !== groupName) return;
+      setMailReload(value => value + 1); setMailBellReload(value => value + 1);
+    };
+    window.addEventListener("bc98:mail-updated", refresh);
+    return () => window.removeEventListener("bc98:mail-updated", refresh);
+  }, [groupName]);
 
   // 🔔 모든 기기에서 공유하는 우편함 알림 상태
   useEffect(() => {
@@ -3105,7 +3114,7 @@ function BookClubContent() {
       );
       setMailBellReload((value) => value + 1);
     }
-    jumpToReview(item.book_id);
+    jumpToReview(item.book_id, item.kind === "objection" ? "objection" : "comment");
   };
 
   const markAllMailRead = async () => {
@@ -3840,7 +3849,7 @@ function BookClubContent() {
   };
 
   // 💬 댓글 클릭 시 해당 리뷰로 이동
-  const jumpToReview = (bookId: number) => {
+  const jumpToReview = (bookId: number, destination: "comment" | "objection" = "comment") => {
     const targetBook = reviews.find((r) => r.id === bookId);
 
     if (!targetBook) {
@@ -3858,7 +3867,7 @@ function BookClubContent() {
     setSearchQuery("");
 
     // 해당 리뷰의 댓글창 열기
-    setOpenCommentBookId(bookId);
+    setOpenCommentBookId(destination === "comment" ? bookId : null);
 
     // 화면이 갱신된 뒤 해당 리뷰로 스크롤
     setTimeout(() => {
@@ -3869,6 +3878,7 @@ function BookClubContent() {
           behavior: "smooth",
           block: "center",
         });
+        if (destination === "objection") target.querySelector<HTMLButtonElement>("[data-objection-open]")?.click();
       }
     }, 100);
   };
@@ -4190,7 +4200,7 @@ function BookClubContent() {
 
             {/* 필터 탭 */}
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap" aria-label="장르 필터">
                 {[
                   "전체",
                   ...BOOK_GENRES.filter((genre) =>
@@ -4249,20 +4259,6 @@ function BookClubContent() {
                 >
                   🔁 재주행
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFilterType(filterType === "dropped" ? "all" : "dropped")
-                  }
-                  className={`px-2 py-0.5 text-xs win-btn ${
-                    filterType === "dropped"
-                      ? "win-inset bg-red-200 font-bold"
-                      : ""
-                  }`}
-                >
-                  💗 중도하차
-                </button>
-
                 {/* ✉️ 전체 회원의 독서 예고장 */}
                 <button
                   type="button"
@@ -4277,7 +4273,7 @@ function BookClubContent() {
               </div>
             </div>
 
-            {/* 회원 선택 및 영수증 */}
+            {/* 회원 선택 및 모임원 기능 */}
             <div className="py-1 border-t border-gray-400 flex flex-col gap-2 w-full min-w-0">
               {/* 첫 번째 줄: 회원 선택 */}
               <div className="flex flex-wrap gap-1 items-center w-full min-w-0">
@@ -4310,26 +4306,9 @@ function BookClubContent() {
                 ))}
               </div>
 
-              {/* 두 번째 줄: 영수증과 우편함 */}
+              {/* 두 번째 줄: 우편함·예고장·상장 */}
               <div className="flex flex-nowrap overflow-x-auto items-center gap-2 w-full min-w-0 pb-1" aria-label="모임원 기능">
                 {selectedUser !== "전체" && <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const userItems = reviews.filter(
-                        (r) => r.user_name === selectedUser,
-                      );
-                      setReceiptData({
-                        type: "list",
-                        user: selectedUser,
-                        items: userItems,
-                      });
-                    }}
-                    className="win-btn !w-max !min-w-max !shrink-0 !whitespace-nowrap px-2 py-0.5 text-xs font-bold"
-                  >
-                    🧾 {selectedUser}의 영수증
-                  </button>
-
                   <button
                     type="button"
                     onClick={() => {
@@ -5656,6 +5635,7 @@ function BookClubContent() {
                 <option value="all">전체</option>
                 <option value="comment">댓글</option>
                 <option value="mention">멘션</option>
+                <option value="objection">이의 제기</option>
               </select>
               <select
                 aria-label="알림 정렬"
@@ -5710,7 +5690,7 @@ function BookClubContent() {
                   >
                     <div className="flex justify-between gap-2">
                       <strong>
-                        {item.kind === "comment" ? "💬 댓글" : "✉️ 영업 멘션"} ·{" "}
+                        {item.kind === "comment" ? "💬 댓글" : item.kind === "objection" ? "⚖️ 이의 제기" : "✉️ 영업 멘션"} ·{" "}
                         {item.sender}
                       </strong>
                       <span>{item.read_at ? "읽음" : "안 읽음"}</span>

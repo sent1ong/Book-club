@@ -74,7 +74,7 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
     try {
       if (submission.current?.payload !== payload) submission.current = { payload, id: crypto.randomUUID() };
       await community(group, { action: "objections-create", book, member, content: content.trim(), password, submission: submission.current.id });
-      setContent(""); setPassword(""); setNotice("이의 제기가 접수됐어요!"); submission.current = null; refresh(); setRevision(x => x + 1);
+      setContent(""); setPassword(""); setNotice("이의 제기가 접수됐어요!"); submission.current = null; window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); refresh(); setRevision(x => x + 1);
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
@@ -85,13 +85,13 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
     try {
       await community(group, { action: "objections-change", book, id: action.row.id, password: actionPassword, change: action.type, content: action.type === "edit" ? actionContent.trim() : undefined });
       setNotice(action.type === "edit" ? "이의 제기를 수정했어요." : "이의 제기를 삭제했어요.");
-      setAction(null); setActionPassword(""); setActionContent(""); refresh(); setRevision(x => x + 1);
+      setAction(null); setActionPassword(""); setActionContent(""); window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); refresh(); setRevision(x => x + 1);
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
   const close = () => { setOpen(false); setPassword(""); setActionPassword(""); setAction(null); setError(""); setNotice(""); submission.current = null; };
   return <section className="my-2 border-t border-dashed border-gray-200 pt-1" onClick={e => e.stopPropagation()}>
-    <button ref={trigger} type="button" className="win-btn px-2 py-0.5 text-xs" aria-haspopup="dialog" onClick={() => setOpen(true)}>⚖️ 이의 있음!</button>
+    <button ref={trigger} data-objection-open type="button" className="win-btn px-2 py-0.5 text-xs" aria-haspopup="dialog" onClick={() => setOpen(true)}>⚖️ 이의 있음!</button>
     {!!(counts[book] ?? total) && <span className="ml-2 text-[11px]">이의 제기 {counts[book] ?? total}건</span>}
     {open && <ObjectionWindow anchor={trigger} close={close} focusKey={`${revision}:${action?.row.id || ""}:${action?.type || ""}`}>
       <header className="win-inset bg-[#fff9e9] p-3 break-words space-y-1"><h2 className="font-bold">{title || "제목 없는 책"}</h2><p>대상 리뷰 작성자 · <strong>{reviewAuthor}</strong></p></header>

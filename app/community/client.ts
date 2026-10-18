@@ -19,5 +19,9 @@ export async function readShelf(group: string, member?: string, signal?: AbortSi
     rows.push(...page.candidates);
   }
   if (rows.length !== first.candidate_count || new Set(rows.map(row => row.id)).size !== rows.length) throw new Error("리뷰 목록을 다시 불러와 주세요.");
+  // Sort the complete candidate set, never individual pagination slices.
+  const korean = new Intl.Collator("ko-KR", { numeric: true, sensitivity: "base" });
+  rows.sort((a, b) => korean.compare(a.title || "", b.title || "")
+    || korean.compare(a.author || "", b.author || "") || korean.compare(a.id, b.id));
   return { ...first, candidates: rows };
 }
