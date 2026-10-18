@@ -8747,7 +8747,7 @@ function BookClubContent() {
                 !miniPetPreview
                   ? "-bottom-[14px]"
                   : miniPet.species === "bogli" && miniPet.stage === "adult" && !miniPetPreview
-                    ? "-bottom-[12px]"
+                    ? "-bottom-[8px]"
                     : "-bottom-4"
               }`}
             >
