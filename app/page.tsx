@@ -3276,6 +3276,14 @@ function BookClubContent() {
         if (typeof count === "number" && offset >= count) break;
       }
       setReviews(rows);
+      try {
+        localStorage.setItem(
+          'bookclub:reviews:v1:' + encodeURIComponent(groupName),
+          JSON.stringify({ savedAt: Date.now(), rows }),
+        );
+      } catch {
+        // Storage may be unavailable or full; the live list still works.
+      }
     } catch {
       if (request === reviewsRequest.current) {
         setReviewsError("리뷰를 불러오지 못해 완독 여부를 확인할 수 없습니다.");
@@ -3324,7 +3332,24 @@ function BookClubContent() {
   };
 
   useEffect(() => {
-    setReviews([]);
+    // AccessGate mounts this component only after the group access check.
+    let cachedRows: BookReview[] = [];
+    if (isValidGroup(groupName)) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(
+          'bookclub:reviews:v1:' + encodeURIComponent(groupName),
+        ) || 'null');
+        if (
+          cached && Number.isFinite(cached.savedAt) &&
+          Date.now() - cached.savedAt < 7 * 24 * 60 * 60 * 1000 &&
+          Array.isArray(cached.rows) &&
+          cached.rows.every((row: BookReview) => row && row.group_name === groupName && typeof row.id === 'number')
+        ) cachedRows = cached.rows;
+      } catch {
+        // Ignore invalid or unavailable browser storage.
+      }
+    }
+    setReviews(cachedRows);
     if (isValidGroup(groupName)) {
       void fetchReviews();
       fetchGoals();
@@ -8721,7 +8746,9 @@ function BookClubContent() {
                 miniPet.stage === "teen" &&
                 !miniPetPreview
                   ? "-bottom-[14px]"
-                  : "-bottom-4"
+                  : miniPet.species === "bogli" && miniPet.stage === "adult" && !miniPetPreview
+                    ? "-bottom-[12px]"
+                    : "-bottom-4"
               }`}
             >
               <button
