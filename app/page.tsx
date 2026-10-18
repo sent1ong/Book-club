@@ -7625,9 +7625,6 @@ function BookClubContent() {
                   수여합니다.
                 </p>
               </div>
-              <span className="bg-amber-700 text-white px-2 py-0.5 rounded text-[11px] font-mono font-bold">
-                CLASS OF 98
-              </span>
             </div>
 
             {/* 본문 상장 그리드 */}

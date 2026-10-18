@@ -85,12 +85,11 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
       {error && <p role="alert" className="text-red-800">{error} <button className="win-btn px-1" disabled={saving || busy} onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p>}
       {notice && <p role="status">{notice}</p>}
       {data && <><ShelfRows data={data} final={!data.can_edit} />
-        <p className="leading-5">한 사람당 한 작품을 선정할 수 있어요.<br />{data.operating_year}년 본인의 리뷰에서 골라 주세요.<br />중도하차 기록은 제외하며, 12월 31일 00:00(한국 시간)부터는 열람만 할 수 있어요.</p>
         {data.can_edit ? <form onSubmit={save} className="win-inset p-3 bg-white space-y-3">
           <label className="block">모임원<select aria-label="공동책장 모임원" className="block win-inset bg-white w-full p-2 mt-1" value={member} disabled={busy || saving} onChange={e => { setMember(e.target.value); setNotice(""); }} required><option value="">본인 이름 선택</option>{data.members.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
           <label className="block">{SHELF_UI.item}<select aria-label={SHELF_UI.item} className="block win-inset bg-white w-full p-2 mt-1" value={book} disabled={busy || saving || !!readError || !member} onChange={e => setBook(e.target.value)} required><option value="">{SHELF_UI.choose}</option>{data.candidates.map(row => <option key={row.id} value={row.id}>{row.title} · {row.author}{(candidateLabels.get(JSON.stringify([row.title, row.author])) || 0) > 1 ? ` · #${row.id}` : ""}</option>)}</select></label>
           {!busy && !readError && member && !data.candidates.length && <p role="status">선택 가능한 작품이 없습니다. 해당 운영 연도의 리뷰와 중도하차 여부를 확인해 주세요.</p>}
-          <label className="block">선정 이유 · {Array.from(reason.trim()).length}/200<textarea className="win-inset bg-white w-full p-2 mt-1 text-base sm:text-xs" rows={3} value={reason} disabled={busy || saving} onChange={e => setReason(e.target.value)} required /></label>
+          <label className="block">선정 이유 · {Array.from(reason.trim()).length}/200<textarea className="win-inset bg-white w-full p-2 mt-1 text-base sm:text-xs placeholder:text-gray-400" placeholder="12/30일까지 올해의 대표 작품을 골라 주세요." rows={3} value={reason} disabled={busy || saving} onChange={e => setReason(e.target.value)} required /></label>
           <button className="win-btn px-3 py-2" disabled={!valid || busy || saving}>{saving ? "저장 중…" : version ? "선정 변경하기" : "작품 등록"}</button>
         </form> : <p className="font-bold">이 모임의 공동책장은 열람 전용이에요.</p>}
       </>}
