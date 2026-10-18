@@ -11,6 +11,8 @@ import html2canvas from "html2canvas";
 import { PetDiary } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
+import { petMemory } from "./pets/memoryCache";
+import { cachedPet, loadPetSnapshot, loadPetGenerations, type PetSnapshot } from "./pets/petData";
 
 declare global {
   namespace JSX {
@@ -1993,142 +1995,75 @@ function BookClubContent() {
     setOpenWindow("pets");
   };
 
-  // 🐾 미니 펫은 PET.exe 창이 닫혀 있어도 표시
+  // Shared per-room snapshot: a window opening joins the mini-pet request.
   useEffect(() => {
-    if (!isValidGroup(groupName)) {
-      setMiniPet(null);
-      return;
-    }
+    const cached = cachedPet(groupName);
+    setCurrentPet(cached?.value || null);
+    setMiniPet(cached?.value || null);
+    setPetHistory([]);
+    setPetError("");
+    setPetLoading(!cached);
+    const denied = (event: Event) => {
+      if ((event as CustomEvent).detail !== groupName) return;
+      setCurrentPet(null); setMiniPet(null); setPetHistory([]);
+      setPetLoading(false); setPetError("모임 접속 권한을 다시 확인해 주세요.");
+      setDiaryOpen(false);
+    };
+    window.addEventListener("bc98:pet-access-denied", denied);
+    return () => window.removeEventListener("bc98:pet-access-denied", denied);
+  }, [groupName]);
 
+  useEffect(() => {
+    if (!isValidGroup(groupName)) { setMiniPet(null); return; }
     let cancelled = false;
-
-    setMiniPet(null);
-
-    const loadMiniPet = async () => {
-      if (document.visibilityState === "hidden") return;
-
-      // 성인 수명 확인
-      const lifecycle = await supabase.rpc("pet_check_lifecycle", {
-        p_group_name: groupName,
-      });
-
-      if (lifecycle.error || cancelled) return;
-
-      const { data, error } = await supabase
-        .from("pet_generations")
-        .select("*")
-        .eq("group_name", groupName)
-        .order("generation_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!cancelled && !error) {
-        setMiniPet(data as PetGeneration | null);
-      }
+    let reading = false;
+    const cached = cachedPet(groupName);
+    if (cached) setMiniPet(cached.value);
+    const loadMiniPet = async (force = false) => {
+      if (document.visibilityState === "hidden" || reading) return;
+      reading = true;
+      try {
+        const pet = await loadPetSnapshot(groupName, force);
+        if (!cancelled) { setMiniPet(pet); setCurrentPet(pet); setPetError(""); setPetLoading(false); }
+      } catch { /* Keep a previously authorized snapshot while the network recovers. */ }
+      finally { reading = false; }
     };
-
-    void loadMiniPet();
-
-    // 다른 회원이 돌보거나 성장시켜도 주기적으로 반영
-    const timer = window.setInterval(() => {
-      void loadMiniPet();
-    }, 12000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
+    void loadMiniPet(petReload > 0);
+    const timer = window.setInterval(() => { void loadMiniPet(true); }, 12000);
+    const focus = () => { if (document.visibilityState !== "hidden") void loadMiniPet(true); };
+    document.addEventListener("visibilitychange", focus);
+    return () => { cancelled = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", focus); };
   }, [groupName, petReload]);
 
-  // 🪦 역대 펫 기록 불러오기
+  // The history request also warms the diary generation list; do not request both separately.
   useEffect(() => {
     if (openWindow !== "pets") return;
-
     let cancelled = false;
-
-    const loadPetHistory = async () => {
-      setPetHistoryLoading(true);
-      setPetHistoryError("");
-
-      const { data, error } = await supabase
-        .from("pet_generations")
-        .select("*")
-        .eq("group_name", groupName)
-        .not("died_at", "is", null)
-        .order("generation_number", { ascending: false });
-
-      if (cancelled) return;
-
-      if (error) {
-        setPetHistoryError("역대 펫 기록을 불러오지 못했어요.");
-      } else {
-        setPetHistory((data || []) as PetGeneration[]);
-      }
-
-      setPetHistoryLoading(false);
-    };
-
-    void loadPetHistory();
-
-    return () => {
-      cancelled = true;
-    };
+    const cached = petMemory.peek<PetSnapshot[]>(groupName, "generations");
+    setPetHistory(cached ? cached.value.filter(pet => pet.died_at !== null) : []);
+    setPetHistoryLoading(!cached);
+    setPetHistoryError("");
+    void loadPetGenerations(groupName).then(rows => {
+      if (!cancelled) setPetHistory(rows.filter(pet => pet.died_at !== null));
+    }).catch(() => {
+      if (!cancelled && !cached) setPetHistoryError("역대 펫 기록을 불러오지 못했어요.");
+    }).finally(() => { if (!cancelled) setPetHistoryLoading(false); });
+    return () => { cancelled = true; };
   }, [openWindow, groupName, petReload]);
 
-  // PET.exe 현재 세대 불러오기
   useEffect(() => {
     if (openWindow !== "pets") return;
-
     let cancelled = false;
-
-    const loadPet = async () => {
-      setPetLoading(true);
-      setPetError("");
-
-      try {
-        if (!isValidGroup(groupName)) {
-          throw new Error("올바르지 않은 모임입니다.");
-        }
-
-        // 성인 수명이 끝났는지 먼저 확인
-        const lifecycle = await supabase.rpc("pet_check_lifecycle", {
-          p_group_name: groupName,
-        });
-
-        if (lifecycle.error) throw lifecycle.error;
-
-        // 현재 모임의 가장 최근 세대 조회
-        const { data, error } = await supabase
-          .from("pet_generations")
-          .select("*")
-          .eq("group_name", groupName)
-          .order("generation_number", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (!cancelled) {
-          setCurrentPet(data as PetGeneration | null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setPetError(
-            error instanceof Error
-              ? error.message
-              : "펫 정보를 불러오지 못했어요.",
-          );
-        }
-      } finally {
-        if (!cancelled) setPetLoading(false);
-      }
-    };
-
-    void loadPet();
-
-    return () => {
-      cancelled = true;
-    };
+    const cached = cachedPet(groupName);
+    if (cached) setCurrentPet(cached.value);
+    setPetLoading(!cached);
+    setPetError("");
+    void loadPetSnapshot(groupName).then(pet => {
+      if (!cancelled) { setCurrentPet(pet); setMiniPet(pet); }
+    }).catch(error => {
+      if (!cancelled && !cached) setPetError(error instanceof Error ? error.message : "펫 정보를 불러오지 못했어요.");
+    }).finally(() => { if (!cancelled) setPetLoading(false); });
+    return () => { cancelled = true; };
   }, [openWindow, groupName, petReload]);
 
   // 돌보는 사람 닉네임 기억하기
@@ -2153,6 +2088,8 @@ function BookClubContent() {
       setPetError(error.message);
       return;
     }
+    petMemory.invalidate(groupName);
+    setPetReload(value => value + 1);
   };
   // 🐾 한국 날짜 기준 돌보기 횟수 조회
   useEffect(() => {
@@ -2267,6 +2204,7 @@ function BookClubContent() {
       setPetCareAction(null);
 
       // 돌보기 연출이 끝난 뒤 XP와 남은 횟수 갱신
+      petMemory.invalidate(groupName);
       setPetReload((value) => value + 1);
     }
   };
@@ -2306,11 +2244,13 @@ function BookClubContent() {
       }
 
       setPetNameInput("");
+      petMemory.invalidate(groupName);
       setPetReload((value) => value + 1);
     } catch (error) {
       setPetNamingError(
         error instanceof Error ? error.message : "이름을 저장하지 못했어요.",
       );
+      petMemory.invalidate(groupName);
       setPetReload((value) => value + 1);
     } finally {
       setPetNamingBusy(false);
@@ -6116,8 +6056,8 @@ function BookClubContent() {
                 <div className="absolute inset-x-0 bottom-0 h-12 bg-[#e3d9ef] border-t border-[#b8a7cd]" />
                 <button type="button" onClick={() => setDiaryOpen(true)}
                   title="비밀 일기장" aria-label="PET_DIARY.exe 열기"
-                  className="absolute bottom-2 right-2 z-40 p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#000080]">
-                  <Image src="/pets/deco/diary.png" alt="비밀 일기장" width={38} height={38} unoptimized />
+                  className="absolute bottom-1 right-1 z-40 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#000080]">
+                  <Image src="/pets/deco/diary.png" alt="비밀 일기장" width={60} height={60} unoptimized />
                 </button>
                 {/* ✨ 성장 반짝임 */}
                 {petGrowthEffect && currentPet && (
@@ -6546,6 +6486,7 @@ function BookClubContent() {
                       className="win-btn px-3 py-1 text-xs"
                       onClick={() => {
                         setPetCareError("");
+                        petMemory.invalidate(groupName);
                         setPetReload((value) => value + 1);
                       }}
                     >

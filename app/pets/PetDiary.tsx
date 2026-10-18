@@ -3,11 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { secureClient } from "../security/client";
+import { petMemory } from "./memoryCache";
+import { loadPetGenerations, loadDiaries, type SavedDiary } from "./petData";
 
 type Generation = { id: number; generation_number: number; pet_name: string | null; color_variant: string | null };
-type Diary = { id: number; generation_id: number; diary_date: string; display_name: string;
-  title: string; body: string; is_final: boolean; generation_number: number };
+type Diary = SavedDiary;
 const FILTERS = ["none", "hue-rotate(25deg) saturate(1.1)", "hue-rotate(115deg) saturate(1.05)",
   "hue-rotate(315deg) saturate(1.1)", "hue-rotate(175deg) saturate(1.05)", "hue-rotate(55deg) saturate(1.1)"];
 const HELP = "📓 비밀 일기장\n\n펫은 알에서 깨어나면 하루에 한 편씩 일기를 써요.\n\n아기부터 성인까지, 종마다 다른 말투로 이야기를 남긴답니다. ♡\n\nPET.exe 오른쪽 아래 일기장을 눌러보세요.\n\n세대가 바뀌어도 일기는 계속 남아요!";
@@ -42,39 +42,46 @@ export function PetPopup({ title, close, children, front = false }: {
 }
 
 export function PetDiary({ group, close }: { group: string; close: () => void }) {
-  const [generations, setGenerations] = useState<Generation[]>([]);
+  const [generations, setGenerations] = useState<Generation[]>(() => petMemory.peek<Generation[]>(group, "generations")?.value || []);
   const [selected, setSelected] = useState<Generation | null>(null);
   const [diaries, setDiaries] = useState<Diary[]>([]);
   const [entry, setEntry] = useState<Diary | null>(null);
   const [help, setHelp] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!petMemory.peek(group, "generations"));
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
+  const closeRef = React.useRef(close);
+  closeRef.current = close;
+  useEffect(() => { setEntry(null); }, [group, selected?.id]);
   useEffect(() => {
     let cancelled = false;
-    setLoading(true); setError(""); setDiaries([]); setEntry(null);
+    const cached = selected ? petMemory.peek<Diary[]>(group, `diaries:${selected.id}`) : petMemory.peek<Generation[]>(group, "generations");
+    setLoading(!cached); setError(""); setNotice("");
+    if (selected) setDiaries((cached?.value || []) as Diary[]);
+    else setGenerations((cached?.value || []) as Generation[]);
     void (async () => {
       try {
-        const rows: any[] = [];
-        for (let offset = 0; ; offset += 200) {
-          const query = selected
-            ? secureClient.from("pet_diaries").select("id,generation_id,generation_number,diary_date,display_name,title,body,is_final")
-              .eq("group_name", group).eq("generation_id", selected.id).order("diary_date", { ascending: false })
-            : secureClient.from("pet_generations").select("id,generation_number,pet_name,color_variant")
-              .eq("group_name", group).order("generation_number", { ascending: false });
-          const result = await query.range(offset, offset + 199);
-          if (cancelled) return;
-          if (result.error) throw Error(selected ? "일기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요." : "세대 목록을 불러오지 못했어요.");
-          const batch = result.data || [];
-          rows.push(...batch);
-          if (!batch.length) break;
-        }
+        const rows: any[] = selected ? await loadDiaries(group, selected.id) : await loadPetGenerations(group);
         if (!cancelled) { if (selected) setDiaries(rows); else setGenerations(rows); }
-      } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : "일기를 불러오지 못했어요."); }
+      } catch (e) {
+        if (!cancelled) {
+          if (cached) setNotice("최근에 불러온 내용을 표시하고 있어요. 갱신하려면 다시 시도해 주세요.");
+          else setError("일기를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+        }
+      }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [group, selected?.id, retry]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState !== "hidden") setRetry(value => value + 1); };
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    const denied = (event: Event) => { if ((event as CustomEvent).detail === group) closeRef.current(); };
+    window.addEventListener("bc98:pet-access-denied", denied);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("bc98:pet-access-denied", denied); };
+  }, [group]);
   return <>
     <PetPopup title="PET_DIARY.exe" close={close}>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -82,6 +89,7 @@ export function PetDiary({ group, close }: { group: string; close: () => void })
         <button type="button" onClick={() => setHelp(true)} aria-label="비밀 일기장 도움말" className="win-btn h-5 w-5 shrink-0 font-bold">?</button>
       </div>
       {selected && <button type="button" className="win-btn mb-2 px-2 py-1" onClick={() => { if (entry) setEntry(null); else setSelected(null); }}>← {entry ? "일기 목록" : "세대 목록"}</button>}
+      {notice && <p role="status" className="mb-2 leading-5">{notice} <button type="button" className="win-btn px-1" onClick={() => setRetry(x => x + 1)}>다시 시도</button></p>}
       {loading ? <p role="status">불러오는 중...</p> : error ? <div role="alert"><p>{error}</p><button type="button" className="win-btn mt-2 px-2 py-1" onClick={() => setRetry(x => x + 1)}>다시 시도</button></div>
         : entry ? <article className="win-inset bg-[#fffbea] p-3"><h2 className="mb-1 font-bold">{entry.title}</h2><p className="mb-3 text-gray-600">{entry.diary_date}</p><p className="whitespace-pre-wrap break-words leading-6">{entry.body}</p><p className="mt-4 text-right">— {entry.display_name}</p></article>
         : !selected ? <div className="win-inset max-h-[224px] overflow-y-auto bg-white" aria-label="세대 목록">

@@ -1,5 +1,7 @@
 "use client";
 
+import { petMemory } from "../pets/memoryCache";
+
 type Result = {
   data: any;
   error: { message: string } | null;
@@ -15,7 +17,18 @@ async function send(body: Record<string, unknown>): Promise<Result> {
       body: JSON.stringify(body),
       cache: "no-store",
     });
-    return await response.json();
+    const result = await response.json();
+    const group = typeof body.group === "string" ? body.group : "";
+    if (group && (response.status === 401 || response.status === 403)) {
+      petMemory.invalidate(group);
+      window.dispatchEvent(new CustomEvent("bc98:pet-access-denied", { detail: group }));
+    }
+    const petMutation = body.kind === "rpc" &&
+      ["pet_do_care", "pet_adopt_egg", "pet_name_baby"].includes(String(body.name));
+    const activityMutation = body.kind === "query" && body.action !== "select" &&
+      ["books", "book_comments", "reading_plans"].includes(String(body.table));
+    if (group && !result.error && (petMutation || activityMutation)) petMemory.invalidate(group);
+    return result;
   } catch {
     return {
       data: null,
