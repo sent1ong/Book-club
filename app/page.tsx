@@ -13,6 +13,7 @@ import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
 import { petMemory } from "./pets/memoryCache";
 import { cachedPet, loadPetSnapshot, loadPetGenerations, type PetSnapshot } from "./pets/petData";
+import { PetIdCard, PetIdPopup, PetIdGallery, usePetMementos, canShowPetId } from "./pets/PetIdCard";
 
 declare global {
   namespace JSX {
@@ -1680,6 +1681,9 @@ function BookClubContent() {
   // 🐾 작업표시줄 위 미니 펫
   const [miniPet, setMiniPet] = useState<PetGeneration | null>(null);
   const [diaryOpen, setDiaryOpen] = useState(false);
+  const [idOpenFor, setIdOpenFor] = useState<number | null>(null);
+  const mementos = usePetMementos(groupName, openWindow === "pets", currentPet, petReload);
+  useEffect(() => { setIdOpenFor(null); }, [groupName]);
   const secretNote = useSecretNote(groupName, miniPet);
   useEffect(() => { setDiaryOpen(false); }, [groupName]);
   const miniPetPreview = false; // 테스트할 때만 true
@@ -6033,6 +6037,12 @@ function BookClubContent() {
 
       {diaryOpen && <PetDiary key={groupName} group={groupName} close={() => setDiaryOpen(false)} />}
       {secretNote.popup}
+      {openWindow === "pets" && currentPet && idOpenFor === currentPet.id && canShowPetId(currentPet) && (
+        <PetIdPopup pet={currentPet} close={() => setIdOpenFor(null)}
+          sprite={<PetSprite pet={currentPet} size={76} />}
+          colorVariant={PET_COLOR_ORDER[(currentPet.generation_number - 1) % PET_COLOR_ORDER.length] || currentPet.color_variant || "original"}
+          memento={mementos.byId[String(currentPet.id)]} loading={mementos.loading} error={mementos.error} retry={mementos.retry} />
+      )}
       {/* 🐾 PET.exe — 공동 펫 기본 화면 */}
       {openWindow === "pets" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
@@ -6257,7 +6267,8 @@ function BookClubContent() {
                       )}
                     </div>
 
-                    <span className="shrink-0 ml-2">
+                    <div className="shrink-0 ml-2 flex flex-col items-end gap-0.5">
+                    <span>
                       {currentPet.stage === "adult" && currentPet.adult_at
                         ? `✨ 성인 ${Math.max(
                             1,
@@ -6275,6 +6286,9 @@ function BookClubContent() {
                             dead: "🪦 무지개다리",
                           }[currentPet.stage]}
                     </span>
+                    {canShowPetId(currentPet) && <button type="button" onClick={() => setIdOpenFor(currentPet.id)}
+                      className="win-btn h-[18px] px-1 text-[10px] leading-none font-normal whitespace-nowrap" aria-label="현재 펫 신분증 열기">🪪 신분증</button>}
+                    </div>
                   </div>
 
                   {currentPet.stage !== "dead" ? (
@@ -6516,86 +6530,20 @@ function BookClubContent() {
                 </div>
               </details>
 
-              {/* 🪦 역대 펫 기록 */}
+              {/* 🪦 역대 펫 기록 — 오래된 세대순 신분증 한 장 높이 */}
               <details className="bg-white win-inset p-2 text-xs">
                 <summary className="cursor-pointer font-bold">
                   🪦 역대 펫 기록
                   {petHistory.length > 0 && ` (${petHistory.length}마리)`}
                 </summary>
-
-                <div className="mt-3 max-h-[320px] overflow-y-auto space-y-3 pr-2">
-                  {petHistoryLoading ? (
-                    <p className="text-gray-600">기록을 불러오는 중...</p>
-                  ) : petHistoryError ? (
-                    <p className="text-red-700">{petHistoryError}</p>
-                  ) : petHistory.length === 0 ? (
-                    <p className="text-gray-600">
-                      아직 기록된 이전 세대가 없어요.
-                    </p>
-                  ) : (
-                    petHistory.map((pet) => (
-                      <div
-                        key={pet.id}
-                        className="bg-[#f5f0ff] win-inset p-3 space-y-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <PetSprite pet={pet} stage="adult" size={65} />
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <p className="font-bold text-[#594173]">
-                              {pet.generation_number}세대 ·{" "}
-                              {pet.pet_name || "이름 없는 펫"}
-                            </p>
-
-                            <p className="text-gray-600">
-                              {PET_SPECIES_NAMES[pet.species] || pet.species}
-                            </p>
-
-                            <p className="text-gray-600">
-                              최종 경험치: {pet.xp} XP
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="border-t border-[#d8c8e8] pt-2 space-y-1 text-gray-700">
-                          <p>
-                            🥚 태어난 날:{" "}
-                            {new Date(pet.born_at).toLocaleDateString("ko-KR", {
-                              timeZone: "Asia/Seoul",
-                            })}
-                          </p>
-
-                          <p>
-                            ✨ 성인이 된 날:{" "}
-                            {pet.adult_at
-                              ? new Date(pet.adult_at).toLocaleDateString(
-                                  "ko-KR",
-                                  {
-                                    timeZone: "Asia/Seoul",
-                                  },
-                                )
-                              : "기록 없음"}
-                          </p>
-
-                          <p>
-                            🪦 무지개다리를 건넌 날:{" "}
-                            {pet.died_at
-                              ? new Date(pet.died_at).toLocaleDateString(
-                                  "ko-KR",
-                                  {
-                                    timeZone: "Asia/Seoul",
-                                  },
-                                )
-                              : "기록 없음"}
-                          </p>
-
-                          <p>
-                            💗 이름 지은 사람: {pet.named_by || "기록 없음"}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                {petHistoryLoading ? <p className="mt-3 text-gray-600">기록을 불러오는 중...</p>
+                  : petHistoryError ? <p className="mt-3 text-red-700">{petHistoryError}</p>
+                  : <PetIdGallery pets={petHistory} renderCard={pet => (
+                    <PetIdCard pet={pet} sprite={<PetSprite pet={pet} stage="adult" size={76} />}
+                      colorVariant={PET_COLOR_ORDER[(pet.generation_number - 1) % PET_COLOR_ORDER.length] || pet.color_variant || "original"}
+                      memento={mementos.byId[String(pet.id)]} loading={mementos.loading} error={mementos.error} />
+                  )} />}
+                {mementos.error && <button type="button" className="win-btn mt-2 px-2 py-1" onClick={mementos.retry}>애장품 다시 확인</button>}
               </details>
             </div>
           </div>
