@@ -4,7 +4,9 @@ import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import AndroidGroupInstall from "./AndroidGroupInstall";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { secureClient as supabase } from "./security/client";
+import AccessGate from "./security/AccessGate";
+import { isRegisteredGroup } from "./security/groups";
 import html2canvas from "html2canvas";
 
 declare global {
@@ -14,10 +16,6 @@ declare global {
     }
   }
 }
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface BookReview {
   id: number;
@@ -229,7 +227,7 @@ interface Comment {
   book_id: number;
   group_name: string;
   user_name: string;
-  password?: string;
+
   content: string;
   created_at: string;
   parent_comment_id?: number | null;
@@ -434,13 +432,7 @@ function isSameAuthors(a: string, b: string) {
 }
 
 function isValidGroup(name: string | null) {
-  if (!name) return false;
-  if (name === "기본모임") return true;
-
-  const match = name.match(/^(nogmbdj|forgaedus)(\d+)$/);
-  if (!match) return false;
-  const num = parseInt(match[2], 10);
-  return num >= 26;
+  return isRegisteredGroup(name);
 }
 
 const playRetroDing = () => {
@@ -3330,7 +3322,7 @@ function BookClubContent() {
 
   useEffect(() => {
     setReviews([]);
-    if (isValidGroup(groupName) && supabaseUrl && supabaseAnonKey) {
+    if (isValidGroup(groupName)) {
       void fetchReviews();
       fetchGoals();
       fetchComments();
@@ -3646,112 +3638,39 @@ function BookClubContent() {
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    const inputPw = prompt(
+    const password = prompt(
       "댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:",
     );
-    if (inputPw === null) return;
-
-    const { data: targetComment, error: findError } = await supabase
-      .from("book_comments")
-      .select("id, book_id, group_name, password, is_deleted")
-      .eq("id", commentId)
-      .eq("group_name", groupName)
-      .single();
-
-    if (findError || !targetComment) {
-      return alert("댓글 정보를 불러올 수 없습니다.");
-    }
-
-    if (targetComment.is_deleted) {
-      return alert("이미 삭제된 댓글입니다.");
-    }
-
-    // 숫자로 저장된 과거 비밀번호도 비교할 수 있도록 문자열로 통일
-    if (String(targetComment.password ?? "") !== inputPw) {
-      return alert("비밀번호가 일치하지 않습니다!");
-    }
-
+    if (password === null) return;
     if (!confirm("댓글을 삭제하시겠습니까?")) return;
-
-    // 📬 이 댓글에 직접 달린 답글이 있는지 확인
-    const { data: children, error: childError } = await supabase
-      .from("book_comments")
-      .select("id")
-      .eq("parent_comment_id", commentId)
-      .limit(1);
-
-    if (childError) {
-      return alert("답글 확인 실패: " + childError.message);
-    }
-
-    if (children && children.length > 0) {
-      // 답글이 있으면 내용과 비밀번호를 제거하고 자리만 유지
-      const { error } = await supabase
-        .from("book_comments")
-        .update({
-          is_deleted: true,
-          content: "삭제된 댓글입니다.",
-          password: "",
-        })
-        .eq("id", commentId)
-        .eq("group_name", groupName)
-        .eq("is_deleted", false);
-
-      if (error) {
-        return alert("삭제 실패: " + error.message);
-      }
-    } else {
-      // 답글이 없으면 실제 삭제
-      const { error } = await supabase
-        .from("book_comments")
-        .delete()
-        .eq("id", commentId)
-        .eq("group_name", groupName);
-
-      if (error) {
-        return alert("삭제 실패: " + error.message);
-      }
-    }
-
+    const { error } = await supabase.comment({
+      group: groupName,
+      action: "delete",
+      id: commentId,
+      password,
+    });
+    if (error) return alert(error.message);
     fetchComments();
     setMailReload((value) => value + 1);
   };
 
   const handleEditComment = async (commentId: number, oldContent: string) => {
-    const inputPw = prompt(
+    const password = prompt(
       "댓글 작성 시 입력한 비밀번호(숫자 4자리)를 입력하세요:",
     );
-    if (!inputPw) return;
-
-    const { data: targetComment, error: findError } = await supabase
-      .from("book_comments")
-      .select("password")
-      .eq("id", commentId)
-      .single();
-
-    if (findError || !targetComment) {
-      return alert("댓글 정보를 불러올 수 없습니다.");
-    }
-
-    if (targetComment.password !== inputPw) {
-      return alert("비밀번호가 일치하지 않습니다!");
-    }
-
-    const newContent = prompt("수정할 댓글 내용을 입력하세요:", oldContent);
-    if (!newContent || !newContent.trim()) return;
-
-    const { error } = await supabase
-      .from("book_comments")
-      .update({ content: newContent.trim() })
-      .eq("id", commentId);
-
-    if (error) {
-      alert("수정 실패: " + error.message);
-    } else {
-      alert("댓글이 수정되었습니다.");
-      fetchComments();
-      setMailReload((value) => value + 1);
-    }
+    if (password === null) return;
+    const content = prompt("수정할 댓글 내용을 입력하세요:", oldContent);
+    if (!content || !content.trim()) return;
+    const { error } = await supabase.comment({
+      group: groupName,
+      action: "edit",
+      id: commentId,
+      password,
+      content: content.trim(),
+    });
+    if (error) return alert(error.message);
+    alert("댓글이 수정되었습니다.");
+    fetchComments();
   };
 
   const resetForm = () => {
@@ -8999,7 +8918,9 @@ export default function Home() {
     <Suspense
       fallback={<div className="text-white text-center p-8">Loading...</div>}
     >
-      <BookClubContent />
+      <AccessGate>
+        <BookClubContent />
+      </AccessGate>
     </Suspense>
   );
 }
