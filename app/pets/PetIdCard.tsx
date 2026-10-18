@@ -64,7 +64,6 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
       <div><p className="font-bold tracking-wide">BOOK CLUB 98</p><p className="text-xs">PET ID CARD</p></div>
       <strong className="font-mono text-xs">{petRegistration(pet.generation_number)}</strong>
     </header>
-    <p className="mb-2 break-all text-xs text-[#6e6077]">{pet.group_name}</p>
     <div className="flex items-start gap-2">
       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded border border-white/80 bg-white/60" aria-hidden="true">{sprite}</div>
       <dl className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5">
