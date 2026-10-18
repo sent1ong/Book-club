@@ -6287,7 +6287,7 @@ function BookClubContent() {
                           }[currentPet.stage]}
                     </span>
                     {canShowPetId(currentPet) && <button type="button" onClick={() => setIdOpenFor(currentPet.id)}
-                      className="win-btn h-[18px] px-1 text-[10px] leading-none font-normal whitespace-nowrap" aria-label="현재 펫 신분증 열기">🪪 신분증</button>}
+                      className="win-btn h-[22px] px-2 text-xs leading-none font-bold text-black whitespace-nowrap" aria-label="현재 펫 신분증 열기">신분증</button>}
                     </div>
                   </div>
 

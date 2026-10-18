@@ -59,32 +59,32 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error}: {
 }) {
   const adult=pet.stage==="adult"||pet.stage==="dead"||!!pet.died_at;
   const actualItem=memento?.group_name===pet.group_name && String(memento?.generation_id)===String(pet.id) && memento?.species===pet.species ? memento:undefined;
-  return <article aria-label={`${pet.generation_number}세대 펫 신분증`} className="w-full min-w-0 border-2 border-[#a58cb1] p-3 text-[11px] leading-5 shadow-sm" style={{backgroundColor:COLORS[colorVariant]||COLORS.original}}>
+  return <article aria-label={`${pet.generation_number}세대 펫 신분증`} className="w-full min-w-0 border-2 border-[#a58cb1] p-3 text-sm leading-6 shadow-sm" style={{backgroundColor:COLORS[colorVariant]||COLORS.original}}>
     <header className="mb-2 flex flex-wrap items-center justify-between gap-x-2 border-b border-[#b9a6c4] pb-1 text-[#594173]">
-      <div><p className="font-bold tracking-wide">BOOK CLUB 98</p><p className="text-[10px]">PET ID CARD</p></div>
-      <strong className="font-mono text-xs">{petRegistration(pet.generation_number)}</strong>
+      <div><p className="font-bold tracking-wide">BOOK CLUB 98</p><p className="text-xs">PET ID CARD</p></div>
+      <strong className="font-mono text-[13px]">{petRegistration(pet.generation_number)}</strong>
     </header>
-    <p className="mb-2 break-all text-[10px] text-[#6e6077]">{pet.group_name}</p>
+    <p className="mb-2 break-all text-xs text-[#6e6077]">{pet.group_name}</p>
     <div className="flex items-start gap-2">
       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded border border-white/80 bg-white/60" aria-hidden="true">{sprite}</div>
       <dl className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0.5">
-        <dt>이름</dt><dd className="break-all font-bold">{pet.pet_name?.trim()||"이름 없음"}</dd>
-        <dt>종족</dt><dd className="break-words">{NAMES[pet.species]||pet.species}</dd>
-        <dt>세대</dt><dd>{pet.generation_number}세대</dd>
-        <dt className="whitespace-nowrap text-[10px]">이름 지어준 사람</dt><dd className="break-all">{pet.named_by?.trim()||"기록 없음"}</dd>
+        <dt className="text-xs">이름</dt><dd className="break-all text-base font-bold">{pet.pet_name?.trim()||"이름 없음"}</dd>
+        <dt className="text-xs">종족</dt><dd className="break-words">{NAMES[pet.species]||pet.species}</dd>
+        <dt className="text-xs">세대</dt><dd>{pet.generation_number}세대</dd>
+        <dt className="whitespace-nowrap text-xs">이름 지어준 사람</dt><dd className="break-all">{pet.named_by?.trim()||"기록 없음"}</dd>
       </dl>
     </div>
-    {(pet.stage==="dead"||pet.died_at) && <div className="mt-2 border-t border-[#cabbcf] pt-1 text-[10px] leading-[18px] text-[#5f5268]">
+    {(pet.stage==="dead"||pet.died_at) && <div className="mt-2 border-t border-[#cabbcf] pt-1 text-xs leading-5 text-[#5f5268]">
       <p>최종 경험치: {pet.xp} XP</p>
       <p>🥚 태어난 날(알 입양): {dateLabel(pet.born_at)}</p>
       <p>✨ 성인이 된 날: {dateLabel(pet.adult_at)}</p>
       <p>🪦 무지개다리를 건넌 날: {dateLabel(pet.died_at)}</p>
     </div>}
     {adult && <footer className="mt-2 border-t border-[#cabbcf] pt-2">
-      <p className="text-[10px] font-bold tracking-wide text-[#80628e]">MY FAVORITE THING ♡</p>
+      <p className="text-xs font-bold tracking-wide text-[#80628e]">MY FAVORITE THING ♡</p>
       {actualItem ? <><p className="mt-1 break-words font-bold">애장품 · {actualItem.emoji} {actualItem.item_name}</p>
         <p className="mt-1 break-words">{actualItem.introduction}</p>
-        <p className="mt-1 text-[9px] text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
+        <p className="mt-1 text-[11px] leading-5 text-[#75647d]">{actualItem.is_commemorative?"도입 후 기념 기록":"확정 기록"} · {dateLabel(actualItem.confirmed_at)}</p>
       </> : <p role="status" className="mt-1 text-[#75647d]">{loading?"애장품 기록을 확인하고 있어요.":error||"기록된 애장품이 없어요."}</p>}
     </footer>}
   </article>;
