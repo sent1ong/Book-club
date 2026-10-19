@@ -3,6 +3,14 @@ import React, { createContext, useContext, useEffect, useRef, useState } from "r
 import { community, type Objection, type Objections } from "./client";
 import { PetPopup } from "../pets/PetDiary";
 
+// Tab-memory only: never store form fields, PINs or credentials.
+const listCache = new Map<string, { items: Objection[]; total: number; savedAt: number }>();
+const cacheKey = (group: string, book: string) => JSON.stringify([group, book]);
+function rememberList(key: string, items: Objection[], total: number) {
+  listCache.delete(key);
+  listCache.set(key, { items, total, savedAt: Date.now() });
+  while (listCache.size > 100) listCache.delete(listCache.keys().next().value!);
+}
 const Counts = createContext<{ counts: Record<string, number>; refresh: () => void; update: (counts: Record<string, number>) => void }>({ counts: {}, refresh: () => {}, update: () => {} });
 export function ObjectionCounts({ group, ready, children }: { group: string; ready: boolean; children: React.ReactNode }) {
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -51,41 +59,54 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
   const [total, setTotal] = useState(0), [member, setMember] = useState(members.includes(author) ? author : "");
   const [content, setContent] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [loading, setLoading] = useState(false), [loaded, setLoaded] = useState(false);
+  const requestVersion = useRef(0);
   const [password, setPassword] = useState("");
   const [action, setAction] = useState<{ row: Objection; type: "edit" | "delete" } | null>(null);
   const [actionContent, setActionContent] = useState(""), [actionPassword, setActionPassword] = useState("");
   const [notice, setNotice] = useState("");
   const locked = useRef(false), submission = useRef<{ payload: string; id: string } | null>(null);
   const load = async (offset: number, signal?: AbortSignal) => {
+    const version = ++requestVersion.current;
     const data = await community<Objections>(group, { action: "objections-read", book, offset }, signal);
-    if (!signal?.aborted) { setRows(old => offset ? [...old, ...data.items.filter(row => !old.some(item => item.id === row.id))] : data.items); setTotal(data.total_count); update(data.counts); }
+    if (!signal?.aborted && version === requestVersion.current) {
+      setRows(old => {
+        const items = offset ? [...old, ...data.items.filter(row => !old.some(item => item.id === row.id))] : data.items;
+        rememberList(cacheKey(group, book), items, data.total_count);
+        return items;
+      });
+      setTotal(data.total_count); setLoaded(true); update(data.counts);
+    }
   };
   useEffect(() => {
     if (!open) return;
-    const abort = new AbortController(); setBusy(true); setError("");
-    void load(0, abort.signal).catch(e => { if (!abort.signal.aborted) setError(e.message); }).finally(() => { if (!abort.signal.aborted) setBusy(false); });
-    return () => abort.abort();
+    const key = cacheKey(group, book), cached = listCache.get(key);
+    const usable = cached && Date.now() - cached.savedAt < 15 * 60 * 1000;
+    setRows(usable ? cached.items : []); setTotal(usable ? cached.total : 0); setLoaded(!!usable);
+    const abort = new AbortController(); setLoading(true); setError("");
+    void load(0, abort.signal).catch(e => { if (!abort.signal.aborted) setError(e.message); }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
+    return () => { abort.abort(); requestVersion.current++; };
   }, [open, group, book, revision]);
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (locked.current || !members.includes(member) || !content.trim() || Array.from(content.trim()).length > 300 || !/^[0-9]{4}$/.test(password)) return;
-    locked.current = true; setBusy(true); setError(""); setNotice("");
+    locked.current = true; requestVersion.current++; setLoading(false); setBusy(true); setError(""); setNotice("");
     const payload = JSON.stringify([book, member, content.trim(), password]);
     try {
       if (submission.current?.payload !== payload) submission.current = { payload, id: crypto.randomUUID() };
       await community(group, { action: "objections-create", book, member, content: content.trim(), password, submission: submission.current.id });
-      setContent(""); setPassword(""); setNotice("이의 제기가 접수됐어요!"); submission.current = null; window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); refresh(); setRevision(x => x + 1);
+      setContent(""); setPassword(""); setNotice("이의 제기가 접수됐어요!"); submission.current = null; window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); listCache.delete(cacheKey(group, book)); refresh(); setRevision(x => x + 1);
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
   const change = async (event: React.FormEvent) => {
     event.preventDefault();
     if (locked.current || !action || !/^[0-9]{4}$/.test(actionPassword) || (action.type === "edit" && (!actionContent.trim() || Array.from(actionContent.trim()).length > 300))) return;
-    locked.current = true; setBusy(true); setError(""); setNotice("");
+    locked.current = true; requestVersion.current++; setLoading(false); setBusy(true); setError(""); setNotice("");
     try {
       await community(group, { action: "objections-change", book, id: action.row.id, password: actionPassword, change: action.type, content: action.type === "edit" ? actionContent.trim() : undefined });
       setNotice(action.type === "edit" ? "이의 제기를 수정했어요." : "이의 제기를 삭제했어요.");
-      setAction(null); setActionPassword(""); setActionContent(""); window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); refresh(); setRevision(x => x + 1);
+      setAction(null); setActionPassword(""); setActionContent(""); window.dispatchEvent(new CustomEvent("bc98:mail-updated", { detail: { group } })); listCache.delete(cacheKey(group, book)); refresh(); setRevision(x => x + 1);
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
@@ -97,11 +118,12 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
       <header className="win-inset bg-[#fff9e9] p-3 break-words space-y-1"><h2 className="font-bold">{title || "제목 없는 책"}</h2><p>대상 리뷰 작성자 · <strong>{reviewAuthor}</strong></p></header>
       <h3 className="font-bold">⚖️ 이의 제기 목록 · {total}건</h3>
       {busy && <p role="status">처리 중…</p>}
+      {loading && <p role="status">{loaded ? "최신 목록 확인 중…" : "이의 목록 불러오는 중…"}</p>}
       <div className="win-inset bg-white p-3 space-y-3" aria-label="이의 제기 목록">{rows.map(row => <article key={row.id} className="border-b border-gray-200 pb-2 last:border-0">
         <p className="break-words whitespace-pre-wrap"><strong>{row.user_name}</strong>: {row.content}{row.updated_at && <span className="ml-1 text-gray-500">(수정됨)</span>}</p>
         {row.can_manage ? <div className="flex gap-2 mt-1">{(["edit", "delete"] as const).map(type => <button key={type} type="button" className="win-btn px-2 py-1" disabled={busy} aria-label={`${row.user_name}의 이의 제기 ${type === "edit" ? "수정" : "삭제"}`} onClick={() => { setAction({ row, type }); setActionContent(row.content); setActionPassword(""); setError(""); setNotice(""); }}>{type === "edit" ? "수정" : "삭제"}</button>)}</div> : null}
-      </article>)}{!busy && !rows.length && <p>아직 이의 제기가 없어요.</p>}</div>
-      {rows.length < total && <button type="button" disabled={busy} className="win-btn px-2" onClick={() => { setBusy(true); void load(rows.length).catch(e => setError(e.message)).finally(() => setBusy(false)); }}>더 보기</button>}
+      </article>)}{loaded && !loading && !busy && !rows.length && <p>아직 이의 제기가 없어요.</p>}</div>
+      {rows.length < total && <button type="button" disabled={busy || loading} className="win-btn px-2" onClick={() => { setBusy(true); void load(rows.length).catch(e => setError(e.message)).finally(() => setBusy(false)); }}>더 보기</button>}
       {error && <p role="alert" className="text-red-800">{error} <button type="button" className="win-btn px-1" disabled={busy} onClick={() => setRevision(x => x + 1)}>다시 불러오기</button></p>}
       {notice && <p role="status">{notice}</p>}
       {action ? <form onSubmit={change} className="space-y-3 border-t border-gray-400 pt-3">
