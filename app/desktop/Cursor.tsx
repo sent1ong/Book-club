@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-export const CURSORS = [["default", "기본 커서"], ["Chiikawa", "치이카와"], ["corgi", "웰시코기"], ["dot", "도트"], ["mm", "마이멜로디"], ["poke", "포켓몬스터"], ["smile", "이모티콘"]] as const;
+export const CURSORS = [["default", "기본 커서"], ["Chiikawa", "치이카와"], ["corgi", "웰시코기"], ["mm", "마이멜로디"], ["smile", "이모티콘"], ["Usagi", "우사기"]] as const;
 export type CursorKey = typeof CURSORS[number][0];
 export type Frame = { src: string; width: number; height: number; hotspotX: number; hotspotY: number };
 type Static = Frame & { kind: "cur" };
