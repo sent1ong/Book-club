@@ -1174,5 +1174,144 @@
       ],
       "durationMs": 466.6666666666667
     }
+  },
+  "Usagi": {
+    "label": "우사기",
+    "normal": {
+      "kind": "ani",
+      "source": "/cursors/Usagi_normal.ani",
+      "frames": [
+        [
+          {
+            "src": "/cursors/frames/Usagi-normal-0-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 0,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-normal-1-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 0,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-normal-2-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 0,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-normal-3-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 0,
+            "hotspotY": 0
+          }
+        ]
+      ],
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        2,
+        1
+      ],
+      "jiffies": [
+        20,
+        8,
+        7,
+        7,
+        7,
+        8
+      ],
+      "durationMs": 950.0
+    },
+    "pointer": {
+      "kind": "ani",
+      "source": "/cursors/Usagi_pointer.ani",
+      "frames": [
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-0-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-1-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-2-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-3-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-4-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ],
+        [
+          {
+            "src": "/cursors/frames/Usagi-pointer-5-32x32.png",
+            "width": 32,
+            "height": 32,
+            "hotspotX": 3,
+            "hotspotY": 0
+          }
+        ]
+      ],
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "jiffies": [
+        20,
+        8,
+        7,
+        7,
+        7,
+        8
+      ],
+      "durationMs": 950.0
+    }
   }
 }
