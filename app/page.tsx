@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import AndroidGroupInstall from "./AndroidGroupInstall";
+import { ReviewCreatedDate } from "./ReviewCreatedDate";
 import { useSearchParams } from "next/navigation";
 import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
@@ -3966,8 +3967,8 @@ function BookClubContent() {
                       id={"review-" + book.id}
                       className="bg-white p-2.5 win-outset text-xs"
                     >
-                      <div className="flex justify-between items-start gap-1 mb-1">
-                        <div className="flex flex-wrap items-center gap-1">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-1 gap-y-1 mb-1.5">
+                        <div className="flex flex-wrap items-center gap-1 min-w-0 break-words [overflow-wrap:anywhere]">
                           <span className="font-bold text-[#000080] text-sm">
                             {book.genre === "웹툰"
                               ? "📱 "
@@ -4009,14 +4010,14 @@ function BookClubContent() {
                         <span className="text-amber-600 font-bold text-xs whitespace-nowrap tracking-wider shrink-0">
                           {book.rating}
                         </span>
-                      </div>
-
-                      <div className="text-gray-600 text-xs mb-1.5 leading-relaxed">
+                        <div className="text-gray-600 text-xs leading-relaxed min-w-0 break-words [overflow-wrap:anywhere]">
                         {book.author ? `${book.author} · ` : ""}
                         {book.genre} |{" "}
                         <span className="font-bold text-gray-800">
                           {book.user_name}
                         </span>
+                        </div>
+                        <ReviewCreatedDate value={book.created_at} trusted />
                       </div>
 
                       {book.target_member && (
