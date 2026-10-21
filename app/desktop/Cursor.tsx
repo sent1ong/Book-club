@@ -49,25 +49,37 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     const applyCursor = (value: string) => {
       if (!(target instanceof HTMLElement || target instanceof SVGElement)) return;
       if (cursorTarget !== target) {
-        restoreCursor(); cursorTarget = target;
+        const previous = cursorTarget, original = savedCursor, priority = savedPriority, applied = appliedCursor;
+        cursorTarget = target;
         savedCursor = target.style.getPropertyValue("cursor"); savedPriority = target.style.getPropertyPriority("cursor");
-      }
-      if (appliedCursor !== value || target.style.getPropertyValue("cursor") !== value) {
+        // Mask the new hit element before unmasking its predecessor. Native cursors
+        // can update independently of DOM paint, even inside a single pointer event.
+        appliedCursor = value; target.style.setProperty("cursor", value, "important");
+        if (previous && previous.style.getPropertyValue("cursor") === applied) {
+          if (original) previous.style.setProperty("cursor", original, priority);
+          else previous.style.removeProperty("cursor");
+        }
+      } else if (appliedCursor !== value || target.style.getPropertyValue("cursor") !== value) {
         appliedCursor = value; target.style.setProperty("cursor", value, "important");
       }
     };
     const hide = () => { image.style.display = "none"; restoreCursor(); root.removeAttribute("data-bc-cursor-active"); };
+    let inspectedNative = "auto";
     const eligible = () => {
       if (!ready || !media.matches || !inside || down || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
       if (moved || dirty) target = document.elementFromPoint(x, y);
       moved = false;
       if (!dirty && target === checkedTarget) return allowed;
       dirty = false; checkedTarget = target; allowed = false;
-      // Inspect only the hit element; never invalidate cursor styles across the document.
-      restoreCursor();
+      // Reuse the original cursor while our local override is installed.
+      // Do not briefly restore it just because unrelated UI mutated.
       if (!target || target.closest('input,textarea,select,[contenteditable="true"],iframe,[draggable="true"]')) return false;
-      const native = getComputedStyle(target).cursor;
-      if (!['auto', 'default', 'pointer', ''].includes(native)) return false;
+      const owned = cursorTarget === target && cursorTarget?.style.getPropertyValue("cursor") === appliedCursor;
+      let native = owned ? inspectedNative : getComputedStyle(target).cursor;
+      // Descendants may inherit the previous hit element's mask during a handoff.
+      if (native === "none" && appliedCursor === "none" && cursorTarget?.contains(target)) native = inspectedNative;
+      if (!['auto', 'default', 'pointer', 'text', 'vertical-text', ''].includes(native)) return false;
+      inspectedNative = native;
       mode = native === "pointer" || !!target.closest('button,a[href],[role="button"],summary,label') ? "pointer" : "normal";
       allowed = true; return true;
     };
