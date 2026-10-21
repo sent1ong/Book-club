@@ -27,110 +27,112 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     if (selected === "default" || !fine) return;
     const media = matchMedia("(any-hover: hover) and (any-pointer: fine)");
     const abort = new AbortController(), root = document.documentElement;
-    const image = document.createElement("img"); image.alt = ""; image.setAttribute("aria-hidden", "true");
-    image.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:2147483647;display:none;max-width:none;user-select:none;will-change:transform;";
-    image.draggable = false; document.body.appendChild(image);
-    let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, down = false, dragging = false;
-    let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true, mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
-    let hotspotX = 0, hotspotY = 0;
+    const canvas = document.createElement("canvas"); canvas.setAttribute("aria-hidden", "true");
+    canvas.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:2147483647;display:none;max-width:none;user-select:none;will-change:transform;";
+    document.body.appendChild(canvas);
+    const context = canvas.getContext("2d");
+    const nativeRoots = ['input','textarea','select','iframe','[contenteditable="true"]','[draggable="true"]','[data-bc-native-cursor]',
+      '.cursor-ew-resize','.cursor-ns-resize','.cursor-col-resize','.cursor-row-resize','.cursor-not-allowed','.cursor-wait','.cursor-progress','.cursor-move','.cursor-grab','.cursor-grabbing','.cursor-crosshair'];
+    const nativeSelector = nativeRoots.join(",");
+    const exceptions = nativeRoots.flatMap(selector => [selector, selector + " *"]).join(",");
+    const style = document.createElement("style");
+    // This rule is installed once. Its root attribute stays unchanged across all
+    // read-only regions, buttons and animation frames; no per-hit style handoff.
+    style.textContent = `html[data-bc-animated-cursor] body,html[data-bc-animated-cursor] body *:not(:where(${exceptions})){cursor:none!important}
+      html[data-bc-animated-cursor] :is(input,textarea,select,iframe,[draggable="true"]){cursor:auto!important}
+      html[data-bc-animated-cursor] :is([contenteditable="true"],[contenteditable="true"] *){cursor:text!important}`;
+    document.head.appendChild(style);
+    const decoded = new Map<string, HTMLImageElement>();
+    let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, dragging = false;
+    let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true;
+    let mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
+    let hotspotX = 0, hotspotY = 0, masked = false;
+    let staticTarget: HTMLElement | SVGElement | null = null, staticOriginal = "", staticPriority = "", staticApplied = "";
+    const restoreStatic = () => {
+      if (staticTarget?.style.getPropertyValue("cursor") === staticApplied) {
+        if (staticOriginal) staticTarget.style.setProperty("cursor", staticOriginal, staticPriority);
+        else staticTarget.style.removeProperty("cursor");
+      }
+      staticTarget = null;
+    };
+    const mask = (value: boolean) => {
+      if (masked === value) return;
+      masked = value;
+      if (value) root.setAttribute("data-bc-animated-cursor", "1"); else root.removeAttribute("data-bc-animated-cursor");
+    };
     const position = () => {
       const transform = `translate3d(${x - hotspotX}px,${y - hotspotY}px,0)`;
-      if (image.style.transform !== transform) image.style.transform = transform;
+      if (canvas.style.transform !== transform) canvas.style.transform = transform;
     };
-    let cursorTarget: HTMLElement | SVGElement | null = null, savedCursor = "", savedPriority = "", appliedCursor = "";
-    const restoreCursor = () => {
-      if (!cursorTarget) return;
-      if (cursorTarget.style.getPropertyValue("cursor") === appliedCursor) {
-        if (savedCursor) cursorTarget.style.setProperty("cursor", savedCursor, savedPriority);
-        else cursorTarget.style.removeProperty("cursor");
-      }
-      cursorTarget = null; appliedCursor = "";
+    const hide = () => {
+      if (canvas.style.display !== "none") canvas.style.display = "none";
+      restoreStatic(); root.removeAttribute("data-bc-cursor-active");
     };
-    const applyCursor = (value: string) => {
-      if (!(target instanceof HTMLElement || target instanceof SVGElement)) return;
-      if (cursorTarget !== target) {
-        const previous = cursorTarget, original = savedCursor, priority = savedPriority, applied = appliedCursor;
-        cursorTarget = target;
-        savedCursor = target.style.getPropertyValue("cursor"); savedPriority = target.style.getPropertyPriority("cursor");
-        // Mask the new hit element before unmasking its predecessor. Native cursors
-        // can update independently of DOM paint, even inside a single pointer event.
-        appliedCursor = value; target.style.setProperty("cursor", value, "important");
-        if (previous && previous.style.getPropertyValue("cursor") === applied) {
-          if (original) previous.style.setProperty("cursor", original, priority);
-          else previous.style.removeProperty("cursor");
-        }
-      } else if (appliedCursor !== value || target.style.getPropertyValue("cursor") !== value) {
-        appliedCursor = value; target.style.setProperty("cursor", value, "important");
-      }
-    };
-    const hide = () => { image.style.display = "none"; restoreCursor(); root.removeAttribute("data-bc-cursor-active"); };
-    let inspectedNative = "auto";
     const eligible = () => {
-      if (!ready || !media.matches || !inside || down || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
+      if (!ready || !context || !media.matches || !inside || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
       if (moved || dirty) target = document.elementFromPoint(x, y);
       moved = false;
       if (!dirty && target === checkedTarget) return allowed;
-      dirty = false; checkedTarget = target; allowed = false;
-      // Reuse the original cursor while our local override is installed.
-      // Do not briefly restore it just because unrelated UI mutated.
-      if (!target || target.closest('input,textarea,select,[contenteditable="true"],iframe,[draggable="true"]')) return false;
-      const owned = cursorTarget === target && cursorTarget?.style.getPropertyValue("cursor") === appliedCursor;
-      let native = owned ? inspectedNative : getComputedStyle(target).cursor;
-      // Descendants may inherit the previous hit element's mask during a handoff.
-      if (native === "none" && appliedCursor === "none" && cursorTarget?.contains(target)) native = inspectedNative;
-      if (!['auto', 'default', 'pointer', 'text', 'vertical-text', ''].includes(native)) return false;
-      inspectedNative = native;
-      mode = native === "pointer" || !!target.closest('button,a[href],[role="button"],summary,label') ? "pointer" : "normal";
-      allowed = true; return true;
+      dirty = false; checkedTarget = target;
+      allowed = !!target && !target.closest(nativeSelector);
+      if (allowed && target) mode = target.closest('button,a[href],[role="button"],summary,label,.cursor-pointer') ? "pointer" : "normal";
+      return allowed;
     };
     const draw = (now: number) => {
-      if (eligible() && manifest) {
-        const entry = manifest[selected][mode];
-        if (lastEntry !== entry) { lastEntry = entry; started = now; previousSource = ""; }
-        if (entry.kind === "cur") {
-          image.style.display = "none";
-          applyCursor(`url("${entry.src}") ${entry.hotspotX} ${entry.hotspotY}, ${mode === "pointer" ? "pointer" : "default"}`);
-        } else {
-          const item = resolution(entry.frames[animationFrame(entry, now - started)], window.devicePixelRatio || 1);
-          const scale = 32 / item.width;
-          if (previousSource !== item.src) { image.src = item.src; previousSource = item.src; }
-          image.style.width = "32px"; image.style.height = `${item.height * scale}px`;
-          hotspotX = item.hotspotX * scale; hotspotY = item.hotspotY * scale;
-          position();
-          image.style.display = "block"; applyCursor("none");
+      const active = eligible();
+      const entry = active && manifest ? manifest[selected][mode] : null;
+      const enabled = ready && !!context && media.matches && inside && !dragging && document.visibilityState === "visible" && document.hasFocus();
+      // Do not toggle the stylesheet for input fields; they have native exceptions.
+      const pair = manifest?.[selected];
+      mask(!!enabled && !!pair && pair.normal.kind === "ani" && pair.pointer.kind === "ani");
+      if (!entry) { hide(); return; }
+      if (lastEntry !== entry) { lastEntry = entry; started = now; previousSource = ""; }
+      if (entry.kind === "cur") {
+        if (canvas.style.display !== "none") canvas.style.display = "none";
+        if (target instanceof HTMLElement || target instanceof SVGElement) {
+          if (staticTarget !== target) { restoreStatic(); staticTarget = target; staticOriginal = target.style.getPropertyValue("cursor"); staticPriority = target.style.getPropertyPriority("cursor"); }
+          const value = `url("${entry.src}") ${entry.hotspotX} ${entry.hotspotY}, ${mode === "pointer" ? "pointer" : "default"}`;
+          if (staticApplied !== value || target.style.getPropertyValue("cursor") !== value) { staticApplied = value; target.style.setProperty("cursor", value, "important"); }
         }
-        if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
-      } else hide();
+      } else {
+        restoreStatic();
+        const item = resolution(entry.frames[animationFrame(entry, now - started)], window.devicePixelRatio || 1);
+        const picture = decoded.get(item.src); if (!picture || !context) { hide(); mask(false); return; }
+        if (previousSource !== item.src) {
+          if (canvas.width !== item.width) canvas.width = item.width;
+          if (canvas.height !== item.height) canvas.height = item.height;
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(picture, 0, 0, canvas.width, canvas.height);
+          previousSource = item.src;
+          canvas.style.width = "32px"; canvas.style.height = `${item.height * 32 / item.width}px`;
+        }
+        hotspotX = item.hotspotX * 32 / item.width; hotspotY = item.hotspotY * 32 / item.width;
+        position(); if (canvas.style.display !== "block") canvas.style.display = "block";
+      }
+      if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
     };
-    const render = (now: number) => {
-      draw(now);
-      frame = requestAnimationFrame(render);
-    };
+    const render = (now: number) => { draw(now); frame = requestAnimationFrame(render); };
     void fetch("/cursors/manifest.json", { signal: abort.signal }).then(response => { if (!response.ok) throw new Error("Cursor manifest"); return response.json(); }).then(async (next: Manifest) => {
       const pair = next[selected]; if (!pair) throw new Error("Cursor theme");
       const sources = new Set<string>();
-      for (const entry of [pair.normal, pair.pointer]) {
-        if (entry.kind === "ani") for (const variants of entry.frames) for (const item of variants) sources.add(item.src);
-        // CUR is decoded by CSS, preserving its original hotspot; do not decode it as a PNG.
-      }
-      await Promise.all(Array.from(sources).map(src => new Promise<void>((resolve, reject) => { const preload = new Image(); preload.onload = () => resolve(); preload.onerror = () => reject(new Error("Cursor frame")); preload.src = src; })));
+      for (const entry of [pair.normal, pair.pointer]) if (entry.kind === "ani") for (const variants of entry.frames) for (const item of variants) sources.add(item.src);
+      await Promise.all(Array.from(sources).map(src => new Promise<void>((resolve, reject) => {
+        const picture = new Image(); picture.onload = () => {
+          void picture.decode().then(() => { decoded.set(src, picture); resolve(); }, reject);
+        }; picture.onerror = () => reject(new Error("Cursor frame")); picture.src = src;
+      })));
       if (!abort.signal.aborted) { manifest = next; ready = true; }
-    }).catch(() => { hide(); });
+    }).catch(() => { ready = false; hide(); mask(false); });
     const move = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse") { inside = false; hide(); return; }
+      if (event.pointerType !== "mouse") { inside = false; hide(); mask(false); return; }
       x = event.clientX; y = event.clientY; inside = true; moved = true;
-      if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],iframe,[draggable="true"]')) {
-        hide(); return;
-      }
-      // Movement follows the input event immediately; RAF only advances animation/hover state.
-      if (ready && !down && !dragging) {
-        // A popup contains many hit elements. Hide the new target's native cursor
-        // in this event, before the browser paints, rather than one RAF later.
+      if (ready && !dragging) {
         if (event.target !== checkedTarget || dirty || !root.hasAttribute("data-bc-cursor-active")) draw(performance.now());
-        else if (image.style.display === "block") position();
+        else if (canvas.style.display === "block") position();
       }
     };
-    const leave = () => { inside = false; hide(); }, press = () => { down = true; hide(); }, release = () => { down = false; dirty = true; }, drag = () => { dragging = true; hide(); }, endDrag = () => { dragging = false; }, blur = () => { down = false; dragging = false; leave(); };
+    const leave = () => { inside = false; hide(); mask(false); }, press = (event: PointerEvent) => move(event), release = () => { dirty = true; };
+    const drag = () => { dragging = true; hide(); mask(false); }, endDrag = () => { dragging = false; dirty = true; }, blur = () => { dragging = false; leave(); };
     const invalidate = () => { dirty = true; };
     window.addEventListener("scroll", invalidate, { signal: abort.signal, capture: true, passive: true });
     window.addEventListener("resize", invalidate, { signal: abort.signal });
@@ -138,18 +140,14 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     document.addEventListener("pointermove", move, options); document.addEventListener("pointerleave", leave, { signal: abort.signal });
     document.addEventListener("pointerdown", press, options); document.addEventListener("pointerup", release, options);
     document.addEventListener("dragstart", drag, options); document.addEventListener("dragend", endDrag, options);
-    window.addEventListener("blur", blur, options); media.addEventListener("change", leave, { signal: abort.signal });
+    // Element blur must not be treated as leaving the browser window.
+    window.addEventListener("blur", blur, { signal: abort.signal }); media.addEventListener("change", leave, { signal: abort.signal });
     const observer = new MutationObserver(records => {
-      if (records.some(record => {
-        if (record.target === image || record.target === root) return false;
-        if (record.type === "attributes" && record.attributeName === "style" && record.target === cursorTarget
-          && cursorTarget.style.getPropertyValue("cursor") === appliedCursor) return false;
-        return true;
-      })) dirty = true;
+      if (records.some(record => record.target !== canvas && record.target !== root)) dirty = true;
     });
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "disabled", "contenteditable", "draggable"] });
     frame = requestAnimationFrame(render);
-    return () => { abort.abort(); observer.disconnect(); cancelAnimationFrame(frame); hide(); image.remove(); };
+    return () => { abort.abort(); observer.disconnect(); cancelAnimationFrame(frame); hide(); mask(false); decoded.clear(); canvas.remove(); style.remove(); };
   }, [selected, fine]);
   return null;
 }
