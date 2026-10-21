@@ -30,8 +30,6 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     const image = document.createElement("img"); image.alt = ""; image.setAttribute("aria-hidden", "true");
     image.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:2147483647;display:none;max-width:none;user-select:none;will-change:transform;";
     image.draggable = false; document.body.appendChild(image);
-    const style = document.createElement("style");
-    style.textContent = 'html[data-bc-cursor-active] *,html[data-bc-cursor-active]{cursor:var(--bc-active-cursor)!important}'; document.head.appendChild(style);
     let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, down = false, dragging = false;
     let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true, mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
     let hotspotX = 0, hotspotY = 0;
@@ -39,15 +37,34 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       const transform = `translate3d(${x - hotspotX}px,${y - hotspotY}px,0)`;
       if (image.style.transform !== transform) image.style.transform = transform;
     };
-    const hide = () => { image.style.display = "none"; root.removeAttribute("data-bc-cursor-active"); root.style.removeProperty("--bc-active-cursor"); };
+    let cursorTarget: HTMLElement | SVGElement | null = null, savedCursor = "", savedPriority = "", appliedCursor = "";
+    const restoreCursor = () => {
+      if (!cursorTarget) return;
+      if (cursorTarget.style.getPropertyValue("cursor") === appliedCursor) {
+        if (savedCursor) cursorTarget.style.setProperty("cursor", savedCursor, savedPriority);
+        else cursorTarget.style.removeProperty("cursor");
+      }
+      cursorTarget = null; appliedCursor = "";
+    };
+    const applyCursor = (value: string) => {
+      if (!(target instanceof HTMLElement || target instanceof SVGElement)) return;
+      if (cursorTarget !== target) {
+        restoreCursor(); cursorTarget = target;
+        savedCursor = target.style.getPropertyValue("cursor"); savedPriority = target.style.getPropertyPriority("cursor");
+      }
+      if (appliedCursor !== value || target.style.getPropertyValue("cursor") !== value) {
+        appliedCursor = value; target.style.setProperty("cursor", value, "important");
+      }
+    };
+    const hide = () => { image.style.display = "none"; restoreCursor(); root.removeAttribute("data-bc-cursor-active"); };
     const eligible = () => {
       if (!ready || !media.matches || !inside || down || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
       if (moved || dirty) target = document.elementFromPoint(x, y);
       moved = false;
       if (!dirty && target === checkedTarget) return allowed;
       dirty = false; checkedTarget = target; allowed = false;
-      // Read native cursor only when the hover target changes.
-      root.removeAttribute("data-bc-cursor-active");
+      // Inspect only the hit element; never invalidate cursor styles across the document.
+      restoreCursor();
       if (!target || target.closest('input,textarea,select,[contenteditable="true"],iframe,[draggable="true"]')) return false;
       const native = getComputedStyle(target).cursor;
       if (!['auto', 'default', 'pointer', ''].includes(native)) return false;
@@ -60,7 +77,7 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
         if (lastEntry !== entry) { lastEntry = entry; started = now; previousSource = ""; }
         if (entry.kind === "cur") {
           image.style.display = "none";
-          root.style.setProperty("--bc-active-cursor", `url("${entry.src}") ${entry.hotspotX} ${entry.hotspotY}, ${mode === "pointer" ? "pointer" : "default"}`);
+          applyCursor(`url("${entry.src}") ${entry.hotspotX} ${entry.hotspotY}, ${mode === "pointer" ? "pointer" : "default"}`);
         } else {
           const item = resolution(entry.frames[animationFrame(entry, now - started)], window.devicePixelRatio || 1);
           const scale = 32 / item.width;
@@ -68,7 +85,7 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
           image.style.width = "32px"; image.style.height = `${item.height * scale}px`;
           hotspotX = item.hotspotX * scale; hotspotY = item.hotspotY * scale;
           position();
-          image.style.display = "block"; root.style.setProperty("--bc-active-cursor", "none");
+          image.style.display = "block"; applyCursor("none");
         }
         if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
       } else hide();
@@ -103,11 +120,16 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     document.addEventListener("dragstart", drag, options); document.addEventListener("dragend", endDrag, options);
     window.addEventListener("blur", blur, options); media.addEventListener("change", leave, { signal: abort.signal });
     const observer = new MutationObserver(records => {
-      if (records.some(record => record.type === "childList" || (record.target !== image && record.target !== root))) dirty = true;
+      if (records.some(record => {
+        if (record.target === image || record.target === root) return false;
+        if (record.type === "attributes" && record.attributeName === "style" && record.target === cursorTarget
+          && cursorTarget.style.getPropertyValue("cursor") === appliedCursor) return false;
+        return true;
+      })) dirty = true;
     });
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "disabled", "contenteditable", "draggable"] });
     frame = requestAnimationFrame(render);
-    return () => { abort.abort(); observer.disconnect(); cancelAnimationFrame(frame); hide(); image.remove(); style.remove(); };
+    return () => { abort.abort(); observer.disconnect(); cancelAnimationFrame(frame); hide(); image.remove(); };
   }, [selected, fine]);
   return null;
 }
