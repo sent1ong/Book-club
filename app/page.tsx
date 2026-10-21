@@ -4,6 +4,10 @@ import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import AndroidGroupInstall from "./AndroidGroupInstall";
 import { listKey, peekList, readList, clearGroupLists } from "./listCache";
+import { useDraftClose } from "./DraftClose";
+import { useWindowEscape } from "./windowEscape";
+import { SaveNotice, savedNotice } from "./SaveNotice";
+import { ReviewText, Highlight } from "./ReviewText";
 import { ReviewCreatedDate } from "./ReviewCreatedDate";
 import { useSearchParams } from "next/navigation";
 import { secureClient as supabase } from "./security/client";
@@ -17,8 +21,10 @@ import { DesktopThemeWindow } from "./DesktopTheme";
 import { usePetPersonalities } from "./pets/personality";
 import { AwardsHub } from "./awards/Awards";
 import { ObjectionCounts, ReviewObjections } from "./community/Objections";
+import { ShelfBadge, useShelfPicks } from "./community/ShelfBadge";
 import { SharedShelfHub } from "./community/SharedShelf";
 import { systemSound } from "./desktop/sounds";
+import { PetNameplate } from "./pets/Nameplate";
 import { PetDiary, PetPopup } from "./pets/PetDiary";
 import { useSecretNote } from "./pets/useSecretNote";
 import { isPetNight, NIGHT_LINES } from "./pets/secrets";
@@ -293,6 +299,13 @@ const RATING_SCORES: Record<string, number> = {
   중도하차: 0,
 };
 
+function ratingScore(value: string): number | undefined {
+  if (value === "중도하차") return undefined;
+  if (RATING_SCORES[value] !== undefined) return RATING_SCORES[value];
+  if (/^(?:[1-4](?:\.[05])?|0\.5|5(?:\.0)?)$/.test(value)) return Number(value);
+  return undefined;
+}
+
 const BINGO_CELLS_DEFAULT = [
   { id: 1, title: "새벽 2시 넘어 완독", desc: "다음날 일정 포기하고 달림" },
   { id: 2, title: "인생작 등극", desc: "별점 5.0 만점 부여 완료" },
@@ -380,6 +393,15 @@ function renderReviewText(text: string): React.ReactNode {
       )}
     </span>
   );
+}
+
+function DuplicateReviewNotice({ title, author, view }: { title: string; author: string; view: () => void }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return <div className="text-xs bg-[#fff9dd] win-inset p-2" role="status">
+    <p>⚠️ 이미 이 작품을 기록한 적이 있는 것 같아요.</p><p>기존 리뷰: {title} — {author}</p>
+    <div className="flex gap-2 mt-1"><button type="button" className="win-btn px-2 py-1" onClick={view}>기존 리뷰 보기</button><button type="button" className="win-btn px-2 py-1" onClick={() => setDismissed(true)}>계속 기록하기</button></div>
+  </div>;
 }
 
 function serializeReview(text: string, spoiler: boolean): string {
@@ -2606,6 +2628,8 @@ function BookClubContent() {
       setPlanAuthor("");
       setPlanGenre("소설");
       setPlanDate("");
+      planBaseline.current = JSON.stringify(["", "", "소설", ""]);
+      savedNotice("예고장이 등록되었습니다.");
       await fetchReadingPlans();
     } catch {
       alert(
@@ -2954,6 +2978,29 @@ function BookClubContent() {
       other.user_name !== book.user_name && other.genre === book.genre &&
       isSameAuthors(other.author, book.author))]));
   }, [reviews]);
+  const shelfPicks = useShelfPicks(groupName);
+  const ratingGapIndex = React.useMemo(() => {
+    const result = new Map<number, number>();
+    const buckets = new Map<string, BookReview[]>();
+    const key = (row: BookReview) => JSON.stringify([row.group_name, row.genre, normalizeBookTitle(row.title)]);
+    for (const row of reviews) { const rows = buckets.get(key(row)) || []; rows.push(row); buckets.set(key(row), rows); }
+    for (const book of reviews) {
+      const latest = new Map<string, BookReview>();
+      for (const row of buckets.get(key(book)) || []) {
+        if (!isSameAuthors(row.author, book.author)) continue;
+        if (row.rating === "중도하차" || ratingScore(row.rating) === undefined) continue;
+        const previous = latest.get(row.user_name);
+        // Review IDs are the existing chronological tie-breaker, including undated legacy rows.
+        if (!previous || row.id > previous.id) latest.set(row.user_name, row);
+      }
+      const scores = Array.from(latest.values()).map(row => ratingScore(row.rating)!);
+      if (scores.length >= 2) {
+        const gap = Math.max(...scores) - Math.min(...scores);
+        if (gap >= 2) result.set(book.id, gap);
+      }
+    }
+    return result;
+  }, [reviews, sameBookIndex]);
   const commentIndex = React.useMemo(() => {
     const index = new Map<number, typeof comments>();
     for (const comment of comments) {
@@ -2963,6 +3010,12 @@ function BookClubContent() {
     return index;
   }, [comments]);
 
+  const duplicateReview = React.useMemo(() => {
+    if (editingId || !formData.user_name.trim() || !formData.title.trim()) return undefined;
+    return reviews.find(row => row.group_name === groupName && row.user_name === formData.user_name.trim()
+      && normalizeBookTitle(row.title) === normalizeBookTitle(formData.title)
+      && normalizeBookTitle(row.author || "") === normalizeBookTitle(formData.author));
+  }, [reviews, groupName, editingId, formData.user_name, formData.title, formData.author]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitBusy.current || loading) return;
@@ -3039,7 +3092,7 @@ function BookClubContent() {
           alert("수정 실패: " + error.message);
         } else {
           playRetroDing();
-          alert("기록이 수정되었습니다!");
+          savedNotice("기록이 수정되었습니다.");
           setRevealedSpoilers((previous) =>
             previous.filter((id) => id !== editingId),
           );
@@ -3131,7 +3184,7 @@ function BookClubContent() {
               title: formData.title,
             });
           } else {
-            alert(`[${groupName}] 에 기록이 등록되었습니다!`);
+            savedNotice("기록이 저장되었습니다.");
           }
           resetForm();
           setIsSpoiler(false);
@@ -3256,6 +3309,7 @@ function BookClubContent() {
   };
 
   const resetForm = () => {
+    bookBaseline.current = null;
     setSourcePlan(null); setPlanUnconfirmed(false); planOpenLock.current = false;
     setTargetMember([]);
     setFormData({
@@ -3562,6 +3616,34 @@ function BookClubContent() {
       </div>
     );
   }
+
+  const bookDraft = JSON.stringify([formData, isSpoiler, isFavorite, isRevisit, targetMember]);
+  const planDraft = JSON.stringify([planTitle, planAuthor, planGenre, planDate]);
+  const bookBaseline = React.useRef<string | null>(null), planBaseline = React.useRef<string | null>(null);
+  const bookBaselineIdentity = React.useRef("");
+  useEffect(() => {
+    const identity = JSON.stringify([groupName, editingId, sourcePlan?.submission]);
+    if (openWindow === "book-add" && (bookBaseline.current === null || bookBaselineIdentity.current !== identity)) {
+      bookBaseline.current = bookDraft; bookBaselineIdentity.current = identity;
+    }
+  }, [openWindow, groupName, editingId, sourcePlan?.submission]);
+  useEffect(() => {
+    if (openWindow === "reading-plan") planBaseline.current = planDraft;
+    else planBaseline.current = null;
+  }, [openWindow, selectedUser]);
+  const bookClose = useDraftClose(bookBaseline.current !== null && bookBaseline.current !== bookDraft, loading, () => { bookBaseline.current = null; cancelEdit(); });
+  const planClose = useDraftClose(planBaseline.current !== null && planBaseline.current !== planDraft, planLoading, () => {
+    setPlanTitle(""); setPlanAuthor(""); setPlanGenre("소설"); setPlanDate(""); setOpenWindow(null);
+  });
+  useWindowEscape(() => {
+    if (openWindow === "book-add") bookClose.requestClose();
+    else if (openWindow === "reading-plan") planClose.requestClose();
+    else if (!loading && !planLoading) setOpenWindow(null);
+  }, !!openWindow, 50);
+  useWindowEscape(() => { if (!downloadingReceipt) setReceiptData(null); }, !!receiptData, 50);
+  useWindowEscape(() => setRandomBook(null), !!randomBook, 50);
+  useWindowEscape(() => setShowAllPlans(false), showAllPlans, 100);
+  useWindowEscape(() => setPlanCelebration(null), !!planCelebration, 50);
 
   return (
     <ObjectionCounts key={groupName} group={groupName} ready={reviewsReadyGroup === groupName}>
@@ -4049,7 +4131,7 @@ function BookClubContent() {
                                 : book.genre === "오디오드라마"
                                   ? "🎧 "
                                   : "📖 "}
-                            {book.title}
+                            {<Highlight text={book.title} query={searchQuery} />}
                           </span>
                           {newBadgeNow !== null &&
                             book.created_at &&
@@ -4061,6 +4143,7 @@ function BookClubContent() {
                                 NEW
                               </span>
                             )}
+                          <ShelfBadge picks={shelfPicks.get(String(book.id))} />
                           {book.is_favorite && (
                             <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
                               👑 인생작
@@ -4083,7 +4166,7 @@ function BookClubContent() {
                           {book.rating}
                         </span>
                         <div className="text-gray-600 text-xs leading-relaxed min-w-0 break-words [overflow-wrap:anywhere]">
-                        {book.author ? `${book.author} · ` : ""}
+                        {book.author ? <><Highlight text={book.author} query={searchQuery} /> · </> : ""}
                         {book.genre} |{" "}
                         <span className="font-bold text-gray-800">
                           {book.user_name}
@@ -4126,11 +4209,7 @@ function BookClubContent() {
                             </span>
                           </div>
                         ) : (
-                          <p className="text-gray-800 bg-gray-50 p-2 rounded win-inset mt-1 break-all text-xs leading-normal">
-                            {renderReviewText(
-                              book.review.replace("(스포일러)", ""),
-                            )}
-                          </p>
+                          <ReviewText text={book.review.replace("(스포일러)", "")} query={searchQuery} />
                         ))}
 
                       {/* 🎵 JUKEBOX.exe — 이 작품의 OST */}
@@ -4190,11 +4269,14 @@ function BookClubContent() {
                             className="win-btn w-full px-3 py-2 text-xs font-bold text-left flex items-center justify-between gap-2"
                             aria-expanded={isSameBookExpanded}
                           >
-                            <span>
+                            <span className="min-w-0 truncate">
                               📚 같은 작품의 다른 리뷰 {sameBookReviews.length}
                               개
                             </span>
-                            <span>
+                            {ratingGapIndex.has(book.id) && <span className="ml-auto whitespace-nowrap text-[10px] font-normal" title="모임원별 가장 최근 유효 별점의 최고·최저 차이">
+                              <span className="hidden sm:inline">{ratingGapIndex.get(book.id)! >= 3 ? "⚡ " : "👀 "}</span>별점 차이 {ratingGapIndex.get(book.id)!.toFixed(1)}
+                            </span>}
+                            <span className="whitespace-nowrap shrink-0">
                               {isSameBookExpanded ? "▲ 접기" : "▼ 펼쳐보기"}
                             </span>
                           </button>
@@ -4297,7 +4379,7 @@ function BookClubContent() {
                             ({bookComments.length})
                           </span>
                         </button>
-                        <div className="flex items-center gap-2">
+                        <div className="review-actions flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() =>
@@ -4856,6 +4938,8 @@ function BookClubContent() {
         </div>
       </div>
 
+      <SaveNotice />
+      {bookClose.confirmation}{planClose.confirmation}
       {/* --- 모달 창들 --- */}
 
       {/* 1. 도서 등록 모달 (book-add) */}
@@ -4865,7 +4949,7 @@ function BookClubContent() {
             <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>{editingId ? "EDITING_BOOK.exe" : "ADD_BOOK.exe"}</span>
               <button
-                onClick={() => sourcePlan ? cancelEdit() : setOpenWindow(null)}
+                onClick={bookClose.requestClose}
                 className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]"
               >
                 ✕
@@ -4877,6 +4961,10 @@ function BookClubContent() {
             >
               {sourcePlan && <p className="text-xs text-[#000080] break-words" role="status">📌 예고에서 기록하기 · {sourcePlan.plan.title}<br />저장이 성공하면 예고 이행이 반영됩니다.</p>}
               {sourcePlan && planUnconfirmed && <p role="alert" className="text-xs text-red-800">저장 응답을 확인하지 못했어요. 입력 내용을 유지했습니다. ‘저장 결과 확인’을 누르면 같은 제출을 확인하며 중복 등록하지 않습니다.</p>}
+              {duplicateReview && <DuplicateReviewNotice key={duplicateReview.id} title={duplicateReview.title} author={duplicateReview.author} view={() => {
+                setSelectedUser("전체"); setSelectedGenre("전체"); setFilterType("all"); setSearchQuery(""); setOpenWindow(null);
+                requestAnimationFrame(() => document.getElementById("review-" + duplicateReview.id)?.scrollIntoView({ block: "center" }));
+              }} />}
               <fieldset className="min-w-0 space-y-2.5" disabled={!!sourcePlan && (loading || planUnconfirmed)}>
               <div>
                 <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
@@ -5130,7 +5218,7 @@ function BookClubContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={cancelEdit}
+                  onClick={bookClose.requestClose}
                   className="px-3 py-1.5 win-btn text-xs font-bold"
                 >
                   닫기
@@ -5363,7 +5451,7 @@ function BookClubContent() {
               <span>📌 COMING_SOON.exe - {selectedUser}의 예고장</span>
               <button
                 type="button"
-                onClick={() => setOpenWindow(null)}
+                onClick={planClose.requestClose}
                 className="win-btn text-black px-1"
               >
                 ✕
@@ -5815,7 +5903,7 @@ function BookClubContent() {
                             careTimesError || "기록된 돌봄 시각만 표시합니다."
                           }
                         >
-                          💗 {currentPet.pet_name}
+                          <PetNameplate name={currentPet.pet_name} />
                           {(() => {
                             const times = careTimes[currentPet.id];
                             const labels = [

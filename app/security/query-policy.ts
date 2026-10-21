@@ -74,6 +74,7 @@ export const readColumns: Record<string, string[]> = {
     "born_at",
     "adult_at",
     "died_at",
+    "baby_entered_at", "teen_entered_at", "last_petted_by", "last_petted_at",
   ],
   pet_care_actions: [
     "id",
@@ -273,13 +274,13 @@ export function planQuery(body: Record<string, any>, group: string) {
       for (const [key, value] of Object.entries(row)) {
         if (
           value === null &&
-          [
+          ((table === "reading_plans" && key === "planned_date") || [
             "target_member",
             "ost_youtube_url",
             "ost_title",
             "ost_artist",
             "parent_comment_id",
-          ].includes(key)
+          ].includes(key))
         )
           continue;
         if (["is_favorite", "is_revisit", "checked"].includes(key)) {

@@ -12,7 +12,7 @@ const messages = ["이용할 수 없는 모임입니다.", "모임 운영 연도
   "같은 제출 번호로 다른 이의 제기를 저장할 수 없습니다.", "이 모임의 공동책장 등록 기간이 아닙니다.",
   "해당 연도에 본인이 등록한 완독 리뷰를 선택해 주세요.", "모임원과 선정 이유(1~200자)를 확인해 주세요.",
   "같은 제출 번호로 다른 선정을 저장할 수 없습니다.", "다른 화면에서 선정이 변경되었습니다. 다시 불러온 뒤 저장해 주세요.",
-  "비밀번호는 숫자 4자리로 입력해 주세요."];
+  "비밀번호는 숫자 4자리로 입력해 주세요.", "최종 변론은 1~300자로 입력해 주세요.", "원본 리뷰 작성자 이름을 선택해 주세요.", "이미 최종 변론이 등록된 이의 제기입니다.", "이의 제기를 찾을 수 없어요. 다시 불러와 주세요."];
 const password = (value: unknown): value is string => typeof value === "string" && /^[0-9]{4}$/.test(value);
 
 export async function POST(request: NextRequest) {
@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
     const [room] = await Promise.all([authorize(request, body.group), rateLimit(request, body.group, "community", 120)]);
     const group = room.group_name;
     let result;
-    if (body.action === "objections-read") {
+    if (body.action === "defenses-read") {
+      if (!id(body.book)) throw new ApiError("이 모임의 리뷰를 선택해 주세요.");
+      result = await admin().rpc("bc_defenses_read", { p_group: group, p_book_id: body.book });
+    } else if (body.action === "defenses-create") {
+      if (!id(body.book) || !id(body.id) || !text(body.member, 120) || !text(body.content, 300) || typeof body.submission !== "string" || !uuid.test(body.submission)) throw new ApiError("최종 변론은 1~300자로 입력해 주세요.");
+      await rateLimit(request, group, "defenses-create", 20);
+      result = await admin().rpc("bc_defenses_create", { p_group: group, p_book_id: body.book, p_objection_id: body.id, p_user_name: body.member, p_content: body.content.trim(), p_submission_id: body.submission });
+    } else if (body.action === "objections-read") {
       if (!(body.book === undefined || id(body.book)) || !Number.isSafeInteger(body.offset) || body.offset < 0) throw new ApiError("조회 범위를 확인해 주세요.");
       result = await admin().rpc("bc_objections_read", { p_group: group, p_book_id: body.book ?? null, p_offset: body.offset, p_limit: 100 });
     } else if (body.action === "objections-create") {

@@ -1,4 +1,6 @@
 "use client";
+import { DefenseButton } from "./Defense";
+import { useDraftClose } from "../DraftClose";
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { community, type Objection, type Objections } from "./client";
 import { PetPopup } from "../pets/PetDiary";
@@ -73,6 +75,8 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
   const [actionContent, setActionContent] = useState(""), [actionPassword, setActionPassword] = useState("");
   const [notice, setNotice] = useState("");
   const locked = useRef(false), submission = useRef<{ payload: string; id: string } | null>(null);
+  const initialMember = useRef(member);
+  const { requestClose, confirmation } = useDraftClose(action ? action.type === "edit" && actionContent !== action.row.content || !!actionPassword : !!content || !!password || member !== initialMember.current, busy, () => { setOpen(false); setAction(null); setContent(""); setPassword(""); setActionPassword(""); setActionContent(""); setError(""); submission.current = null; });
   const load = async (offset: number, signal?: AbortSignal) => {
     const version = ++requestVersion.current;
     const data = await community<Objections>(group, { action: "objections-read", book, offset }, signal);
@@ -120,14 +124,13 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
-  const close = () => { setOpen(false); setPassword(""); setActionPassword(""); setAction(null); setError(""); setNotice(""); submission.current = null; };
   return <section className="my-2 border-t border-dashed border-gray-200 pt-1" onClick={e => e.stopPropagation()}>
     <div className="flex items-start gap-2 min-w-0">
-      <button ref={trigger} data-objection-open type="button" className="win-btn px-2 py-0.5 text-xs shrink-0" aria-haspopup="dialog" onClick={() => { setAction(null); setError(""); setNotice(""); setOpen(true); }}>⚖️ 이의 있음!</button>
+      <button ref={trigger} data-objection-open type="button" className="win-btn px-2 py-0.5 text-xs shrink-0" aria-haspopup="dialog" onClick={() => { initialMember.current = member; setAction(null); setError(""); setNotice(""); setOpen(true); }}>⚖️ 이의 있음!</button>
       <div className="flex-1 min-w-0 space-y-2" aria-label="이의 제기 목록">
         {rows.map(row => <article key={row.id} className="min-w-0 text-xs">
           <p className="break-words whitespace-pre-wrap [overflow-wrap:anywhere] text-[#9f3038]"><strong>{row.user_name}</strong>: {row.content}{row.updated_at && <span className="ml-1 text-gray-500">(수정됨)</span>}
-          {row.can_manage && <span className="inline-flex gap-2 ml-2 whitespace-nowrap align-baseline">{(["edit", "delete"] as const).map(type => <button key={type} type="button" className="text-[11px] text-blue-700" disabled={busy} aria-label={`${row.user_name}의 이의 제기 ${type === "edit" ? "수정" : "삭제"}`} onClick={() => { setAction({ row, type }); setActionContent(row.content); setActionPassword(""); setError(""); setNotice(""); setOpen(true); }}>{type === "edit" ? "수정" : "삭제"}</button>)}</span>}</p>
+          {row.can_manage && <span className="inline-flex gap-2 ml-2 whitespace-nowrap align-baseline">{(["edit", "delete"] as const).map(type => <button key={type} type="button" className="text-[11px] text-blue-700" disabled={busy} aria-label={`${row.user_name}의 이의 제기 ${type === "edit" ? "수정" : "삭제"}`} onClick={() => { setAction({ row, type }); setActionContent(row.content); setActionPassword(""); setError(""); setNotice(""); setOpen(true); }}>{type === "edit" ? "수정" : "삭제"}</button>)}</span>}<DefenseButton group={group} book={book} objection={row} reviewer={reviewAuthor} title={title} /></p>
         </article>)}
         {loading && <p role="status" className="text-xs text-gray-500">{rows.length ? "최신 목록 확인 중…" : "이의 목록 불러오는 중…"}</p>}
         {!open && error && <p role="alert" className="text-xs text-red-800">{error} <button type="button" className="win-btn px-1" disabled={busy || loading} onClick={() => setRevision(x => x + 1)}>다시 불러오기</button></p>}
@@ -135,7 +138,7 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
         {rows.length < total && <button type="button" disabled={busy || loading} className="win-btn px-2 text-xs" onClick={() => { setLoading(true); void load(rows.length).catch(e => setError(e.message)).finally(() => setLoading(false)); }}>더 보기</button>}
       </div>
     </div>
-    {open && <ObjectionWindow anchor={trigger} close={close} focusKey={`${action?.row.id || "new"}:${action?.type || ""}`}>
+    {open && <ObjectionWindow anchor={trigger} close={requestClose} focusKey={`${action?.row.id || "new"}:${action?.type || ""}`}>
       <header className="win-inset bg-[#fff9e9] p-3 break-words space-y-1"><h2 className="font-bold">{title || "제목 없는 책"}</h2><p>대상 리뷰 작성자 · <strong>{reviewAuthor}</strong></p></header>
       {error && <p role="alert" className="text-red-800">{error}</p>}
       {action ? <form onSubmit={change} className="space-y-3 border-t border-gray-400 pt-3">
@@ -149,7 +152,8 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
         <label className="block">비밀번호 · 숫자 4자리<input type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} autoComplete="new-password" aria-label="새 이의 제기 비밀번호" className="win-inset bg-white p-2 mt-1 block w-full text-base sm:text-xs" value={password} onChange={event => setPassword(event.target.value.replace(/[^0-9]/g, "").slice(0, 4))} disabled={busy} required /></label>
         <button type="button" onClick={save} className="win-btn px-3 py-2" disabled={busy}>{busy ? "처리 중…" : "이의 제기 접수!"}</button>
       </form>}
-      <div className="text-right"><button type="button" className="win-btn px-3 py-2" onClick={close}>닫기</button></div>
+      <div className="text-right"><button type="button" className="win-btn px-3 py-2" onClick={requestClose}>닫기</button></div>
     </ObjectionWindow>}
+    {confirmation}
   </section>;
 }

@@ -1,0 +1,54 @@
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+import { PetPopup } from "../pets/PetDiary";
+import { useDraftClose } from "../DraftClose";
+import { community, type Objection } from "./client";
+type Defense = { objection_id: string; user_name: string; content: string; created_at: string };
+const cache = new Map<string, { rows: Defense[]; at: number }>();
+const pending = new Map<string, Promise<Defense[]>>();
+function read(group: string, book: string, force = false) {
+  const key = JSON.stringify([group, book]), entry = cache.get(key);
+  if (!force && entry && Date.now() - entry.at < 30000) return Promise.resolve(entry.rows);
+  if (pending.has(key)) return pending.get(key)!;
+  const request = community<Defense[]>(group, { action: "defenses-read", book }).then(rows => {
+    cache.set(key, { rows, at: Date.now() });
+    if (cache.size > 100) cache.delete(cache.keys().next().value!);
+    return rows;
+  }).finally(() => pending.delete(key));
+  pending.set(key, request); return request;
+}
+export function DefenseButton({ group, book, objection, reviewer, title }: { group: string; book: string; objection: Objection; reviewer: string; title: string }) {
+  const [open, setOpen] = useState(false);
+  return <><button type="button" className="ml-2 text-xs text-[#800000] underline whitespace-nowrap" onClick={() => setOpen(true)}>🗣️ 최종 변론</button>
+    {open && <DefenseWindow group={group} book={book} objection={objection} reviewer={reviewer} title={title} close={() => setOpen(false)} />}</>;
+}
+function DefenseWindow({ group, book, objection, reviewer, title, close }: { group: string; book: string; objection: Objection; reviewer: string; title: string; close: () => void }) {
+  const [rows, setRows] = useState<Defense[] | null>(null), [content, setContent] = useState("");
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const locked = useRef(false), submission = useRef<{ text: string; id: string } | null>(null);
+  const saved = rows?.find(row => row.objection_id === objection.id);
+  const { requestClose, confirmation } = useDraftClose(!!content, busy, close);
+  useEffect(() => { let active = true; void read(group, book).then(next => { if (active) setRows(next); }).catch(e => { if (active) setError(e.message); }); return () => { active = false; }; }, [group, book]);
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault(); if (locked.current || !rows || saved || !content.trim()) return;
+    locked.current = true; setBusy(true); setError("");
+    try {
+      if (submission.current?.text !== content.trim()) submission.current = { text: content.trim(), id: crypto.randomUUID() };
+      const result = await community<Defense>(group, { action: "defenses-create", book, id: objection.id, member: reviewer, content: content.trim(), submission: submission.current.id });
+      const next = [...rows.filter(row => row.objection_id !== result.objection_id), result];
+      cache.set(JSON.stringify([group, book]), { rows: next, at: Date.now() }); setRows(next); setContent("");
+    } catch (e) { setError((e as Error).message); }
+    finally { locked.current = false; setBusy(false); }
+  };
+  return <><PetPopup title="OBJECTION.exe — 최종 변론" close={requestClose}>
+    <p className="font-bold break-words">사건: {reviewer}의 「{title}」 리뷰</p>
+    <div className="win-inset bg-white p-2 my-3"><b>⚖️ {objection.user_name}의 이의 제기</b><p className="whitespace-pre-wrap break-words mt-1">{objection.content}</p></div>
+    {error && <p role="alert" className="text-red-800">{error}</p>}
+    {!rows && !error && <p role="status">변론을 불러오는 중…</p>}
+    {saved ? <><b>🗣️ {saved.user_name}의 최종 변론</b><p className="whitespace-pre-wrap break-words my-2">{saved.content}</p><p>이 사건의 변론이 종료되었습니다.</p></> : rows && <form onSubmit={save} className="space-y-2">
+      <label className="block">작성자<select value={reviewer} disabled className="win-inset bg-white ml-2"><option>{reviewer}</option></select></label>
+      <textarea aria-label="최종 변론 내용" className="win-inset w-full bg-white p-2 text-base sm:text-xs" rows={4} maxLength={300} value={content} disabled={busy} onChange={e => setContent(e.target.value)} required />
+      <p>{Array.from(content).length}/300 · 원본 리뷰 작성자 이름으로 한 번만 답할 수 있어요.</p><button className="win-btn px-3 py-2" disabled={busy || !content.trim()}>{busy ? "접수 중…" : "최종 변론 접수!"}</button>
+    </form>}
+  </PetPopup>{confirmation}</>;
+}

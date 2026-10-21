@@ -3,6 +3,7 @@ import { petMemory } from "./memoryCache";
 import type { SecretPet } from "./secrets";
 
 export type PetSnapshot = SecretPet & {
+  baby_entered_at?: string | null; teen_entered_at?: string | null; last_petted_by?: string | null; last_petted_at?: string | null;
   named_by: string | null; xp: number; color_variant: string | null;
   decoration: string | null; born_at: string;
   stage: "egg" | "baby" | "teen" | "adult" | "dead";

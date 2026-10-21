@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import { useDraftClose } from "../DraftClose";
 import { PetPopup } from "../pets/PetDiary";
-import { community, readShelf, type Shelf } from "./client";
+import { community, readShelf, invalidateShelf, type Shelf } from "./client";
 import { autoModal } from "./autoModal";
 export const SHELF_UI = { button: "📚 공동책장", window: "SHARED_SHELF.exe", heading: "우리 모임이 함께 남기는 올해의 작품들!", item: "대표 작품", choose: "리뷰한 작품 선택" } as const;
 
@@ -39,6 +40,8 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
   const [retry, setRetry] = useState(0);
   const [readError, setReadError] = useState("");
   const locked = useRef(false), submission = useRef<{ payload: string; id: string } | null>(null);
+  const initialDraft = useRef("");
+  const { requestClose, confirmation } = useDraftClose(!!initialDraft.current && initialDraft.current !== JSON.stringify([book, reason]), saving, close);
   useEffect(() => {
     const abort = new AbortController(); let running = false;
     const refresh = async () => {
@@ -60,7 +63,9 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
       if (abort.signal.aborted) return;
       setData(next);
       const pick = next.picks.find(row => row.user_name === member);
-      setBook(pick && next.candidates.some(row => row.id === pick.book_id) ? pick.book_id : ""); setReason(pick?.reason || ""); setVersion(pick?.version || null);
+      const selected = pick && next.candidates.some(row => row.id === pick.book_id) ? pick.book_id : "";
+      setBook(selected); setReason(pick?.reason || ""); setVersion(pick?.version || null);
+      initialDraft.current = JSON.stringify([selected, pick?.reason || ""]);
     }).catch(e => { if (!abort.signal.aborted) setReadError(e.message); }).finally(() => { if (!abort.signal.aborted) setBusy(false); });
     return () => abort.abort();
   }, [group, member, retry]);
@@ -74,11 +79,11 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
     try {
       if (submission.current?.payload !== payload) submission.current = { payload, id: crypto.randomUUID() };
       await community(group, { action: "shelf-save", member, book, reason: reason.trim(), version, submission: submission.current.id });
-      setNotice("공동책장에 저장했어요! ♡"); setRetry(x => x + 1);
+      invalidateShelf(group); setNotice("공동책장에 저장했어요! ♡"); setRetry(x => x + 1);
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setSaving(false); }
   };
-  return <PetPopup title={SHELF_UI.window} close={() => { if (!locked.current) close(); }}>
+  return <><PetPopup title={SHELF_UI.window} close={requestClose}>
     <div className="space-y-3">
       {busy && <p role="status">공동책장을 불러오는 중…</p>}
       {readError && <p role="alert" className="text-red-800">작품 목록을 불러오지 못했어요. {readError} <button className="win-btn px-1" disabled={saving || busy} onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p>}
@@ -94,7 +99,7 @@ function ShelfEditor({ group, initialMember, close }: { group: string; initialMe
         </form> : <p className="font-bold">이 모임의 공동책장은 열람 전용이에요.</p>}
       </>}
     </div>
-  </PetPopup>;
+  </PetPopup>{confirmation}</>;
 }
 export function SharedShelfHub({ group, member, ready, blocked }: { group: string; member: string; ready: boolean; blocked: boolean }) {
   const [open, setOpen] = useState(false), [intro, setIntro] = useState<number | null>(null);
@@ -111,8 +116,10 @@ export function SharedShelfHub({ group, member, ready, blocked }: { group: strin
       if (autoModal.claim(token.current)) setIntro(meta.operating_year);
     };
     const refresh = () => { if (document.visibilityState === "visible") void readShelf(group, undefined, abort.signal).then(next => { if (!abort.signal.aborted) { meta = next; tryIntro(); } }).catch(() => {}); };
+    const invalidated = (event: Event) => { if ((event as CustomEvent).detail === group) refresh(); };
+    window.addEventListener("bc98:shelf-invalidated", invalidated);
     refresh(); const timer = setInterval(tryIntro, 5000), metadataTimer = setInterval(refresh, 60000); window.addEventListener("focus", refresh);
-    return () => { abort.abort(); clearInterval(timer); clearInterval(metadataTimer); window.removeEventListener("focus", refresh); };
+    return () => { abort.abort(); window.removeEventListener("bc98:shelf-invalidated", invalidated); clearInterval(timer); clearInterval(metadataTimer); window.removeEventListener("focus", refresh); };
   }, [group, ready]);
   useEffect(() => {
     if (intro === null) return;

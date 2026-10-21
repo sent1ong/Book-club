@@ -35,7 +35,7 @@ body {
   box-shadow: inset 1px 1px 0px #dfdfdf, inset -1px -1px 0px #808080;
 }
 
-.win-btn:active {
+.win-btn:active:not(:disabled) {
   border-top: 2px solid #000000;
   border-left: 2px solid #000000;
   border-right: 2px solid #ffffff;
@@ -171,4 +171,12 @@ html, body, .desktop-surface { background-color: var(--desktop-background); }
   background-image: none;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0,0,0,.28);
+}
+
+/* Theme-derived shadow: no extra preferences or per-window state. */
+.win-outset:has(> .desktop-titlebar) { box-shadow: inset 1px 1px #dfdfdf, inset -1px -1px #808080, 3px 4px 8px color-mix(in srgb, var(--desktop-title) 12%, #0003 88%); }
+@media (pointer: coarse) {
+  .review-actions button { padding-block: 7px; }
+  .desktop-titlebar > button { position: relative; }
+  .desktop-titlebar > button::after { content: ""; position: absolute; inset: -4px; }
 }

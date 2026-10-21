@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { useWindowEscape } from "../windowEscape";
 import { petMemory } from "./memoryCache";
 import { loadPetGenerations, loadDiaries, type SavedDiary } from "./petData";
 
@@ -15,6 +16,7 @@ const HELP = "📓 비밀 일기장\n\n펫은 알에서 깨어나면 하루에 �
 export function PetPopup({ title, close, children, front = false }: {
   title: string; close: () => void; children: React.ReactNode; front?: boolean;
 }) {
+  useWindowEscape(close, true, front ? 90 : 80);
   const box = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -24,7 +26,6 @@ export function PetPopup({ title, close, children, front = false }: {
   return createPortal(<div className={`fixed inset-0 flex items-center justify-center bg-black/40 p-3 ${front ? "z-[90]" : "z-[80]"}`}>
     <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title}
       onKeyDown={(event) => {
-        if (event.key === "Escape") { event.stopPropagation(); close(); }
         if (event.key === "Tab") {
           const items = box.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex='0']");
           if (!items?.length) return;

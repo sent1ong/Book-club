@@ -10,7 +10,7 @@ export async function community<T>(group: string, body: object, signal?: AbortSi
   if (!response.ok || result.error) throw new Error(result.error?.message || "불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
   return result.data;
 }
-export async function readShelf(group: string, member?: string, signal?: AbortSignal): Promise<Shelf> {
+async function fetchShelf(group: string, member?: string, signal?: AbortSignal): Promise<Shelf> {
   const first = await community<Shelf>(group, { action: "shelf-read", member, offset: 0 }, signal);
   const rows = [...first.candidates];
   while (rows.length < first.candidate_count) {
@@ -24,4 +24,35 @@ export async function readShelf(group: string, member?: string, signal?: AbortSi
   rows.sort((a, b) => korean.compare(a.title || "", b.title || "")
     || korean.compare(a.author || "", b.author || "") || korean.compare(a.id, b.id));
   return { ...first, candidates: rows };
+}
+
+const shelfCache = new Map<string, { value?: Shelf; at: number; pending?: Promise<Shelf> }>();
+export function forgetShelf(group: string) { shelfCache.delete(group); }
+export function peekShelf(group: string) { return shelfCache.get(group)?.value; }
+export function invalidateShelf(group: string) {
+  shelfCache.delete(group);
+  window.dispatchEvent(new CustomEvent("bc98:shelf-invalidated", { detail: group }));
+}
+export function readShelf(group: string, member?: string, signal?: AbortSignal): Promise<Shelf> {
+  if (member !== undefined) return fetchShelf(group, member, signal);
+  const current = shelfCache.get(group);
+  if (current?.pending) return current.pending;
+  if (current?.value && Date.now() - current.at < 30000) return Promise.resolve(current.value);
+  const entry: { value?: Shelf; at: number; pending?: Promise<Shelf> } = { value: current?.value, at: 0 };
+  const pending = fetchShelf(group).then(value => {
+    if (shelfCache.get(group) === entry) {
+      entry.value = value; entry.at = Date.now();
+      window.dispatchEvent(new CustomEvent("bc98:shelf-updated", { detail: group }));
+    }
+    return value;
+  }).catch(error => {
+    if (shelfCache.get(group) === entry) {
+      entry.value = undefined;
+      window.dispatchEvent(new CustomEvent("bc98:shelf-updated", { detail: group }));
+    }
+    throw error;
+  }).finally(() => { if (entry.pending === pending) entry.pending = undefined; });
+  entry.pending = pending; shelfCache.set(group, entry);
+  if (shelfCache.size > 10) shelfCache.delete(shelfCache.keys().next().value!);
+  return pending;
 }
