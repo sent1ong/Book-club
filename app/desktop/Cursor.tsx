@@ -71,7 +71,7 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       mode = native === "pointer" || !!target.closest('button,a[href],[role="button"],summary,label') ? "pointer" : "normal";
       allowed = true; return true;
     };
-    const render = (now: number) => {
+    const draw = (now: number) => {
       if (eligible() && manifest) {
         const entry = manifest[selected][mode];
         if (lastEntry !== entry) { lastEntry = entry; started = now; previousSource = ""; }
@@ -89,6 +89,9 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
         }
         if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
       } else hide();
+    };
+    const render = (now: number) => {
+      draw(now);
       frame = requestAnimationFrame(render);
     };
     void fetch("/cursors/manifest.json", { signal: abort.signal }).then(response => { if (!response.ok) throw new Error("Cursor manifest"); return response.json(); }).then(async (next: Manifest) => {
@@ -108,7 +111,12 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
         hide(); return;
       }
       // Movement follows the input event immediately; RAF only advances animation/hover state.
-      if (ready && !down && !dragging && image.style.display === "block") position();
+      if (ready && !down && !dragging) {
+        // A popup contains many hit elements. Hide the new target's native cursor
+        // in this event, before the browser paints, rather than one RAF later.
+        if (event.target !== checkedTarget || dirty || !root.hasAttribute("data-bc-cursor-active")) draw(performance.now());
+        else if (image.style.display === "block") position();
+      }
     };
     const leave = () => { inside = false; hide(); }, press = () => { down = true; hide(); }, release = () => { down = false; dirty = true; }, drag = () => { dragging = true; hide(); }, endDrag = () => { dragging = false; }, blur = () => { down = false; dragging = false; leave(); };
     const invalidate = () => { dirty = true; };

@@ -1,6 +1,5 @@
 "use client";
 import { plainReview, reviewTags } from "./reviewMarkup";
-import { CopyTitle } from "./CopyTitle";
 import { StartMenuKeys } from "./StartMenuKeys";
 
 
@@ -3735,7 +3734,6 @@ function BookClubContent() {
                                 NEW
                               </span>
                             )}
-                          <CopyTitle title={book.title} />
                           <ShelfBadge picks={workShelfPicks.get(String(book.id))} />
                           {book.is_favorite && (
                             <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
