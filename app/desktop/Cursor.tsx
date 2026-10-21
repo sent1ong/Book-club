@@ -28,12 +28,17 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     const media = matchMedia("(any-hover: hover) and (any-pointer: fine)");
     const abort = new AbortController(), root = document.documentElement;
     const image = document.createElement("img"); image.alt = ""; image.setAttribute("aria-hidden", "true");
-    image.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:2147483647;display:none;max-width:none;user-select:none;";
+    image.style.cssText = "position:fixed;left:0;top:0;pointer-events:none;z-index:2147483647;display:none;max-width:none;user-select:none;will-change:transform;";
     image.draggable = false; document.body.appendChild(image);
     const style = document.createElement("style");
     style.textContent = 'html[data-bc-cursor-active] *,html[data-bc-cursor-active]{cursor:var(--bc-active-cursor)!important}'; document.head.appendChild(style);
     let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, down = false, dragging = false;
     let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true, mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
+    let hotspotX = 0, hotspotY = 0;
+    const position = () => {
+      const transform = `translate3d(${x - hotspotX}px,${y - hotspotY}px,0)`;
+      if (image.style.transform !== transform) image.style.transform = transform;
+    };
     const hide = () => { image.style.display = "none"; root.removeAttribute("data-bc-cursor-active"); root.style.removeProperty("--bc-active-cursor"); };
     const eligible = () => {
       if (!ready || !media.matches || !inside || down || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
@@ -61,8 +66,8 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
           const scale = 32 / item.width;
           if (previousSource !== item.src) { image.src = item.src; previousSource = item.src; }
           image.style.width = "32px"; image.style.height = `${item.height * scale}px`;
-          const transform = `translate3d(${x - item.hotspotX * scale}px,${y - item.hotspotY * scale}px,0)`;
-          if (image.style.transform !== transform) image.style.transform = transform;
+          hotspotX = item.hotspotX * scale; hotspotY = item.hotspotY * scale;
+          position();
           image.style.display = "block"; root.style.setProperty("--bc-active-cursor", "none");
         }
         if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
@@ -79,7 +84,15 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       await Promise.all(Array.from(sources).map(src => new Promise<void>((resolve, reject) => { const preload = new Image(); preload.onload = () => resolve(); preload.onerror = () => reject(new Error("Cursor frame")); preload.src = src; })));
       if (!abort.signal.aborted) { manifest = next; ready = true; }
     }).catch(() => { hide(); });
-    const move = (event: PointerEvent) => { if (event.pointerType !== "mouse") { inside = false; hide(); return; } x = event.clientX; y = event.clientY; inside = true; moved = true; };
+    const move = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") { inside = false; hide(); return; }
+      x = event.clientX; y = event.clientY; inside = true; moved = true;
+      if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],iframe,[draggable="true"]')) {
+        hide(); return;
+      }
+      // Movement follows the input event immediately; RAF only advances animation/hover state.
+      if (ready && !down && !dragging && image.style.display === "block") position();
+    };
     const leave = () => { inside = false; hide(); }, press = () => { down = true; hide(); }, release = () => { down = false; dirty = true; }, drag = () => { dragging = true; hide(); }, endDrag = () => { dragging = false; }, blur = () => { down = false; dragging = false; leave(); };
     const invalidate = () => { dirty = true; };
     window.addEventListener("scroll", invalidate, { signal: abort.signal, capture: true, passive: true });
