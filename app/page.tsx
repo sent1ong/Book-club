@@ -3,12 +3,12 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import AndroidGroupInstall from "./AndroidGroupInstall";
+import { listKey, peekList, readList, clearGroupLists } from "./listCache";
 import { ReviewCreatedDate } from "./ReviewCreatedDate";
 import { useSearchParams } from "next/navigation";
 import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
-import html2canvas from "html2canvas";
 import { StartMenuBand } from "./StartMenuBand";
 import { usePetSnacks } from "./pets/snack";
 import { useExplorerTitle } from "./explorerTitle";
@@ -955,6 +955,19 @@ function BookClubContent() {
   const [plansError, setPlansError] = useState("");
   const [reviewsFetching, setReviewsFetching] = useState(false);
   const [reviewsError, setReviewsError] = useState("");
+  const [plansReadyGroup, setPlansReadyGroup] = useState<string | null>(null);
+  const [reviewsReadyGroup, setReviewsReadyGroup] = useState<string | null>(null);
+  const plansCanRender = plansReadyGroup === groupName && reviewsReadyGroup === groupName;
+  useEffect(() => {
+    const denied = (event: Event) => {
+      if ((event as CustomEvent).detail !== groupName) return;
+      ++plansRequest.current; ++reviewsRequest.current;
+      clearGroupLists(groupName); setReadingPlans([]); setReviews([]);
+      setPlansReadyGroup(null); setReviewsReadyGroup(null);
+    };
+    window.addEventListener("bc98:pet-access-denied", denied);
+    return () => window.removeEventListener("bc98:pet-access-denied", denied);
+  }, [groupName]);
   const plansRequest = React.useRef(0);
   const reviewsRequest = React.useRef(0);
   const [planTitle, setPlanTitle] = useState("");
@@ -1626,7 +1639,7 @@ function BookClubContent() {
       reading = true;
       try {
         const pet = await loadPetSnapshot(groupName, force);
-        if (!cancelled) { setMiniPet(pet); setCurrentPet(pet); setPetError(""); setPetLoading(false); }
+        if (!cancelled) { setMiniPet(previous => JSON.stringify(previous) === JSON.stringify(pet) ? previous : pet); setCurrentPet(previous => JSON.stringify(previous) === JSON.stringify(pet) ? previous : pet); setPetError(""); setPetLoading(false); }
       } catch { /* Keep a previously authorized snapshot while the network recovers. */ }
       finally { reading = false; }
     };
@@ -2497,7 +2510,7 @@ function BookClubContent() {
   const handleSelectUser = (user: string) => setSelectedUser(user);
 
   // 📌 독서 예고장 목록 불러오기
-  const fetchReadingPlans = React.useCallback(async () => {
+  const fetchReadingPlans = React.useCallback(async (force = true) => {
     const request = ++plansRequest.current;
     setPlansError("");
     if (!isValidGroup(groupName)) {
@@ -2506,7 +2519,10 @@ function BookClubContent() {
       return;
     }
     setPlansFetching(true);
+    const cached = peekList<ReadingPlan>(listKey(groupName, "plans"));
+    if (cached) { setReadingPlans(cached); setPlansReadyGroup(groupName); }
     try {
+      const rows = await readList<ReadingPlan>(listKey(groupName, "plans"), async () => {
       const rows: ReadingPlan[] = [];
       for (let offset = 0; ; offset += 200) {
         const { data, error } = await supabase
@@ -2516,12 +2532,14 @@ function BookClubContent() {
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .range(offset, offset + 199);
-        if (request !== plansRequest.current) return;
         if (error) throw error;
         rows.push(...(data || []));
         if (!data || data.length < 200) break;
       }
-      setReadingPlans(rows);
+      return rows;
+      }, force);
+      if (request !== plansRequest.current) return;
+      setReadingPlans(rows); setPlansReadyGroup(groupName);
     } catch {
       if (request === plansRequest.current) {
         setPlansError(
@@ -2535,7 +2553,7 @@ function BookClubContent() {
 
   useEffect(() => {
     setReadingPlans([]);
-    void fetchReadingPlans();
+    void fetchReadingPlans(false);
     return () => {
       ++plansRequest.current;
     };
@@ -2552,11 +2570,11 @@ function BookClubContent() {
       : normalizeBookTitle(review.title) === normalizeBookTitle(plan.title) &&
         isSameAuthors(review.author || "", plan.author || ""));
 
-  const activeReadingPlans = readingPlans.filter(
+  const activeReadingPlans = React.useMemo(() => readingPlans.filter(
     (plan) =>
       plan.group_name === groupName &&
       !reviews.some((review) => matchesReadingPlan(plan, review)),
-  );
+  ), [readingPlans, reviews, groupName]);
 
   // 📌 독서 예고장 등록
   const addReadingPlan = async () => {
@@ -2751,7 +2769,7 @@ function BookClubContent() {
     });
   };
 
-  const fetchReviews = React.useCallback(async () => {
+  const fetchReviews = React.useCallback(async (force = true) => {
     const request = ++reviewsRequest.current;
     setReviewsError("");
     if (!isValidGroup(groupName)) {
@@ -2760,7 +2778,10 @@ function BookClubContent() {
       return;
     }
     setReviewsFetching(true);
+    const cached = peekList<BookReview>(listKey(groupName, "reviews"));
+    if (cached) { setReviews(cached); setReviewsReadyGroup(groupName); }
     try {
+      const rows = await readList<BookReview>(listKey(groupName, "reviews"), async () => {
       const rows: BookReview[] = [];
       for (let offset = 0; ; ) {
         const { data, error, count } = await supabase
@@ -2769,7 +2790,6 @@ function BookClubContent() {
           .eq("group_name", groupName)
           .order("id", { ascending: false })
           .range(offset, offset + 999);
-        if (request !== reviewsRequest.current) return;
         if (error) throw error;
         if (!data || data.length === 0) break;
         rows.push(...data);
@@ -2777,7 +2797,10 @@ function BookClubContent() {
         // Respect a lower Supabase row cap without mistaking it for the last page.
         if (typeof count === "number" && offset >= count) break;
       }
-      setReviews(rows);
+      return rows;
+      }, force);
+      if (request !== reviewsRequest.current) return;
+      setReviews(rows); setReviewsReadyGroup(groupName);
       try {
         localStorage.setItem(
           'bookclub:reviews:v1:' + encodeURIComponent(groupName),
@@ -2798,8 +2821,8 @@ function BookClubContent() {
 
   useEffect(() => {
     if (showAllPlans || openWindow === "reading-plan") {
-      void fetchReadingPlans();
-      void fetchReviews();
+      void fetchReadingPlans(false);
+      void fetchReviews(false);
     }
   }, [showAllPlans, openWindow, fetchReadingPlans, fetchReviews]);
 
@@ -2852,8 +2875,9 @@ function BookClubContent() {
       }
     }
     setReviews(cachedRows);
+    setReviewsReadyGroup(cachedRows.length ? groupName : null);
     if (isValidGroup(groupName)) {
-      void fetchReviews();
+      void fetchReviews(false);
       fetchGoals();
       fetchComments();
       setMailReload((value) => value + 1);
@@ -2878,7 +2902,7 @@ function BookClubContent() {
       return mailSort === "oldest" ? delta : -delta;
     });
 
-  const filteredReviews = reviews.filter((r) => {
+  const filteredReviews = React.useMemo(() => reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
 
     let matchesFilter = true;
@@ -2900,9 +2924,9 @@ function BookClubContent() {
       (r.author ?? "").toLowerCase().includes(q) ||
       (r.review ?? "").toLowerCase().includes(q);
     return matchesUser && matchesFilter && matchesSearch;
-  });
+  }), [reviews, selectedUser, filterType, selectedGenre, searchQuery]);
 
-  const displayedReviews = [...filteredReviews].sort((a, b) => {
+  const displayedReviews = React.useMemo(() => [...filteredReviews].sort((a, b) => {
     if (sortOrder === "최신순") return b.id - a.id;
     if (sortOrder === "오래된순") return a.id - b.id;
     if (sortOrder === "높은 평점순") {
@@ -2916,7 +2940,28 @@ function BookClubContent() {
       return scoreA - scoreB || b.id - a.id;
     }
     return 0;
-  });
+  }), [filteredReviews, sortOrder]);
+
+  const sameBookIndex = React.useMemo(() => {
+    const buckets = new Map<string, BookReview[]>();
+    const key = (book: BookReview) => JSON.stringify([book.group_name, book.genre, normalizeBookTitle(book.title)]);
+    for (const book of reviews) {
+      const id = key(book), bucket = buckets.get(id) || [];
+      bucket.push(book); buckets.set(id, bucket);
+    }
+    return new Map(reviews.map(book => [book.id, (buckets.get(key(book)) || []).filter(other =>
+      other.id !== book.id && other.group_name === book.group_name &&
+      other.user_name !== book.user_name && other.genre === book.genre &&
+      isSameAuthors(other.author, book.author))]));
+  }, [reviews]);
+  const commentIndex = React.useMemo(() => {
+    const index = new Map<number, typeof comments>();
+    for (const comment of comments) {
+      const rows = index.get(comment.book_id) || [];
+      rows.push(comment); index.set(comment.book_id, rows);
+    }
+    return index;
+  }, [comments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3324,6 +3369,7 @@ function BookClubContent() {
       setDownloadingReceipt(true);
 
       const target = receiptRef.current;
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(target, {
         scale: 2,
         backgroundColor: "#ffffff",
@@ -3518,7 +3564,7 @@ function BookClubContent() {
   }
 
   return (
-    <ObjectionCounts key={groupName} group={groupName} ready={reviewsRequest.current > 0 && !reviewsFetching && !reviewsError}>
+    <ObjectionCounts key={groupName} group={groupName} ready={reviewsReadyGroup === groupName}>
     <main className="desktop-surface relative flex flex-col h-[100dvh] w-full bg-[#008080] font-sans select-none overflow-hidden">
       <style jsx global>{`
         @keyframes petEggBounce {
@@ -3601,17 +3647,17 @@ function BookClubContent() {
         @keyframes petRoomWalk {
           0%,
           5% {
-            left: 0;
+            transform: translate3d(0, 0, 0);
           }
 
           45%,
           55% {
-            left: calc(100% - 150px);
+            transform: translate3d(calc(100% - 150px), 0, 0);
           }
 
           95%,
           100% {
-            left: 0;
+            transform: translate3d(0, 0, 0);
           }
         }
 
@@ -3619,8 +3665,12 @@ function BookClubContent() {
           position: absolute;
           bottom: 0;
           left: 0;
+          width: 100%;
+          will-change: transform;
           animation: petRoomWalk 5s linear infinite;
         }
+
+        .pet-room-walk > div { width: 150px; }
 
         @media (prefers-reduced-motion: reduce) {
           .mini-pet-walk,
@@ -3975,22 +4025,11 @@ function BookClubContent() {
                 </div>
               ) : (
                 displayedReviews.map((book) => {
-                  const bookComments = comments.filter(
-                    (c) => c.book_id === book.id,
-                  );
+                  const bookComments = commentIndex.get(book.id) || [];
                   const isOpen = openCommentBookId === book.id;
 
                   // 📚 같은 작품에 다른 모임원이 남긴 리뷰
-                  const sameBookReviews = reviews.filter(
-                    (other) =>
-                      other.id !== book.id &&
-                      other.group_name === book.group_name &&
-                      other.user_name !== book.user_name &&
-                      other.genre === book.genre &&
-                      normalizeBookTitle(other.title) ===
-                        normalizeBookTitle(book.title) &&
-                      isSameAuthors(other.author, book.author),
-                  );
+                  const sameBookReviews = sameBookIndex.get(book.id) || [];
 
                   const isSameBookExpanded = expandedSameBookId === book.id;
 
@@ -5415,10 +5454,7 @@ function BookClubContent() {
                   {plansError || reviewsError}
                 </p>
               )}
-              {!plansFetching &&
-                !reviewsFetching &&
-                !plansError &&
-                !reviewsError &&
+              {plansCanRender &&
                 activeReadingPlans
                   .filter((plan) => plan.user_name === selectedUser)
                   .map((plan) => {
@@ -5454,7 +5490,7 @@ function BookClubContent() {
                     );
                   })}
 
-              {!plansFetching &&
+              {plansCanRender && !plansFetching &&
                 !reviewsFetching &&
                 !plansError &&
                 !reviewsError &&
@@ -6109,10 +6145,8 @@ function BookClubContent() {
                   {plansError || reviewsError}
                 </p>
               )}
-              {!plansFetching &&
-                !reviewsFetching &&
-                !plansError &&
-                !reviewsError &&
+              {plansCanRender &&
+                (activeReadingPlans.length > 0 || (!plansFetching && !reviewsFetching && !plansError && !reviewsError)) &&
                 (activeReadingPlans.length === 0 ? (
                   <p className="text-xs text-center text-gray-500 py-8">
                     아직 등록된 예고장이 없어요.

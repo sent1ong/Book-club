@@ -15,14 +15,21 @@ const Counts = createContext<{ counts: Record<string, number>; refresh: () => vo
 export function ObjectionCounts({ group, ready, children }: { group: string; ready: boolean; children: React.ReactNode }) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [revision, setRevision] = useState(0);
+  const updateCounts = React.useCallback((next: Record<string, number>) => setCounts(old => {
+    const keys = Object.keys(next);
+    return keys.length === Object.keys(old).length && keys.every(key => old[key] === next[key]) ? old : next;
+  }), []);
+  const triggerRefresh = React.useCallback(() => setRevision(x => x + 1), []);
+  const context = React.useMemo(() => ({ counts, refresh: triggerRefresh, update: updateCounts }), [counts, triggerRefresh, updateCounts]);
   useEffect(() => {
     if (!ready) return;
     const abort = new AbortController();
-    const refresh = () => { if (document.visibilityState === "visible") void community<Objections>(group, { action: "objections-read", offset: 0 }, abort.signal).then(data => { if (!abort.signal.aborted) setCounts(data.counts); }).catch(() => {}); };
+    let running = false;
+    const refresh = () => { if (running) return; if (document.visibilityState === "visible") { running = true; void community<Objections>(group, { action: "objections-read", offset: 0 }, abort.signal).then(data => { if (!abort.signal.aborted) updateCounts(data.counts); }).catch(() => {}).finally(() => { running = false; }); } };
     refresh(); const timer = setInterval(refresh, 60000); window.addEventListener("focus", refresh);
     return () => { abort.abort(); clearInterval(timer); window.removeEventListener("focus", refresh); };
-  }, [group, ready, revision]);
-  return <Counts.Provider value={{ counts, refresh: () => setRevision(x => x + 1), update: setCounts }}>{children}</Counts.Provider>;
+  }, [group, ready, revision, updateCounts]);
+  return <Counts.Provider value={context}>{children}</Counts.Provider>;
 }
 function ObjectionWindow({ anchor, close, children, focusKey }: { anchor: React.RefObject<HTMLButtonElement>; close: () => void; children: React.ReactNode; focusKey: string }) {
   const content = useRef<HTMLDivElement>(null);

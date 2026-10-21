@@ -33,11 +33,12 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     const style = document.createElement("style");
     style.textContent = 'html[data-bc-cursor-active] *,html[data-bc-cursor-active]{cursor:var(--bc-active-cursor)!important}'; document.head.appendChild(style);
     let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, down = false, dragging = false;
-    let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
+    let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true, mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
     const hide = () => { image.style.display = "none"; root.removeAttribute("data-bc-cursor-active"); root.style.removeProperty("--bc-active-cursor"); };
     const eligible = () => {
       if (!ready || !media.matches || !inside || down || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
-      target = document.elementFromPoint(x, y);
+      if (moved || dirty) target = document.elementFromPoint(x, y);
+      moved = false;
       if (!dirty && target === checkedTarget) return allowed;
       dirty = false; checkedTarget = target; allowed = false;
       // Read native cursor only when the hover target changes.
@@ -60,10 +61,11 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
           const scale = 32 / item.width;
           if (previousSource !== item.src) { image.src = item.src; previousSource = item.src; }
           image.style.width = "32px"; image.style.height = `${item.height * scale}px`;
-          image.style.transform = `translate3d(${x - item.hotspotX * scale}px,${y - item.hotspotY * scale}px,0)`;
+          const transform = `translate3d(${x - item.hotspotX * scale}px,${y - item.hotspotY * scale}px,0)`;
+          if (image.style.transform !== transform) image.style.transform = transform;
           image.style.display = "block"; root.style.setProperty("--bc-active-cursor", "none");
         }
-        root.setAttribute("data-bc-cursor-active", "1");
+        if (!root.hasAttribute("data-bc-cursor-active")) root.setAttribute("data-bc-cursor-active", "1");
       } else hide();
       frame = requestAnimationFrame(render);
     };
@@ -77,14 +79,20 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       await Promise.all(Array.from(sources).map(src => new Promise<void>((resolve, reject) => { const preload = new Image(); preload.onload = () => resolve(); preload.onerror = () => reject(new Error("Cursor frame")); preload.src = src; })));
       if (!abort.signal.aborted) { manifest = next; ready = true; }
     }).catch(() => { hide(); });
-    const move = (event: PointerEvent) => { if (event.pointerType !== "mouse") { inside = false; hide(); return; } x = event.clientX; y = event.clientY; inside = true; dirty = true; };
-    const leave = () => { inside = false; hide(); }, press = () => { down = true; hide(); }, release = () => { down = false; }, drag = () => { dragging = true; hide(); }, endDrag = () => { dragging = false; }, blur = () => { down = false; dragging = false; leave(); };
+    const move = (event: PointerEvent) => { if (event.pointerType !== "mouse") { inside = false; hide(); return; } x = event.clientX; y = event.clientY; inside = true; moved = true; };
+    const leave = () => { inside = false; hide(); }, press = () => { down = true; hide(); }, release = () => { down = false; dirty = true; }, drag = () => { dragging = true; hide(); }, endDrag = () => { dragging = false; }, blur = () => { down = false; dragging = false; leave(); };
+    const invalidate = () => { dirty = true; };
+    window.addEventListener("scroll", invalidate, { signal: abort.signal, capture: true, passive: true });
+    window.addEventListener("resize", invalidate, { signal: abort.signal });
     const options = { signal: abort.signal, capture: true };
     document.addEventListener("pointermove", move, options); document.addEventListener("pointerleave", leave, { signal: abort.signal });
     document.addEventListener("pointerdown", press, options); document.addEventListener("pointerup", release, options);
     document.addEventListener("dragstart", drag, options); document.addEventListener("dragend", endDrag, options);
     window.addEventListener("blur", blur, options); media.addEventListener("change", leave, { signal: abort.signal });
-    const observer = new MutationObserver(() => { dirty = true; }); observer.observe(document.body, { subtree: true, childList: true });
+    const observer = new MutationObserver(records => {
+      if (records.some(record => record.type === "childList" || (record.target !== image && record.target !== root))) dirty = true;
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "disabled", "contenteditable", "draggable"] });
     frame = requestAnimationFrame(render);
     return () => { abort.abort(); observer.disconnect(); cancelAnimationFrame(frame); hide(); image.remove(); style.remove(); };
   }, [selected, fine]);
