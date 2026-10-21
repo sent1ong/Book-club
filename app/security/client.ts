@@ -4,7 +4,7 @@ import { petMemory } from "../pets/memoryCache";
 
 type Result = {
   data: any;
-  error: { message: string } | null;
+  error: { message: string; unconfirmed?: boolean } | null;
   count?: number | null;
 };
 
@@ -27,12 +27,12 @@ async function send(body: Record<string, unknown>): Promise<Result> {
       ["pet_do_care", "pet_adopt_egg", "pet_name_baby"].includes(String(body.name));
     const activityMutation = body.kind === "query" && body.action !== "select" &&
       ["books", "book_comments", "reading_plans"].includes(String(body.table));
-    if (group && !result.error && (petMutation || activityMutation)) petMemory.invalidate(group);
+    if (group && !result.error && (petMutation || activityMutation || body.kind === "plan-review")) petMemory.invalidate(group);
     return result;
   } catch {
     return {
       data: null,
-      error: { message: "연결을 확인하고 다시 시도해 주세요." },
+      error: { message: "연결을 확인하고 다시 시도해 주세요.", ...(body.kind === "plan-review" ? { unconfirmed: true } : {}) },
     };
   }
 }
@@ -125,6 +125,7 @@ class Query implements PromiseLike<Result> {
 }
 
 export const secureClient = {
+  planReview: (args: { group: string; plan_id: string; submission: string; review: Record<string, unknown> }) => send({ ...args, kind: "plan-review" }),
   from: (table: string) => new Query(table),
   rpc: (name: string, args: Record<string, unknown>) =>
     send({ kind: "rpc", group: currentGroup(), name, args }),

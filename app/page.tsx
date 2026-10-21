@@ -35,6 +35,7 @@ declare global {
 }
 
 interface BookReview {
+  source_plan_id?: string | number | null;
   id: number;
   user_name: string;
   title: string;
@@ -945,6 +946,10 @@ function BookClubContent() {
     created_at: string;
   };
   const [readingPlans, setReadingPlans] = useState<ReadingPlan[]>([]);
+  const [sourcePlan, setSourcePlan] = useState<{ plan: ReadingPlan; submission: string } | null>(null);
+  const [planUnconfirmed, setPlanUnconfirmed] = useState(false);
+  const planOpenLock = React.useRef(false);
+  useEffect(() => { setSourcePlan(null); setPlanUnconfirmed(false); planOpenLock.current = false; }, [groupName]);
   const [showAllPlans, setShowAllPlans] = useState(false);
   const [plansFetching, setPlansFetching] = useState(false);
   const [plansError, setPlansError] = useState("");
@@ -2542,8 +2547,10 @@ function BookClubContent() {
     review.group_name === groupName &&
     review.rating !== "중도하차" &&
     review.user_name === plan.user_name &&
-    normalizeBookTitle(review.title) === normalizeBookTitle(plan.title) &&
-    isSameAuthors(review.author || "", plan.author || "");
+    (review.source_plan_id != null
+      ? String(review.source_plan_id) === String(plan.id)
+      : normalizeBookTitle(review.title) === normalizeBookTitle(plan.title) &&
+        isSameAuthors(review.author || "", plan.author || ""));
 
   const activeReadingPlans = readingPlans.filter(
     (plan) =>
@@ -3021,11 +3028,13 @@ function BookClubContent() {
             return { data: [], error: true };
           }
         };
-        const [planSnapshot, reviewSnapshot] = await Promise.all([
-          loadCompletionSnapshot("reading_plans"),
-          loadCompletionSnapshot("books"),
-        ]);
-        const candidate = { ...formData, group_name: groupName } as BookReview;
+        const [planSnapshot, reviewSnapshot] = sourcePlan
+          ? [{ data: [sourcePlan.plan], error: false }, { data: [], error: false }]
+          : await Promise.all([
+              loadCompletionSnapshot("reading_plans"),
+              loadCompletionSnapshot("books"),
+            ]);
+        const candidate = { ...formData, group_name: groupName, ...(sourcePlan ? { source_plan_id: sourcePlan.plan.id } : {}) } as BookReview;
         const fulfilledPlan =
           !planSnapshot.error &&
           !reviewSnapshot.error &&
@@ -3036,7 +3045,12 @@ function BookClubContent() {
                 matchesReadingPlan(plan, review),
               ),
           );
-        const { error } = await supabase.from("books").insert([
+        const linkedReview = { ...formData, review: finalReview,
+          target_member: targetMember.length > 0 ? targetMember.join(",") : null,
+          is_favorite: isFavorite, is_revisit: isRevisit };
+        const { error } = sourcePlan
+          ? await supabase.planReview({ group: groupName, plan_id: String(sourcePlan.plan.id), submission: sourcePlan.submission, review: linkedReview })
+          : await supabase.from("books").insert([
           {
             ...formData,
             review: finalReview,
@@ -3049,6 +3063,7 @@ function BookClubContent() {
         ]);
 
         if (error) {
+          if (sourcePlan && error.unconfirmed) setPlanUnconfirmed(true);
           alert("저장 실패: " + error.message);
         } else {
           const userGoal = goals.find(
@@ -3196,6 +3211,7 @@ function BookClubContent() {
   };
 
   const resetForm = () => {
+    setSourcePlan(null); setPlanUnconfirmed(false); planOpenLock.current = false;
     setTargetMember([]);
     setFormData({
       user_name: formData.user_name,
@@ -3213,7 +3229,24 @@ function BookClubContent() {
     setIsRevisit(false);
   };
 
+  const fulfillReadingPlan = (plan: ReadingPlan) => {
+    if (submitBusy.current || loading || plan.group_name !== groupName) return;
+    if (planOpenLock.current) {
+      if (sourcePlan && String(sourcePlan.plan.id) === String(plan.id)) setOpenWindow("book-add");
+      else if (sourcePlan) alert("다른 예고에서 기록 중입니다. 기존 기록하기를 닫은 후 선택해 주세요.");
+      return;
+    }
+    planOpenLock.current = true;
+    setEditingId(null); setTargetMember([]); setIsSpoiler(false); setIsFavorite(false); setIsRevisit(false);
+    setFormData({ user_name: plan.user_name, title: plan.title, author: plan.author, genre: plan.genre,
+      rating: "★★★★★", review: "", ost_youtube_url: "", ost_title: "", ost_artist: "" });
+    setPlanUnconfirmed(false);
+    setSourcePlan({ plan: { ...plan }, submission: crypto.randomUUID() });
+    setOpenWindow("book-add");
+  };
+
   const handleEdit = (book: BookReview) => {
+    setSourcePlan(null); setPlanUnconfirmed(false); planOpenLock.current = false;
     setEditingId(book.id);
     setTargetMember(
       (book.target_member || "")
@@ -4793,7 +4826,7 @@ function BookClubContent() {
             <div className="desktop-titlebar bg-[#000080] text-white px-2 py-1 flex items-center justify-between text-xs font-bold">
               <span>{editingId ? "EDITING_BOOK.exe" : "ADD_BOOK.exe"}</span>
               <button
-                onClick={() => setOpenWindow(null)}
+                onClick={() => sourcePlan ? cancelEdit() : setOpenWindow(null)}
                 className="win-btn text-black font-extrabold w-4 h-4 flex items-center justify-center text-[10px]"
               >
                 ✕
@@ -4803,6 +4836,9 @@ function BookClubContent() {
               onSubmit={handleSubmit}
               className="p-3 space-y-2.5 bg-[#d4d8dc] win-inset overflow-y-auto m-1"
             >
+              {sourcePlan && <p className="text-xs text-[#000080] break-words" role="status">📌 예고에서 기록하기 · {sourcePlan.plan.title}<br />저장이 성공하면 예고 이행이 반영됩니다.</p>}
+              {sourcePlan && planUnconfirmed && <p role="alert" className="text-xs text-red-800">저장 응답을 확인하지 못했어요. 입력 내용을 유지했습니다. ‘저장 결과 확인’을 누르면 같은 제출을 확인하며 중복 등록하지 않습니다.</p>}
+              <fieldset className="min-w-0 space-y-2.5" disabled={!!sourcePlan && (loading || planUnconfirmed)}>
               <div>
                 <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
                   NAME (내 이름)
@@ -5038,6 +5074,7 @@ function BookClubContent() {
                   </div>
                 </div>
               </div>
+              </fieldset>
               <div className="flex gap-1 pt-2">
                 <button
                   type="submit"
@@ -5046,7 +5083,9 @@ function BookClubContent() {
                 >
                   {loading
                     ? "처리 중..."
-                    : editingId
+                    : sourcePlan && planUnconfirmed
+                      ? "저장 결과 확인"
+                      : editingId
                       ? "수정 완료"
                       : "입력 완료"}
                 </button>
@@ -5407,13 +5446,10 @@ function BookClubContent() {
                           ⏳ 예고 중
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => void deleteReadingPlan(plan.id)}
-                          className="win-btn px-2 py-1 mt-2 text-xs"
-                        >
-                          삭제
-                        </button>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                          <button type="button" onClick={() => void deleteReadingPlan(plan.id)} className="win-btn px-2 py-1 text-xs">삭제</button>
+                          <button type="button" disabled={loading} onClick={() => fulfillReadingPlan(plan)} className="win-btn px-2 py-1 text-xs ml-auto">✅ 예고 이행하기</button>
+                        </div>
                       </div>
                     );
                   })}

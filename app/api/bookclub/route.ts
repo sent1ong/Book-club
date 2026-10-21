@@ -115,6 +115,27 @@ export async function POST(request: NextRequest) {
       return ok(result.data);
     }
 
+    if (body.kind === "plan-review") {
+      if (!positiveId(body.plan_id) || typeof body.submission !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.submission))
+        throw new ApiError("예고장 연결 정보를 확인해 주세요.");
+      const validated = planQuery({ table: "books", action: "insert", rows: body.review }, group);
+      if (validated.rows.length !== 1) throw new ApiError("리뷰는 하나씩 등록해 주세요.");
+      const { group_name: ignored, ...review } = validated.rows[0];
+      await rateLimit(request, group, "writes", 60);
+      const result = await db.rpc("bc_create_review_from_plan", {
+        p_group: group, p_plan_id: body.plan_id, p_submission_id: body.submission, p_review: review,
+      });
+      if (result.error) {
+        const messages: Record<string, string> = {
+          "Plan unavailable": "원본 예고장을 찾을 수 없습니다. 취소 후 예고 목록을 확인해 주세요.",
+          "Review must match the selected plan": "제목·작가·장르·이름은 선택한 예고장과 일치해야 합니다.",
+          "Submission content changed": "이전 제출 결과가 남아 있습니다. 처음 제출한 내용으로 다시 확인해 주세요. 중복 등록은 하지 않았습니다.",
+        };
+        throw new ApiError(messages[result.error.message] || "예고 이행 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
+      }
+      return ok(result.data);
+    }
+
     if (body.kind !== "query") throw new ApiError("허용되지 않은 작업입니다.");
     const plan = planQuery(body, group);
     if (plan.action !== "select") await rateLimit(request, group, "writes", 60);

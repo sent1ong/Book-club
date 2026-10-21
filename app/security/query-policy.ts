@@ -4,6 +4,7 @@ import { ApiError } from "./server";
 export const readColumns: Record<string, string[]> = {
   books: [
     "id",
+    "source_plan_id",
     "group_name",
     "user_name",
     "title",
