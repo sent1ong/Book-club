@@ -7,6 +7,8 @@ import { listKey, peekList, readList, clearGroupLists } from "./listCache";
 import { useDraftClose } from "./DraftClose";
 import { useWindowEscape } from "./windowEscape";
 import { SaveNotice, savedNotice } from "./SaveNotice";
+import { buildReviewRelations } from "./reviewRelations";
+import { WorkRatingSummary } from "./WorkRatingSummary";
 import { ReviewText, Highlight } from "./ReviewText";
 import { ReviewCreatedDate } from "./ReviewCreatedDate";
 import { useSearchParams } from "next/navigation";
@@ -2966,41 +2968,10 @@ function BookClubContent() {
     return 0;
   }), [filteredReviews, sortOrder]);
 
-  const sameBookIndex = React.useMemo(() => {
-    const buckets = new Map<string, BookReview[]>();
-    const key = (book: BookReview) => JSON.stringify([book.group_name, book.genre, normalizeBookTitle(book.title)]);
-    for (const book of reviews) {
-      const id = key(book), bucket = buckets.get(id) || [];
-      bucket.push(book); buckets.set(id, bucket);
-    }
-    return new Map(reviews.map(book => [book.id, (buckets.get(key(book)) || []).filter(other =>
-      other.id !== book.id && other.group_name === book.group_name &&
-      other.user_name !== book.user_name && other.genre === book.genre &&
-      isSameAuthors(other.author, book.author))]));
-  }, [reviews]);
+  const { relatedById: sameBookIndex, ratingsById: workRatingIndex } = React.useMemo(
+    () => buildReviewRelations(reviews, normalizeBookTitle, isSameAuthors, ratingScore), [reviews],
+  );
   const shelfPicks = useShelfPicks(groupName);
-  const ratingGapIndex = React.useMemo(() => {
-    const result = new Map<number, number>();
-    const buckets = new Map<string, BookReview[]>();
-    const key = (row: BookReview) => JSON.stringify([row.group_name, row.genre, normalizeBookTitle(row.title)]);
-    for (const row of reviews) { const rows = buckets.get(key(row)) || []; rows.push(row); buckets.set(key(row), rows); }
-    for (const book of reviews) {
-      const latest = new Map<string, BookReview>();
-      for (const row of buckets.get(key(book)) || []) {
-        if (!isSameAuthors(row.author, book.author)) continue;
-        if (row.rating === "중도하차" || ratingScore(row.rating) === undefined) continue;
-        const previous = latest.get(row.user_name);
-        // Review IDs are the existing chronological tie-breaker, including undated legacy rows.
-        if (!previous || row.id > previous.id) latest.set(row.user_name, row);
-      }
-      const scores = Array.from(latest.values()).map(row => ratingScore(row.rating)!);
-      if (scores.length >= 2) {
-        const gap = Math.max(...scores) - Math.min(...scores);
-        if (gap >= 2) result.set(book.id, gap);
-      }
-    }
-    return result;
-  }, [reviews, sameBookIndex]);
   const commentIndex = React.useMemo(() => {
     const index = new Map<number, typeof comments>();
     for (const comment of comments) {
@@ -4269,13 +4240,11 @@ function BookClubContent() {
                             className="win-btn w-full px-3 py-2 text-xs font-bold text-left flex items-center justify-between gap-2"
                             aria-expanded={isSameBookExpanded}
                           >
-                            <span className="min-w-0 truncate">
-                              📚 같은 작품의 다른 리뷰 {sameBookReviews.length}
-                              개
+                            <span className="min-w-0 inline-flex items-center gap-1">
+                              <span className="truncate">📚 <span className="hidden sm:inline">같은 작품의 </span>다른 리뷰</span>
+                              <span className="shrink-0">{sameBookReviews.length}개</span>
                             </span>
-                            {ratingGapIndex.has(book.id) && <span className="ml-auto whitespace-nowrap text-[10px] font-normal" title="모임원별 가장 최근 유효 별점의 최고·최저 차이">
-                              <span className="hidden sm:inline">{ratingGapIndex.get(book.id)! >= 3 ? "⚡ " : "👀 "}</span>별점 차이 {ratingGapIndex.get(book.id)!.toFixed(1)}
-                            </span>}
+                            <WorkRatingSummary rating={workRatingIndex.get(book.id)} />
                             <span className="whitespace-nowrap shrink-0">
                               {isSameBookExpanded ? "▲ 접기" : "▼ 펼쳐보기"}
                             </span>
