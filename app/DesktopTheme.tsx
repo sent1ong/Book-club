@@ -12,6 +12,13 @@ export const TITLE_COLORS = [["클래식 네이비", "#000080"], ["라벤더", "
   ["포레스트", "#397E70"], ["스카이 블루", "#427EBA"], ["차콜", "#474756"]] as const;
 export type DesktopColors = { background: string; title: string };
 export const DEFAULT_THEME: DesktopColors = { background: "#008080", title: "#000080" };
+export function readableAccent(hex: string) {
+  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const contrast = () => 1.05 / (0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]) + 0.05);
+  function channel(v: number) { const c = v / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }
+  while (contrast() < 4.5 && rgb.some(Boolean)) for (let i = 0; i < 3; i++) rgb[i] = Math.floor(rgb[i] * .98);
+  return "#" + rgb.map(c => c.toString(16).padStart(2, "0")).join("");
+}
 export const THEME_KEY = "bookclub98:desktop-theme:v1";
 export function parseTheme(value: string | null): DesktopColors {
   try {
@@ -34,6 +41,7 @@ export function DesktopThemeProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     document.documentElement.style.setProperty("--desktop-background", theme.background);
     document.documentElement.style.setProperty("--desktop-title", theme.title);
+    document.documentElement.style.setProperty("--desktop-accent", readableAccent(theme.title));
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach(meta => { meta.content = theme.background; });
   }, [theme]);
   const restore = useCallback(() => setTheme(saved.current), []);

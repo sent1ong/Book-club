@@ -1,9 +1,14 @@
 "use client";
+import { plainReview, reviewTags } from "./reviewMarkup";
+import { CopyTitle } from "./CopyTitle";
+import { StartMenuKeys } from "./StartMenuKeys";
+
 
 import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { renderReviewText, SpoilerReviewText } from "./ReviewFormatting";
+const ReviewEditor = dynamic(() => import("./ReviewEditor"), { loading: () => <div className="h-[66px] text-xs" role="status">한줄평 입력창을 준비하는 중…</div> });
 const ReviewQuizWindow = dynamic(() => import("./games/ReviewQuiz"));
 const VendingWindow = dynamic(() => import("./games/Vending"));
 import AndroidGroupInstall from "./AndroidGroupInstall";
@@ -12,7 +17,7 @@ import { listKey, peekList, readList, clearGroupLists } from "./listCache";
 import { useDraftClose } from "./DraftClose";
 import { useWindowEscape } from "./windowEscape";
 import { SaveNotice, savedNotice } from "./SaveNotice";
-import { buildReviewRelations, summarizeWorks } from "./reviewRelations";
+import { buildReviewRelations, summarizeWorks, yearHighlights } from "./reviewRelations";
 import { RelatedReviews, RelatedReviewsProvider } from "./RelatedReviews";
 import { getJukeboxVideoId } from "./jukeboxVideo";
 import { ReviewText, Highlight } from "./ReviewText";
@@ -1814,7 +1819,7 @@ function BookClubContent() {
       s.total += 1;
       if (r.rating === "중도하차") s.dropped += 1;
       if (r.is_favorite) s.favoriteCount += 1;
-      if (r.review) s.totalLength += r.review.length;
+      if (r.review) s.totalLength += plainReview(r.review).length;
 
       const g = r.genre || "기타";
       s.genreCounts[g] = (s.genreCounts[g] || 0) + 1;
@@ -1944,7 +1949,7 @@ function BookClubContent() {
     const recentItems = reviews.slice(0, 5).map((r) => {
       const cleanReview = r.review?.includes("(스포일러)")
         ? "스포일러 포함 리뷰 (본문 숨김)"
-        : r.review?.trim() || "감상 등록 완료";
+        : plainReview(r.review || "").trim() || "감상 등록 완료";
       const shortReview =
         cleanReview.length > 25
           ? `${cleanReview.slice(0, 25)}...`
@@ -1990,7 +1995,7 @@ function BookClubContent() {
     reviews.forEach((r) => {
       if (!r.review) return;
       // #뒤에 공백이나 특수문자가 오기 전까지의 단어 추출
-      const matched = r.review.match(/#[^\s#]+/g);
+      const matched = reviewTags(r.review);
       if (matched) {
         // 한 리뷰 내 중복 태그 제거 후 카운트
         Array.from(new Set(matched)).forEach((tag) => {
@@ -2007,7 +2012,7 @@ function BookClubContent() {
   // 선택된 태그가 포함된 리뷰 목록
   const taggedReviews = React.useMemo(() => {
     if (!selectedTag) return [];
-    return reviews.filter((r) => r.review && r.review.includes(selectedTag));
+    return reviews.filter((r) => r.review && plainReview(r.review).includes(selectedTag));
   }, [reviews, selectedTag]);
 
   // 장르별 소비 비율 및 편식 진단 계산 (전체/개인별 필터링 적용)
@@ -2067,7 +2072,7 @@ function BookClubContent() {
       if (timer !== undefined) clearTimeout(timer);
       if (document.visibilityState === "hidden") return;
       const now = new Date();
-      setTime(now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
+      setTime(now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }));
       timer = setTimeout(updateClock, 60000 - Date.now() % 60000 + 5);
     };
     updateClock();
@@ -2490,6 +2495,7 @@ function BookClubContent() {
       return mailSort === "oldest" ? delta : -delta;
     });
 
+  const reviewPlainIndex = React.useMemo(() => new Map(reviews.map(row => [row.id, plainReview(row.review || "")])), [reviews]);
   const filteredReviews = React.useMemo(() => reviews.filter((r) => {
     const matchesUser = selectedUser === "전체" || r.user_name === selectedUser;
 
@@ -2510,9 +2516,9 @@ function BookClubContent() {
       !q ||
       (r.title ?? "").toLowerCase().includes(q) ||
       (r.author ?? "").toLowerCase().includes(q) ||
-      (r.review ?? "").toLowerCase().includes(q);
+      (reviewPlainIndex.get(r.id) || "").toLowerCase().includes(q);
     return matchesUser && matchesFilter && matchesSearch;
-  }), [reviews, selectedUser, filterType, selectedGenre, searchQuery]);
+  }), [reviews, reviewPlainIndex, selectedUser, filterType, selectedGenre, searchQuery]);
 
   const displayedReviews = React.useMemo(() => [...filteredReviews].sort((a, b) => {
     if (sortOrder === "최신순") return b.id - a.id;
@@ -2536,6 +2542,9 @@ function BookClubContent() {
   const relatedPlay = React.useRef((row: BookReview) => {});
   relatedPlay.current = row => { jukeboxPlaySong(row); setOpenWindow("jukebox"); };
   const playRelated = React.useCallback((row: BookReview) => relatedPlay.current(row), []);
+  const reviewJump = React.useRef((id: number) => {});
+  reviewJump.current = id => jumpToReview(id, "review");
+  const viewRelated = React.useCallback((id: number) => reviewJump.current(id), []);
   const fulfilledReviewIds = React.useMemo(() => {
     const plansById = new Map(readingPlans.map(plan => [String(plan.id), plan]));
     const legacy = new Map<string, ReadingPlan[]>();
@@ -2550,7 +2559,21 @@ function BookClubContent() {
     return ids;
   }, [reviews, readingPlans, groupName]);
   const shelfPicks = useShelfPicks(groupName);
-  const yearRecords = React.useCallback(() => reviewsReadyGroup === groupName && !reviewsError ? summarizeWorks(reviews.filter(row => row.group_name === groupName), normalizeBookTitle, isSameAuthors) : null, [reviews, groupName, reviewsReadyGroup, reviewsError]);
+  const workShelfPicks = React.useMemo(() => {
+    const source = new Map(reviews.map(row => [String(row.id), row]));
+    const picks = Array.from(shelfPicks.values()).flat();
+    const mapping = new Map<string, typeof picks>();
+    for (const row of reviews) {
+      const members = new Map<string, typeof picks[number]>();
+      for (const pick of picks) {
+        const chosen = source.get(pick.book_id);
+        if (String(row.id) === pick.book_id || chosen && row.group_name === chosen.group_name && row.genre === chosen.genre && normalizeBookTitle(row.title) === normalizeBookTitle(chosen.title) && isSameAuthors(row.author, chosen.author)) members.set(pick.user_name, pick);
+      }
+      if (members.size) mapping.set(String(row.id), Array.from(members.values()));
+    }
+    return mapping;
+  }, [reviews, shelfPicks]);
+  const yearRecords = React.useCallback(() => reviewsReadyGroup === groupName && !reviewsError ? { ...summarizeWorks(reviews.filter(row => row.group_name === groupName), normalizeBookTitle, isSameAuthors), ...yearHighlights(reviews.filter(row => row.group_name === groupName), workRatingIndex) } : null, [reviews, groupName, reviewsReadyGroup, reviewsError, workRatingIndex]);
   const commentIndex = React.useMemo(() => {
     const index = new Map<number, typeof comments>();
     for (const comment of comments) {
@@ -2564,8 +2587,8 @@ function BookClubContent() {
     if (editingId || !formData.user_name.trim() || !formData.title.trim()) return undefined;
     return reviews.find(row => row.group_name === groupName && row.user_name === formData.user_name.trim()
       && normalizeBookTitle(row.title) === normalizeBookTitle(formData.title)
-      && normalizeBookTitle(row.author || "") === normalizeBookTitle(formData.author));
-  }, [reviews, groupName, editingId, formData.user_name, formData.title, formData.author]);
+      && row.genre === formData.genre && isSameAuthors(row.author || "", formData.author));
+  }, [reviews, groupName, editingId, formData.user_name, formData.title, formData.author, formData.genre]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitBusy.current || loading) return;
@@ -2978,7 +3001,7 @@ function BookClubContent() {
     return rateB - rateA;
   });
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = seoulDate(Date.now());
 
   const handleSaveReceiptImage = async () => {
     if (!receiptRef.current) return;
@@ -3505,13 +3528,14 @@ function BookClubContent() {
                   return (
                     <button
                       key={genre}
+                      aria-pressed={isSelected}
                       type="button"
                       onClick={() => {
                         setFilterType("all");
                         setSelectedGenre(genre);
                       }}
                       className={`px-2 py-0.5 text-xs win-btn ${
-                        isSelected ? "win-inset bg-[#dfdfdf] font-bold" : ""
+                        isSelected ? "win-inset bc-selected" : ""
                       }`}
                     >
                       {genre}
@@ -3528,9 +3552,10 @@ function BookClubContent() {
                       filterType === "favorite" ? "all" : "favorite",
                     )
                   }
+                  aria-pressed={filterType === "favorite"}
                   className={`px-2 py-0.5 text-xs win-btn ${
                     filterType === "favorite"
-                      ? "win-inset bg-amber-200 font-bold"
+                      ? "win-inset bc-selected"
                       : ""
                   }`}
                 >
@@ -3541,9 +3566,10 @@ function BookClubContent() {
                   onClick={() =>
                     setFilterType(filterType === "revisit" ? "all" : "revisit")
                   }
+                  aria-pressed={filterType === "revisit"}
                   className={`px-2 py-0.5 text-xs win-btn ${
                     filterType === "revisit"
-                      ? "win-inset bg-sky-200 font-bold"
+                      ? "win-inset bc-selected"
                       : ""
                   }`}
                 >
@@ -3571,12 +3597,13 @@ function BookClubContent() {
                   <button
                     key={user}
                     type="button"
+                    aria-pressed={selectedUser === user}
                     onClick={() => handleSelectUser(user)}
                     className={`relative ${
                       user !== "전체" && unreadMailByUser[user] ? "z-10" : "z-0"
                     } px-2 py-0.5 text-[11px] whitespace-nowrap font-bold win-btn shrink-0 ${
                       selectedUser === user
-                        ? "win-inset bg-[#000080] text-white"
+                        ? "win-inset bc-selected"
                         : ""
                     }`}
                   >
@@ -3708,7 +3735,8 @@ function BookClubContent() {
                                 NEW
                               </span>
                             )}
-                          <ShelfBadge picks={shelfPicks.get(String(book.id))} />
+                          <CopyTitle title={book.title} />
+                          <ShelfBadge picks={workShelfPicks.get(String(book.id))} />
                           {book.is_favorite && (
                             <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-1 rounded">
                               👑 인생작
@@ -3747,7 +3775,7 @@ function BookClubContent() {
                             .map((name) => (
                               <span
                                 key={name}
-                                className="bg-[#800080] text-white font-bold px-2 py-0.5"
+                                className="bc-member px-2 py-0.5"
                               >
                                 @{name}
                               </span>
@@ -3778,7 +3806,7 @@ function BookClubContent() {
                       {/* 🎵 JUKEBOX.exe — 이 작품의 OST */}
 
                       {book.ost_youtube_url && (
-                        <div className="w-full mt-2 flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] px-2 py-2 text-xs">
+                        <div className="w-full mt-2 flex items-center gap-2 bc-ost border px-2 py-2 text-xs">
                           <Image
                             src="/icons/music.png"
                             alt=""
@@ -3790,7 +3818,7 @@ function BookClubContent() {
                           />
 
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-bold text-[#800080]">
+                            <p className="text-[10px] font-bold bc-accent">
                               🎵 이 작품의 OST
                             </p>
 
@@ -3819,7 +3847,7 @@ function BookClubContent() {
                       )}
 
                       {/* 📚 같은 작품 리뷰 펼쳐보기 */}
-                      {sameBookReviews.length > 0 && <RelatedReviews bookId={book.id} sameBookReviews={sameBookReviews} rating={workRatingIndex.get(book.id)} onPlay={playRelated} />}
+                      {sameBookReviews.length > 0 && <RelatedReviews bookId={book.id} sameBookReviews={sameBookReviews} rating={workRatingIndex.get(book.id)} onPlay={playRelated} onReview={viewRelated} />}
 
                       <ReviewObjections group={groupName} book={String(book.id)} title={book.title} reviewAuthor={book.user_name}
                         members={objectionMembers}
@@ -4059,8 +4087,8 @@ function BookClubContent() {
                           ><fieldset className="min-w-0 space-y-1" disabled={commentSaving}>
                             {/* 📬 누구에게 답글을 작성 중인지 표시 */}
                             {replyTarget?.bookId === book.id && (
-                              <div className="flex items-center justify-between gap-2 bg-[#eee7fa] border border-[#b8a7d1] px-2 py-1.5 text-xs">
-                                <span className="font-bold text-[#800080] truncate">
+                              <div className="flex items-center justify-between gap-2 bc-ost border px-2 py-1.5 text-xs">
+                                <span className="font-bold bc-accent truncate">
                                   ↳ {replyTarget.userName} 님에게 답글 작성 중
                                 </span>
 
@@ -4277,7 +4305,7 @@ function BookClubContent() {
 
           {/* 현재 재생 정보 */}
           {jukeboxActive && (
-            <div className="px-2 py-1 text-[11px] bg-[#e5dff0] min-w-0">
+            <div className="px-2 py-1 text-[11px] bc-ost min-w-0">
               <p className="font-bold truncate">
                 {jukeboxActive.ost_title} — {jukeboxActive.ost_artist}
               </p>
@@ -4377,8 +4405,8 @@ function BookClubContent() {
                       onClick={() => jukeboxPlaySong(song)}
                       className={`w-full text-left p-2 border text-xs ${
                         jukeboxActiveId === song.id
-                          ? "bg-[#e8dcf4] border-[#800080]"
-                          : "bg-[#f7f7f7] border-gray-300 hover:bg-[#eee8f5]"
+                          ? "bc-ost-active"
+                          : "bc-ost-row bg-[#f7f7f7] border-gray-300"
                       }`}
                     >
                       <p className="font-bold break-words">
@@ -4421,8 +4449,7 @@ function BookClubContent() {
               {sourcePlan && <p className="text-xs text-[#000080] break-words" role="status">📌 예고에서 기록하기 · {sourcePlan.plan.title}<br />저장이 성공하면 예고 이행이 반영됩니다.</p>}
               {planUnconfirmed && <p role="alert" className="text-xs text-red-800">저장 응답을 확인하지 못했어요. 입력 내용을 유지했습니다. ‘저장 결과 확인’을 누르면 같은 제출을 확인하며 중복 등록하지 않습니다.</p>}
               {duplicateReview && <DuplicateReviewNotice key={duplicateReview.id} title={duplicateReview.title} author={duplicateReview.author} view={() => {
-                setSelectedUser("전체"); setSelectedGenre("전체"); setFilterType("all"); setSearchQuery(""); setOpenWindow(null);
-                requestAnimationFrame(() => document.getElementById("review-" + duplicateReview.id)?.scrollIntoView({ block: "center" }));
+                jumpToReview(duplicateReview.id, "review");
               }} />}
               <fieldset className="min-w-0 space-y-2.5" disabled={loading || planUnconfirmed}>
               <div>
@@ -4440,7 +4467,8 @@ function BookClubContent() {
                   placeholder="예: 지은"
                 />
               </div>
-              <div>
+              <div className="grid grid-cols-[minmax(0,7fr)_minmax(76px,3fr)] gap-2">
+              <div className="min-w-0">
                 <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
                   TITLE (제목)
                 </label>
@@ -4455,7 +4483,7 @@ function BookClubContent() {
                   placeholder="제목 입력"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
                   AUTHOR (작가)
                 </label>
@@ -4468,6 +4496,7 @@ function BookClubContent() {
                   className="w-full p-1.5 text-xs bg-white win-inset outline-none"
                   placeholder="작가 이름"
                 />
+              </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -4520,18 +4549,7 @@ function BookClubContent() {
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-gray-800 mb-0.5">
-                  REVIEW (한줄평)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.review}
-                  onChange={(e) =>
-                    setFormData({ ...formData, review: e.target.value })
-                  }
-                  className="w-full p-1.5 text-xs bg-white win-inset outline-none resize-none"
-                  placeholder="키워드는 리뷰 제일 뒤에 적어주세요. 키워드 구분은 스페이스로(※쉼표 사용 금지) ex) #연하공 #연상수"
-                />
+                <ReviewEditor value={formData.review} onChange={review => setFormData({ ...formData, review })} />
                 <div className="flex flex-wrap items-center gap-3 mt-1 text-[11px] text-gray-700">
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input
@@ -4595,7 +4613,7 @@ function BookClubContent() {
               </div>
               {/* 🎵 JUKEBOX.exe — 리뷰 OST 등록 */}
               <div className="border-t border-gray-400 pt-3 space-y-2">
-                <div className="text-[11px] font-bold text-[#800080]">
+                <div className="text-[11px] font-bold bc-accent">
                   🎵 JUKEBOX OST (선택 사항)
                 </div>
 
@@ -4885,10 +4903,10 @@ function BookClubContent() {
                     <p className="mt-1 whitespace-pre-wrap">
                       {item.preview.includes("(스포일러)")
                         ? "🔒 스포일러가 포함되어 있습니다. 원본에서 확인하세요."
-                        : item.preview}
+                        : plainReview(item.preview)}
                     </p>
                     <time className="block mt-1 text-gray-600">
-                      {new Date(item.created_at).toLocaleString("ko-KR")}
+                      {new Date(item.created_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                     </time>
                   </button>
                 ))
@@ -5130,6 +5148,7 @@ function BookClubContent() {
       )}
 
       {openWindow === "quiz" && (
+        <Suspense fallback={<PetPopup title="리뷰 퀴즈.exe" close={() => setOpenWindow(null)}><p role="status">퀴즈를 준비하는 중…</p></PetPopup>}>
         <ReviewQuizWindow
           key={groupName}
           groupName={groupName}
@@ -5138,6 +5157,7 @@ function BookClubContent() {
           onRetry={() => { void fetchReviews(); }}
           onClose={() => setOpenWindow(null)}
         />
+        </Suspense>
       )}
       {diaryOpen && <PetDiary key={groupName} group={groupName} close={() => setDiaryOpen(false)} />}
       {secretNote.popup}
@@ -5708,7 +5728,7 @@ function BookClubContent() {
                   ).map((userName) => (
                     <div key={userName} className="space-y-2">
                       {/* 회원별 제목 */}
-                      <div className="bg-[#e5dff0] border-b border-[#800080] px-2 py-1.5 text-xs font-bold text-[#000080]">
+                      <div className="bc-ost border-b px-2 py-1.5 text-xs font-bold text-[#000080]">
                         ✉️ {userName}의 예고
                       </div>
 
@@ -6246,7 +6266,7 @@ function BookClubContent() {
       )}
 
       {/* 🎰 키워드 캡슐 자판기 (VENDING.exe) */}
-      {vendingVisited && <VendingWindow key={groupName} active={openWindow === "vending"} reviews={reviews} tagCounts={tagCounts} onClose={() => setOpenWindow(null)} />}
+      {vendingVisited && <Suspense fallback={openWindow === "vending" ? <PetPopup title="VENDING.exe" close={() => setOpenWindow(null)}><p role="status">자판기를 준비하는 중…</p></PetPopup> : null}><VendingWindow key={groupName} active={openWindow === "vending"} reviews={reviews} tagCounts={tagCounts} onClose={() => setOpenWindow(null)} /></Suspense>}
 
 
       {/* 💖 취향 도플갱어 매칭기 (SOULMATE.exe) */}
@@ -6890,7 +6910,7 @@ function BookClubContent() {
                       onClick={() => setSelectedBingoUser(u)}
                       className={`px-2 py-0.5 text-xs win-btn font-bold ${
                         selectedBingoUser === u
-                          ? "win-inset bg-[#000080] text-white"
+                          ? "win-inset bc-selected"
                           : ""
                       }`}
                     >
@@ -7307,10 +7327,7 @@ function BookClubContent() {
       {openWindow === "desktop-theme" && <DesktopThemeWindow close={() => setOpenWindow(null)} explorerTitle={explorerTitle} bookCount={displayedReviews.length} />}
       {/* 시작 메뉴 팝업 */}
       {startMenuOpen && (
-        <div
-          className="absolute bottom-10 left-0 z-50 w-60 bg-[#c0c0c0] win-outset flex shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <StartMenuKeys close={() => setStartMenuOpen(false)}>
           {/* 좌측 사이드바: 실제 모임 이름과 기존 표시줄 테마 */}
           <StartMenuBand group={groupName} />
           <div className="flex-1 min-w-0 p-1 flex flex-col space-y-0.5 text-xs max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
@@ -7318,7 +7335,7 @@ function BookClubContent() {
               <button
                 key={app.id}
                 onClick={() => handleAppClick(app.id)}
-                className="flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors"
+                className="bc-start-item flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors"
               >
                 <div className="relative w-5 h-5 flex-shrink-0">
                   <Image
@@ -7333,13 +7350,13 @@ function BookClubContent() {
               </button>
             ))}
             <button type="button" onClick={() => { setStartMenuOpen(false); setOpenWindow("desktop-theme"); }}
-              className="flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors">
+              className="bc-start-item flex items-center space-x-2 px-2 py-1.5 hover:bg-[#000080] hover:text-white rounded text-left transition-colors">
               <div className="relative w-5 h-5 flex-shrink-0"><Image src="/icons/theme.png" alt="" fill sizes="20px" className="object-contain" /></div>
               <span className="truncate">화면 꾸미기</span>
             </button>
             <AndroidGroupInstall groupName={groupName} />
           </div>
-        </div>
+        </StartMenuKeys>
       )}
 
       {planCelebration?.group === groupName && (

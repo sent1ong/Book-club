@@ -68,7 +68,7 @@ function Schedule({ data }: { data: Snapshot }) {
   return <p className="leading-relaxed text-[#000080]">{data.can_issue ? <>🏆 연말 상장 수여 기간이에요!<br />12월 30일까지 모임원에게 특별한 상을 선물해 보세요. ♡</> : data.auto_ceremony_day ? <>🎉 오늘은 BOOK CLUB 98 연말 시상식 날이에요!<br />상장 수여는 마감되었어요.</> : <>🏆 상장은 {data.operating_year}년 12월 1일~30일에만 수여할 수 있어요.<br />받은 상장은 언제든 다시 볼 수 있답니다. ♡</>}</p>;
 }
 
-export function AwardsHub({ group, member, author, ready, blocked, onReview, records }: { group: string; member: string; author: string; ready: boolean; blocked: boolean; onReview?: (id: string) => void; records?: () => { reviews: number; works: number; shared: number } | null }) {
+export function AwardsHub({ group, member, author, ready, blocked, onReview, records }: { group: string; member: string; author: string; ready: boolean; blocked: boolean; onReview?: (id: string) => void; records?: () => import("../reviewRelations").YearSummary | null }) {
   const [meta, setMeta] = useState<Snapshot | null>(null);
   const [data, setData] = useState<Snapshot | null>(null);
   const autoToken = useRef({});
@@ -181,7 +181,7 @@ export function AwardsHub({ group, member, author, ready, blocked, onReview, rec
         {mode === "ceremony" ? <>
           <h2 className="text-center text-lg font-bold">🏆 {data.operating_year} 연말 시상식 🏆</h2>
           <div role="tablist" aria-label="연말 결과" className="flex gap-2"><button type="button" role="tab" aria-selected={ceremonyTab === "awards"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("awards")}>🏆 받은 상장</button><button type="button" role="tab" aria-selected={ceremonyTab === "shelf"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("shelf")}>📚 공동책장</button></div>
-          {totals && <section className="win-inset bg-[#fffbea] p-2 text-center" aria-label="우리의 숫자들"><h3 className="font-bold mb-2">✦ {data.operating_year} 우리 모임의 기록 ✦</h3><div className="grid grid-cols-3 gap-1">{[[totals.reviews,"남긴 리뷰"],[totals.works,"기록한 작품"],[totals.shared,"함께 리뷰한 작품"]].map(([value,label]) => <p key={label}><b className="block text-lg">{value}</b><span className="text-[11px]">{label}</span></p>)}</div></section>}
+          {totals && <section className="win-inset bg-[#fffbea] p-2 text-center" aria-label="우리의 숫자들"><h3 className="font-bold mb-2">✦ {data.operating_year} 우리 모임의 기록 ✦</h3><div className="grid grid-cols-3 gap-1">{[[totals.reviews,"남긴 리뷰"],[totals.works,"기록한 작품"],[totals.shared,"함께 리뷰한 작품"]].map(([value,label]) => <p key={label}><b className="block text-lg">{value}</b><span className="text-[11px]">{label}</span></p>)}</div>{totals.genres && <p className="mt-2 text-xs">📊 올해 가장 많이 기록한 장르: {totals.genres.names.join(" · ")} ({totals.genres.count}건)</p>}{totals.divided && <p className="mt-1 text-xs">⚡ 올해 가장 의견이 갈린 작품: <button type="button" className="underline" onClick={() => { if (!locked.current) { close(); onReview?.(String(totals.divided!.id)); } }}>{totals.divided.title}</button> (차이 {totals.divided.gap.toFixed(1)}점)</p>}</section>}
           {ceremonyTab === "shelf" ? <FinalShelf group={group} year={data.operating_year} onReview={id => { if (!locked.current) { close(); onReview?.(id); } }} /> : <>
           <p className="text-center">BOOK CLUB 98 · 총 {data.total_count}장 · 수상자 {new Set(data.awards.map(row => row.recipient)).size}명</p>
           {!data.total_count && <p>아직 수여된 상장이 없어요.</p>}

@@ -1,20 +1,7 @@
 "use client";
 import React, { useState } from "react";
-export function renderReviewText(text: string): React.ReactNode {
-  return (
-    <span className="whitespace-pre-wrap">
-      {text.split(/(#[^\s#]+)/g).map((part, index) =>
-        index % 2 === 1 ? (
-          <span key={index} className="text-blue-600">
-            {part}
-          </span>
-        ) : (
-          part
-        ),
-      )}
-    </span>
-  );
-}
+import { FormattedReview } from "./FormattedReview";
+export function renderReviewText(text: string): React.ReactNode { return <span className="whitespace-pre-wrap"><FormattedReview text={text} /></span>; }
 
 export function SpoilerReviewText({ text }: { text: string }) {
   const [revealedText, setRevealedText] = useState<string | null>(null);

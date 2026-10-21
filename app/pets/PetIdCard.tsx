@@ -83,7 +83,7 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
       </dl>
     </div>
     <button type="button" className="mt-2 text-[11px] text-[#594173] underline" onClick={() => setGrowthOpen(true)}>📷 성장 기록</button>
-    {growthOpen && <PetGrowth pet={pet} close={() => setGrowthOpen(false)} />}
+    {growthOpen && <React.Suspense fallback={<PetPopup title="📷 PET_GROWTH.exe" close={() => setGrowthOpen(false)} front><p role="status">성장 기록을 준비하는 중…</p></PetPopup>}><PetGrowth pet={pet} close={() => setGrowthOpen(false)} /></React.Suspense>}
     {(pet.stage==="dead" || pet.died_at) && pet.last_petted_by && pet.last_petted_at && Number.isFinite(Date.parse(pet.last_petted_at)) && <section className="mt-2 border-t border-[#cabbcf] pt-1" aria-label="마지막 쓰다듬기"><b>🐾 마지막 발자국</b><p>마지막으로 쓰다듬어 준 사람: {pet.last_petted_by}</p><p>{dateLabel(pet.last_petted_at)}</p></section>}
     {pet.stage!=="egg" && <section className="mt-2 border-t border-[#cabbcf] pt-1 text-xs leading-5" aria-label="펫 성격">
       {profile ? <><p><strong>성격 · {profile.personality_name}</strong></p><p className="break-words">✦ {profile.description}</p></>

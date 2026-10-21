@@ -1,4 +1,5 @@
 "use client";
+import { plainReview, reviewTags } from "../reviewMarkup";
 import React, { useState } from "react";
 import { useWindowEscape } from "../windowEscape";
 import { SpoilerReviewText } from "../ReviewFormatting";
@@ -40,7 +41,7 @@ export default function VendingWindow({ active, reviews, tagCounts, onClose }: {
 
         // 뽑힌 3개 키워드 중 하나라도 포함된 작품 검색
         const matchedBooks = reviews.filter(
-          (r) => r.review && pickedTags.some((tag) => r.review.includes(tag)),
+          (r) => r.review && pickedTags.some((tag) => plainReview(r.review).includes(tag)),
         );
 
         if (matchedBooks.length > 0) {
@@ -127,7 +128,7 @@ export default function VendingWindow({ active, reviews, tagCounts, onClose }: {
                     <div className="flex flex-wrap gap-1.5 justify-center">
                       {vendingTags.map((tag) => {
                         const matchedTags: string[] =
-                          vendingBook?.review?.match(/#[^\s#]+/g) || [];
+                          reviewTags(vendingBook?.review || "");
 
                         const isMatched = matchedTags.includes(tag);
 

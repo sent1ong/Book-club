@@ -1,5 +1,7 @@
 "use client";
 
+import { plainReview } from "./reviewMarkup";
+import { FormattedReview } from "./FormattedReview";
 import React, { memo, useMemo, useState } from "react";
 
 export function Highlight({ text, query = "" }: { text: string; query?: string }) {
@@ -32,13 +34,12 @@ export function reviewPreview(text: string) {
 
 export const ReviewText = memo(function ReviewText({ text, query = "" }: { text: string; query?: string }) {
   const [expandedText, setExpandedText] = useState<string | null>(null);
-  const preview = useMemo(() => reviewPreview(text), [text]);
-  const collapsible = useMemo(() => Array.from(text).length >= 500, [text]);
+  const preview = useMemo(() => reviewPreview(plainReview(text)), [text]);
+  const collapsible = useMemo(() => Array.from(plainReview(text)).length >= 500, [text]);
   const expanded = expandedText === text;
-  const visible = expanded ? text : preview;
+  const visible = expanded ? plainReview(text) : preview;
   return <div className="text-gray-800 bg-gray-50 p-2 rounded win-inset mt-1 break-all text-xs leading-normal">
-    <span className="whitespace-pre-wrap">{visible.split(/(#[^\s#]+)/g).map((part, index) =>
-      <span key={index} className={index % 2 ? "text-blue-600" : undefined}><Highlight text={part} query={query} /></span>)}{visible.length < text.length ? "…" : ""}</span>
+    <span className="whitespace-pre-wrap">{<FormattedReview text={text} query={query} limit={expanded ? undefined : Array.from(preview).length} />}{visible.length < plainReview(text).length ? "…" : ""}</span>
     {collapsible && <button type="button" className="block mt-1 text-[#000080] underline" aria-expanded={expanded} onClick={() => setExpandedText(expanded ? null : text)}>{expanded ? "▲ 접기" : "▼ 더 읽기"}</button>}
   </div>;
 });

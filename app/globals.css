@@ -183,3 +183,12 @@ html, body, .desktop-surface { background-color: var(--desktop-background); }
 
 /* Pause only visual CSS work; server lifecycle and data clocks are unchanged. */
 html[data-bc-background="true"] *, html[data-bc-background="true"] *::before, html[data-bc-background="true"] *::after { animation-play-state: paused !important; }
+
+/* Shared accents follow the existing theme preview/apply/restore variables. */
+:root { --desktop-accent: #000080; }
+.bc-selected.win-btn, .bc-member { background-color: var(--desktop-accent); color: white; font-weight: 700; }
+.bc-accent { color: var(--desktop-accent); }
+.bc-ost { background-color: color-mix(in srgb, var(--desktop-title) 6%, white); border-color: color-mix(in srgb, var(--desktop-title) 30%, white); }
+.bc-ost-active { background-color: color-mix(in srgb, var(--desktop-title) 14%, white); border-color: var(--desktop-accent); }
+.bc-start-item:focus-visible { background-color: var(--desktop-accent); color: white; outline: 1px dotted white; outline-offset: -3px; }
+.bc-ost-row:hover { background-color: color-mix(in srgb, var(--desktop-title) 9%, white); }

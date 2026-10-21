@@ -1,4 +1,5 @@
 "use client";
+import { plainReview } from "../reviewMarkup";
 import React, { useState } from "react";
 import { useWindowEscape } from "../windowEscape";
 import { renderReviewText } from "../ReviewFormatting";
@@ -32,7 +33,7 @@ function buildReviewQuiz(
     return Boolean(
       row.user_name?.trim() &&
         row.title?.trim() &&
-        row.review?.replace(/\(스포일러\)/g, "").trim(),
+        plainReview(row.review)?.replace(/\(스포일러\)/g, "").trim(),
     );
   });
   const titlesByUser = new Map<string, Set<string>>();
@@ -55,7 +56,7 @@ function buildReviewQuiz(
       );
       return {
         id: row.id,
-        text: row.review.replace(/\(스포일러\)/g, "").trim(),
+        text: plainReview(row.review).replace(/\(스포일러\)/g, "").trim(),
         reviewer: row.user_name,
         answer,
         options: shuffleQuizItems([

@@ -31,4 +31,4 @@ export function PetPopup({ title, close, children, front = false }: {
 }
 
 
-export function PetDiary(props: { group: string; close: () => void }) { return <DiaryWindow {...props} />; }
+export function PetDiary(props: { group: string; close: () => void }) { return <React.Suspense fallback={<PetPopup title="PET_DIARY.exe" close={props.close}><p role="status">일기장을 준비하는 중…</p></PetPopup>}><DiaryWindow {...props} /></React.Suspense>; }

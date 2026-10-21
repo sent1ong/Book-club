@@ -61,3 +61,16 @@ export function summarizeWorks<T extends Review>(reviews: readonly T[], normaliz
   }
   return { reviews: reviews.length, works, shared };
 }
+
+export type YearSummary = { reviews: number; works: number; shared: number; genres?: { names: string[]; count: number }; divided?: { id: number; title: string; gap: number } };
+export function yearHighlights<T extends Review>(reviews: readonly T[], ratings: ReadonlyMap<number, WorkRating>) {
+  const counts = new Map<string, number>(); let divided: YearSummary["divided"];
+  for (const row of reviews) {
+    if (row.genre?.trim()) counts.set(row.genre, (counts.get(row.genre) || 0) + 1);
+    const rating = ratings.get(row.id);
+    if (rating && rating.gap > 0 && (!divided || rating.gap > divided.gap || rating.gap === divided.gap && row.id < divided.id)) divided = { id: row.id, title: row.title, gap: rating.gap };
+  }
+  const maximum = Math.max(0, ...Array.from(counts.values()));
+  const genres = maximum ? { names: Array.from(counts).filter(([,n]) => n === maximum).map(([name]) => name).sort((a,b) => a.localeCompare(b, "ko")), count: maximum } : undefined;
+  return { genres, divided };
+}

@@ -16,7 +16,7 @@ export function RelatedReviewsProvider({ children }: { children: React.ReactNode
   const [store] = useState(makeStore); return <Selection.Provider value={store}>{children}</Selection.Provider>;
 }
 import { getJukeboxVideoId } from "./jukeboxVideo";
-export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookReviews, rating, onPlay }: { bookId: number; sameBookReviews: RelatedReview[]; rating?: WorkRating; onPlay: (row: RelatedReview) => void }) {
+export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookReviews, rating, onPlay, onReview }: { bookId: number; sameBookReviews: RelatedReview[]; rating?: WorkRating; onPlay: (row: RelatedReview) => void; onReview?: (id: number) => void }) {
   const store = useContext(Selection)!;
   const isSameBookExpanded = useSyncExternalStore(store.subscribe, () => store.selected() === bookId, () => false);
   const toggle = () => store.toggle(bookId);
@@ -59,7 +59,7 @@ export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookRev
                                   </div>
 
                                   <div className="text-[11px] text-gray-500 break-words">
-                                    📖 {other.title} · {other.author}
+                                    📖 {other.title} · {other.author}{onReview && <button type="button" className="ml-2 underline bc-accent py-1" onClick={() => onReview(other.id)}>원본 보기 ↗</button>}
                                   </div>
 
                                   {/* 스포일러는 기존 컴포넌트로 가리기 */}
@@ -78,7 +78,7 @@ export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookRev
                                     getJukeboxVideoId(
                                       other.ost_youtube_url,
                                     ) && (
-                                      <div className="flex items-center gap-2 bg-[#f5f0ff] border border-[#c8b8dc] p-2">
+                                      <div className="flex items-center gap-2 bc-ost border p-2">
                                         <Image
                                           src="/icons/music.png"
                                           alt=""
@@ -89,7 +89,7 @@ export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookRev
                                         />
 
                                         <div className="min-w-0 flex-1">
-                                          <p className="text-[10px] font-bold text-[#800080]">
+                                          <p className="text-[10px] font-bold bc-accent">
                                             🎵 이 책의 OST
                                           </p>
                                           <p className="text-[11px] font-bold text-gray-800 break-words">
