@@ -4243,8 +4243,8 @@ function BookClubContent() {
                             <span className="min-w-0 inline-flex items-center gap-1">
                               <span className="truncate">📚 <span className="hidden sm:inline">같은 작품의 </span>다른 리뷰</span>
                               <span className="shrink-0">{sameBookReviews.length}개</span>
+                              <WorkRatingSummary rating={workRatingIndex.get(book.id)} />
                             </span>
-                            <WorkRatingSummary rating={workRatingIndex.get(book.id)} />
                             <span className="whitespace-nowrap shrink-0">
                               {isSameBookExpanded ? "▲ 접기" : "▼ 펼쳐보기"}
                             </span>
