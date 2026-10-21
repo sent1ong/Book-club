@@ -28,11 +28,12 @@ async function send(body: Record<string, unknown>): Promise<Result> {
     const activityMutation = body.kind === "query" && body.action !== "select" &&
       ["books", "book_comments", "reading_plans"].includes(String(body.table));
     if (group && !result.error && (petMutation || activityMutation || body.kind === "plan-review")) petMemory.invalidate(group);
+    if (response.status >= 500 && (body.kind === "plan-review" || typeof body.submission === "string")) return { ...result, error: { message: result.error?.message || "저장 결과를 확인하지 못했어요.", unconfirmed: true } };
     return result;
   } catch {
     return {
       data: null,
-      error: { message: "연결을 확인하고 다시 시도해 주세요.", ...(body.kind === "plan-review" ? { unconfirmed: true } : {}) },
+      error: { message: "연결을 확인하고 다시 시도해 주세요.", ...((body.kind === "plan-review" || typeof body.submission === "string") ? { unconfirmed: true } : {}) },
     };
   }
 }
@@ -60,8 +61,9 @@ class Query implements PromiseLike<Result> {
     if (options?.count) this.body.count = options.count;
     return this;
   }
-  insert(rows: any) {
+  insert(rows: any, options?: { submission?: string }) {
     this.body.action = "insert";
+    if (options?.submission) this.body.submission = options.submission;
     this.body.rows = rows;
     return this;
   }

@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinalShelf } from "../community/SharedShelf";
+import { useWindowEscape } from "../windowEscape";
 import { autoModal } from "../community/autoModal";
 
 export type Award = { id: string; recipient: string; giver: string; title: string; reason: string; given_at: string };
@@ -42,16 +43,12 @@ export function Certificate({ award }: { award: Award }) {
 
 function AwardsWindow({ title, close, children, onShown }: { title: string; close: () => void; children: React.ReactNode; onShown?: () => void }) {
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    box.current?.focus(); onShown?.();
-    return () => { if (previous?.isConnected) previous.focus(); };
-  }, []); // Opening, rather than a successful fetch, marks automatic display.
+  useWindowEscape(close, true, 95, () => box.current);
+  useEffect(() => { onShown?.(); }, []);
   return createPortal(<div className="fixed inset-0 z-[95] bg-black/40 flex items-center justify-center p-3">
     <div ref={box} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
       className="win-outset bg-[#c0c0c0] p-1 w-full max-w-lg max-h-[88dvh] flex flex-col text-black outline-none"
       onKeyDown={event => {
-        if (event.key === "Escape") { event.stopPropagation(); close(); }
         if (event.key === "Tab") {
           const items = box.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex='0']");
           if (!items?.length) return;
@@ -71,7 +68,7 @@ function Schedule({ data }: { data: Snapshot }) {
   return <p className="leading-relaxed text-[#000080]">{data.can_issue ? <>🏆 연말 상장 수여 기간이에요!<br />12월 30일까지 모임원에게 특별한 상을 선물해 보세요. ♡</> : data.auto_ceremony_day ? <>🎉 오늘은 BOOK CLUB 98 연말 시상식 날이에요!<br />상장 수여는 마감되었어요.</> : <>🏆 상장은 {data.operating_year}년 12월 1일~30일에만 수여할 수 있어요.<br />받은 상장은 언제든 다시 볼 수 있답니다. ♡</>}</p>;
 }
 
-export function AwardsHub({ group, member, author, ready, blocked }: { group: string; member: string; author: string; ready: boolean; blocked: boolean }) {
+export function AwardsHub({ group, member, author, ready, blocked, onReview, records }: { group: string; member: string; author: string; ready: boolean; blocked: boolean; onReview?: (id: string) => void; records?: () => { reviews: number; works: number; shared: number } | null }) {
   const [meta, setMeta] = useState<Snapshot | null>(null);
   const [data, setData] = useState<Snapshot | null>(null);
   const autoToken = useRef({});
@@ -125,7 +122,7 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
     return () => { abort.abort(); clearInterval(timer); window.removeEventListener("focus", focus); };
   }, [group, ready]);
   useEffect(() => {
-    const timer = window.setInterval(() => setTick(value => value + 1), 5000);
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible" && guard.current.ready && !guard.current.blocked && !guard.current.mode) setTick(value => value + 1); }, 5000);
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
@@ -150,6 +147,7 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
     if (locked.current) return;
     setCeremonyTab("awards"); setAutomatic(false); setRecipient(member); setStage("list"); setIndex(0); setNotice(""); setData(null); setMode(next); void load();
   };
+  const totals = React.useMemo(() => mode === "ceremony" ? records?.() : null, [mode, records]);
   const rows = data?.awards.filter(row => row.recipient === recipient) ?? [];
   const self = giver === recipient;
   const valid = !!data?.can_issue && data.members.includes(giver) && data.members.includes(recipient) && !self && length(title) > 0 && length(title) <= 30 && length(reason) > 0 && length(reason) <= 150;
@@ -183,7 +181,8 @@ export function AwardsHub({ group, member, author, ready, blocked }: { group: st
         {mode === "ceremony" ? <>
           <h2 className="text-center text-lg font-bold">🏆 {data.operating_year} 연말 시상식 🏆</h2>
           <div role="tablist" aria-label="연말 결과" className="flex gap-2"><button type="button" role="tab" aria-selected={ceremonyTab === "awards"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("awards")}>🏆 받은 상장</button><button type="button" role="tab" aria-selected={ceremonyTab === "shelf"} className="win-btn px-3 py-2" onClick={() => setCeremonyTab("shelf")}>📚 공동책장</button></div>
-          {ceremonyTab === "shelf" ? <FinalShelf group={group} year={data.operating_year} /> : <>
+          {totals && <section className="win-inset bg-[#fffbea] p-2 text-center" aria-label="우리의 숫자들"><h3 className="font-bold mb-2">✦ {data.operating_year} 우리 모임의 기록 ✦</h3><div className="grid grid-cols-3 gap-1">{[[totals.reviews,"남긴 리뷰"],[totals.works,"기록한 작품"],[totals.shared,"함께 리뷰한 작품"]].map(([value,label]) => <p key={label}><b className="block text-lg">{value}</b><span className="text-[11px]">{label}</span></p>)}</div></section>}
+          {ceremonyTab === "shelf" ? <FinalShelf group={group} year={data.operating_year} onReview={id => { if (!locked.current) { close(); onReview?.(id); } }} /> : <>
           <p className="text-center">BOOK CLUB 98 · 총 {data.total_count}장 · 수상자 {new Set(data.awards.map(row => row.recipient)).size}명</p>
           {!data.total_count && <p>아직 수여된 상장이 없어요.</p>}
           {data.awards.map((award, i) => <section key={award.id} className="space-y-2">

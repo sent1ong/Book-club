@@ -45,3 +45,19 @@ export function buildReviewRelations<T extends Review>(
   });
   return { relatedById, ratingsById };
 }
+
+export function summarizeWorks<T extends Review>(reviews: readonly T[], normalizeTitle: (value: string) => string, sameAuthors: (a: string, b: string) => boolean) {
+  const buckets = new Map<string, { author: string; members: Set<string> }[]>();
+  let works = 0, shared = 0;
+  for (const row of reviews) {
+    if (!row.title?.trim()) continue;
+    const key = JSON.stringify([row.group_name, row.genre, normalizeTitle(row.title)]);
+    const groups = buckets.get(key) || [];
+    let work = groups.find(value => sameAuthors(row.author, value.author));
+    if (!work) { work = { author: row.author, members: new Set() }; groups.push(work); buckets.set(key, groups); works++; }
+    const previous = work.members.size;
+    if (row.user_name?.trim()) work.members.add(row.user_name);
+    if (previous < 2 && work.members.size >= 2) shared++;
+  }
+  return { reviews: reviews.length, works, shared };
+}

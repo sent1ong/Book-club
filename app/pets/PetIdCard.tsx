@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+const PetGrowth = dynamic(() => import("./PetGrowth"));
 import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "./PetDiary";
 import { petMemory } from "./memoryCache";
@@ -61,7 +63,6 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
   pet:PetSnapshot;sprite:React.ReactNode;colorVariant:string;memento?:PetMemento;loading?:boolean;error?:string;personality?:PetPersonality;personalityLoading?:boolean;personalityError?:string;farewell?:PetFarewell;farewellLoading?:boolean;farewellError?:string;snack?:PetSnack;snackLoading?:boolean;snackError?:string;
 }) {
   const [growthOpen, setGrowthOpen] = useState(false);
-  const stages = [{ key: "baby", name: "아기", date: pet.baby_entered_at }, { key: "teen", name: "청소년", date: pet.teen_entered_at }, { key: "adult", name: "성체", date: pet.adult_at }].filter(row => row.date && Number.isFinite(Date.parse(row.date)));
   const favoriteSnack=matchingSnack(pet,snack);
   const lastWords=matchingFarewell(pet,farewell);
   const profile=matchingPersonality(pet,personality);
@@ -82,9 +83,7 @@ export function PetIdCard({pet,sprite,colorVariant,memento,loading,error,persona
       </dl>
     </div>
     <button type="button" className="mt-2 text-[11px] text-[#594173] underline" onClick={() => setGrowthOpen(true)}>📷 성장 기록</button>
-    {growthOpen && <PetPopup title={`📷 ${pet.pet_name || "우리 펫"}의 성장 기록`} close={() => setGrowthOpen(false)} front>
-      {stages.length ? <div className="flex justify-around gap-2">{stages.map(row => <div key={row.key} className="text-center"><img src={`/pets/${pet.species}/${row.key}.png`} alt={row.name} width={60} height={60} /><b>{row.name}</b><p>{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "2-digit", month: "2-digit", day: "2-digit" }).format(new Date(row.date!)).replace(/\. /g, ".").replace(/\.$/, "")}</p></div>)}</div> : <p>아직 날짜가 기록된 성장 단계가 없어요.</p>}
-    </PetPopup>}
+    {growthOpen && <PetGrowth pet={pet} close={() => setGrowthOpen(false)} />}
     {(pet.stage==="dead" || pet.died_at) && pet.last_petted_by && pet.last_petted_at && Number.isFinite(Date.parse(pet.last_petted_at)) && <section className="mt-2 border-t border-[#cabbcf] pt-1" aria-label="마지막 쓰다듬기"><b>🐾 마지막 발자국</b><p>마지막으로 쓰다듬어 준 사람: {pet.last_petted_by}</p><p>{dateLabel(pet.last_petted_at)}</p></section>}
     {pet.stage!=="egg" && <section className="mt-2 border-t border-[#cabbcf] pt-1 text-xs leading-5" aria-label="펫 성격">
       {profile ? <><p><strong>성격 · {profile.personality_name}</strong></p><p className="break-words">✦ {profile.description}</p></>

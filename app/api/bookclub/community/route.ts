@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
     const [room] = await Promise.all([authorize(request, body.group), rateLimit(request, body.group, "community", 120)]);
     const group = room.group_name;
     let result;
-    if (body.action === "defenses-read") {
+    if (body.action === "pet-care-stats") {
+      if (!id(body.generation)) throw new ApiError("이 모임의 펫을 선택해 주세요.");
+      result = await admin().rpc("bc_pet_care_stats", { p_group: group, p_generation_id: body.generation });
+    } else if (body.action === "defenses-read") {
       if (!id(body.book)) throw new ApiError("이 모임의 리뷰를 선택해 주세요.");
       result = await admin().rpc("bc_defenses_read", { p_group: group, p_book_id: body.book });
     } else if (body.action === "defenses-create") {

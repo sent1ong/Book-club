@@ -3,10 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useDraftClose } from "../DraftClose";
 import { PetPopup } from "../pets/PetDiary";
 import { community, readShelf, invalidateShelf, type Shelf } from "./client";
+import { ShelfReason } from "./ShelfReason";
 import { autoModal } from "./autoModal";
 export const SHELF_UI = { button: "📚 공동책장", window: "SHARED_SHELF.exe", heading: "우리 모임이 함께 남기는 올해의 작품들!", item: "대표 작품", choose: "리뷰한 작품 선택" } as const;
 
-export function ShelfRows({ data, final = false }: { data: Shelf; final?: boolean }) {
+export function ShelfRows({ data, final = false, onReview }: { data: Shelf; final?: boolean; onReview?: (id: string) => void }) {
   return <section className="space-y-3">
     <h2 className="font-bold text-base">📚 {data.operating_year} 공동책장</h2>
     <p>{SHELF_UI.heading}</p>
@@ -16,12 +17,12 @@ export function ShelfRows({ data, final = false }: { data: Shelf; final?: boolea
       const pick = data.picks.find(row => row.user_name === member);
       return <article key={member} className="win-inset bg-[#fff9e9] p-3 break-words space-y-1">
         <h3 className="font-bold">{member} · {pick ? "선정 완료" : "미등록"}</h3>
-        {pick ? <><p className="font-bold">📖 {pick.title}</p><p className="text-gray-600">{pick.author}</p><p className="whitespace-pre-wrap leading-5">{pick.reason}</p></> : <p>{final ? "미선정" : "아직 비어 있어요"}</p>}
+        {pick ? <><p className="font-bold">{onReview ? <button type="button" className="text-left underline text-[#000080]" onClick={() => onReview(pick.book_id)}>📖 {pick.title}</button> : <>📖 {pick.title}</>}</p><p className="text-gray-600">{pick.author}</p><ShelfReason text={pick.reason} /></> : <p>{final ? "미선정" : "아직 비어 있어요"}</p>}
       </article>;
     })}
   </section>;
 }
-export function FinalShelf({ group, year }: { group: string; year: number }) {
+export function FinalShelf({ group, year, onReview }: { group: string; year: number; onReview?: (id: string) => void }) {
   const [data, setData] = useState<Shelf | null>(null), [error, setError] = useState(""), [retry, setRetry] = useState(0);
   useEffect(() => {
     const abort = new AbortController(); setData(null); setError("");
@@ -31,7 +32,7 @@ export function FinalShelf({ group, year }: { group: string; year: number }) {
     }).catch(e => { if (!abort.signal.aborted) setError(e.message); });
     return () => abort.abort();
   }, [group, year, retry]);
-  return error ? <p role="alert">{error} <button className="win-btn px-2" onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p> : data ? <ShelfRows data={data} final /> : <p role="status">공동책장을 불러오는 중…</p>;
+  return error ? <p role="alert">{error} <button className="win-btn px-2" onClick={() => setRetry(x => x + 1)}>다시 불러오기</button></p> : data ? <ShelfRows data={data} final onReview={onReview} /> : <p role="status">공동책장을 불러오는 중…</p>;
 }
 function ShelfEditor({ group, initialMember, close }: { group: string; initialMember: string; close: () => void }) {
   const [data, setData] = useState<Shelf | null>(null), [member, setMember] = useState(initialMember === "전체" ? "" : initialMember);

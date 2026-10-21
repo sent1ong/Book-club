@@ -20,9 +20,9 @@ export function useShelfPicks(group: string) {
     return map;
   }, [snapshot, group]);
 }
-export function ShelfBadge({ picks }: { picks?: ShelfPick[] }) {
+export const ShelfBadge = React.memo(function ShelfBadge({ picks }: { picks?: ShelfPick[] }) {
   const [open, setOpen] = useState(false);
   if (!picks?.length) return null;
   return <><button type="button" className="bg-amber-100 text-amber-900 border border-amber-300 text-xs px-1 whitespace-nowrap" onClick={() => setOpen(true)}>🏆 올해의 픽{picks.length > 1 ? ` ×${picks.length}` : ""}</button>
     {open && <PetPopup title="🏆 올해의 픽" close={() => setOpen(false)}>{picks.map(pick => <div key={pick.user_name} className="mb-3 break-words"><b>{pick.user_name} · {pick.title}</b><p className="whitespace-pre-wrap mt-1">{pick.reason}</p></div>)}</PetPopup>}</>;
-}
+});

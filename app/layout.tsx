@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { BackgroundActivity } from './BackgroundActivity';
 import { DesktopThemeProvider } from './DesktopTheme';
 import { DesktopEffectsProvider } from './desktop/Effects';
 
@@ -30,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="desktop-surface overflow-hidden select-none bg-[#008080] text-black">
-        <DesktopThemeProvider><DesktopEffectsProvider>{children}</DesktopEffectsProvider></DesktopThemeProvider>
+        <BackgroundActivity /><DesktopThemeProvider><DesktopEffectsProvider>{children}</DesktopEffectsProvider></DesktopThemeProvider>
       </body>
     </html>
   );

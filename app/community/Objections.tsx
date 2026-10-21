@@ -61,7 +61,7 @@ function ObjectionWindow({ anchor, close, children, focusKey }: { anchor: React.
     <div ref={content} className="space-y-3" onWheel={event => event.stopPropagation()} onTouchMove={event => event.stopPropagation()}>{children}</div>
   </PetPopup>;
 }
-export function ReviewObjections({ group, book, title, reviewAuthor, members, author }: { group: string; book: string; title: string; reviewAuthor: string; members: string[]; author: string }) {
+export const ReviewObjections = React.memo(function ReviewObjections({ group, book, title, reviewAuthor, members, author }: { group: string; book: string; title: string; reviewAuthor: string; members: string[]; author: string }) {
   const { counts, refresh, update } = useContext(Counts);
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false), [rows, setRows] = useState<Objection[]>([]);
@@ -156,4 +156,4 @@ export function ReviewObjections({ group, book, title, reviewAuthor, members, au
     </ObjectionWindow>}
     {confirmation}
   </section>;
-}
+});

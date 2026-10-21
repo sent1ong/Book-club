@@ -8,7 +8,7 @@ export type PetSnapshot = SecretPet & {
   decoration: string | null; born_at: string;
   stage: "egg" | "baby" | "teen" | "adult" | "dead";
 };
-export type SavedDiary = { id: number; generation_id: number; diary_date: string; display_name: string;
+export type SavedDiary = { species?: string; stage?: string; id: number; generation_id: number; diary_date: string; display_name: string;
   title: string; body: string; is_final: boolean; generation_number: number };
 
 export function cachedPet(group: string) {
@@ -61,7 +61,7 @@ export function loadPetGenerations(group: string, force = false) {
 }
 export function loadDiaries(group: string, generation: number, force = false) {
   return petMemory.load<SavedDiary[]>(group, `diaries:${generation}`, () => allPages<SavedDiary>(() =>
-    secureClient.from("pet_diaries").select("id,generation_id,generation_number,diary_date,display_name,title,body,is_final", { count: "exact" })
+    secureClient.from("pet_diaries").select("id,generation_id,generation_number,diary_date,species,stage,display_name,title,body,is_final", { count: "exact" })
       .eq("group_name", group).eq("generation_id", generation).order("diary_date", { ascending: false })
   ), 30000, force);
 }

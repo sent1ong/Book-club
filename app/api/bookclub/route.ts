@@ -157,6 +157,13 @@ export async function POST(request: NextRequest) {
         );
       return ok(null);
     }
+    if (body.submission !== undefined) {
+      if (plan.action !== "insert" || !["books", "reading_plans"].includes(plan.table) || plan.rows.length !== 1 || typeof body.submission !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.submission)) throw new ApiError("등록 요청 번호를 확인해 주세요.");
+      const { group_name: ignored, ...payload } = plan.rows[0];
+      const result = await db.rpc("bc_insert_record_once", { p_group: group, p_table: plan.table, p_submission_id: body.submission, p_payload: payload });
+      if (result.error) throw new ApiError(result.error.message === "Submission content changed" ? "이전 제출 내용으로 결과를 확인해 주세요. 중복 등록하지 않았습니다." : result.error.message === "Submitted record deleted" ? "이미 저장한 뒤 삭제된 기록입니다. 목록을 확인해 주세요." : "등록을 완료하지 못했습니다. 입력 내용과 연결 상태를 확인해 주세요.");
+      return ok(result.data);
+    }
     let query: any = db.from(plan.table);
     if (plan.action === "select")
       query = query.select(

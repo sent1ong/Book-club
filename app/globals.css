@@ -180,3 +180,6 @@ html, body, .desktop-surface { background-color: var(--desktop-background); }
   .desktop-titlebar > button { position: relative; }
   .desktop-titlebar > button::after { content: ""; position: absolute; inset: -4px; }
 }
+
+/* Pause only visual CSS work; server lifecycle and data clocks are unchanged. */
+html[data-bc-background="true"] *, html[data-bc-background="true"] *::before, html[data-bc-background="true"] *::after { animation-play-state: paused !important; }
