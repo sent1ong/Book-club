@@ -124,7 +124,7 @@ export const ReviewObjections = React.memo(function ReviewObjections({ group, bo
     } catch (e) { setError((e as Error).message); }
     finally { locked.current = false; setBusy(false); }
   };
-  return <section className="my-2 border-t border-dashed border-gray-200 pt-1" onClick={e => e.stopPropagation()}>
+  return <section data-review-objections className="my-2 border-t border-dashed border-gray-200 pt-1" onClick={e => e.stopPropagation()}>
     <div className="flex items-start gap-2 min-w-0">
       <button ref={trigger} data-objection-open type="button" className="win-btn bc-review-button px-2 py-0.5 text-xs shrink-0" aria-haspopup="dialog" onClick={() => { initialMember.current = member; setAction(null); setError(""); setNotice(""); setOpen(true); }}>⚖️ 이의 있음!</button>
       <div className="flex-1 min-w-0 space-y-2" aria-label="이의 제기 목록">

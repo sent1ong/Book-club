@@ -323,6 +323,7 @@ function BookClubContent() {
   }, [groupName]);
   const plansRequest = React.useRef(0);
   const reviewsRequest = React.useRef(0);
+  const commentsRequest = React.useRef(0);
   const [planTitle, setPlanTitle] = useState("");
   const [planAuthor, setPlanAuthor] = useState("");
   const [planGenre, setPlanGenre] = useState("소설");
@@ -2060,6 +2061,7 @@ function BookClubContent() {
   };
 
   const fetchComments = async () => {
+    const request = ++commentsRequest.current;
     const rows: Comment[] = [];
     for (let offset = 0; ; offset += 200) {
       const { data, error } = await supabase
@@ -2068,6 +2070,7 @@ function BookClubContent() {
         .eq("group_name", groupName)
         .order("id", { ascending: true })
         .range(offset, offset + 199);
+      if (request !== commentsRequest.current) return;
       if (error) {
         alert("댓글을 불러오지 못했습니다: " + error.message);
         return;
@@ -2075,7 +2078,7 @@ function BookClubContent() {
       rows.push(...(data || []));
       if (!data || data.length < 200) break;
     }
-    setComments(rows);
+    if (request === commentsRequest.current) setComments(rows);
   };
 
   useEffect(() => {
@@ -2106,6 +2109,7 @@ function BookClubContent() {
     }
     return () => {
       ++reviewsRequest.current;
+      ++commentsRequest.current;
     };
   }, [groupName, fetchReviews]);
 
@@ -2779,11 +2783,18 @@ function BookClubContent() {
       const target = document.getElementById(`review-${bookId}`);
 
       if (target) {
-        target.scrollIntoView({
+        const destinationElement = destination === "objection"
+          ? target.querySelector<HTMLElement>("[data-review-objections]") || target : target;
+        destinationElement.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
-        if (destination === "objection") target.querySelector<HTMLButtonElement>("[data-objection-open]")?.click();
+        destinationElement.getAnimations().filter(animation => animation.id === "bc-review-jump").forEach(animation => animation.cancel());
+        const emphasis = destinationElement.animate([
+          { outline: "2px solid color-mix(in srgb, var(--desktop-accent) 55%, transparent)", outlineOffset: "-2px" },
+          { outline: "2px solid transparent", outlineOffset: "-2px" },
+        ], { duration: 1400, easing: "ease-out" });
+        emphasis.id = "bc-review-jump";
       }
     }, 100);
   };

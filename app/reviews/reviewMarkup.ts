@@ -29,6 +29,16 @@ export function reviewRuns(source: string): ReviewRun[] {
 }
 export function plainReview(text: string) { return reviewRuns(text || "").map(run => run.text).join(""); }
 export function reviewTags(text: string) { return plainReview(text).match(/#[^\s#]+/g) || []; }
+export function keywordFormatWarning(text: string): string | null {
+  const words = plainReview(text).trim().split(/\s+/);
+  let start = words.length;
+  while (start > 0 && words[start - 1].startsWith("#")) start--;
+  const tail = words.slice(start).join(" ");
+  if (!tail) return null;
+  const tags = reviewTags(tail);
+  return tags.length > 1 && (/#[^\s#]+#[^\s#]+/.test(tail) || tags.some(tag => /[,，]$/.test(tag)))
+    ? "키워드는 맨 끝에 쉼표 없이 띄어 써 주세요. 예: #연하공 #연상수" : null;
+}
 export function toggleSelection(text: string, start: number, end: number, token: string) {
   if (start === end) return null;
   const selected = text.slice(start, end), before = text.slice(0, start), after = text.slice(end);
