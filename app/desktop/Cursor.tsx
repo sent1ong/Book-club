@@ -45,6 +45,45 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     const decoded = new Map<string, HTMLImageElement>();
     let manifest: Manifest | null = null, ready = false, frame = 0, x = 0, y = 0, inside = false, dragging = false;
     let target: Element | null = null, checkedTarget: Element | null = null, allowed = false, dirty = true, moved = true;
+    type Region = { left: number; top: number; right: number; bottom: number };
+    let scrollbars: Region[] = [], geometryVersion = 0;
+    const geometry = new WeakMap<HTMLElement, { version: number; regions: Region[] }>();
+    const scrollbarRegions = (element: Element | null) => {
+      const regions: Region[] = [];
+      for (let node = element; node; node = node.parentElement) {
+        if (!(node instanceof HTMLElement)) continue;
+        const cached = geometry.get(node);
+        if (cached?.version === geometryVersion) { regions.push(...cached.regions); continue; }
+        const found: Region[] = [];
+        if (node.offsetWidth > node.clientWidth || node.offsetHeight > node.clientHeight) {
+          const css = getComputedStyle(node);
+          // Inline text also has offsetWidth > clientWidth, but has no scrollbar.
+          if (/(auto|scroll|overlay)/.test(css.overflowX + " " + css.overflowY)) {
+            const rect = node.getBoundingClientRect();
+            const sx = rect.width / node.offsetWidth, sy = rect.height / node.offsetHeight;
+            if (Number.isFinite(sx) && Number.isFinite(sy)) {
+              const left = rect.left + parseFloat(css.borderLeftWidth || "0") * sx;
+              const right = rect.right - parseFloat(css.borderRightWidth || "0") * sx;
+              const top = rect.top + parseFloat(css.borderTopWidth || "0") * sy;
+              const bottom = rect.bottom - parseFloat(css.borderBottomWidth || "0") * sy;
+              const clientLeft = rect.left + node.clientLeft * sx, clientTop = rect.top + node.clientTop * sy;
+              const clientRight = clientLeft + node.clientWidth * sx, clientBottom = clientTop + node.clientHeight * sy;
+              if (clientLeft - left > 1) found.push({ left, right: clientLeft, top, bottom });
+              if (right - clientRight > 1) found.push({ left: clientRight, right, top, bottom });
+              if (bottom - clientBottom > 1) found.push({ left, right, top: clientBottom, bottom });
+            }
+          }
+        }
+        geometry.set(node, { version: geometryVersion, regions: found }); regions.push(...found);
+      }
+      // Viewport scrollbars are outside the root client rectangle.
+      if (root.clientWidth > 0 && innerWidth > root.clientWidth)
+        regions.push({ left: root.clientWidth, right: innerWidth, top: 0, bottom: innerHeight });
+      if (root.clientHeight > 0 && innerHeight > root.clientHeight)
+        regions.push({ left: 0, right: innerWidth, top: root.clientHeight, bottom: innerHeight });
+      return regions;
+    };
+    const overScrollbar = () => scrollbars.some(r => x >= r.left && x < r.right && y >= r.top && y < r.bottom);
     let mode: "normal" | "pointer" = "normal", started = performance.now(), previousSource = "", lastEntry: Entry | null = null;
     let hotspotX = 0, hotspotY = 0, masked = false;
     let staticTarget: HTMLElement | SVGElement | null = null, staticOriginal = "", staticPriority = "", staticApplied = "";
@@ -72,11 +111,12 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       if (!ready || !context || !media.matches || !inside || dragging || document.visibilityState !== "visible" || !document.hasFocus()) return false;
       if (moved || dirty) target = document.elementFromPoint(x, y);
       moved = false;
-      if (!dirty && target === checkedTarget) return allowed;
+      if (!dirty && target === checkedTarget) return allowed && !overScrollbar();
+      scrollbars = scrollbarRegions(target);
       dirty = false; checkedTarget = target;
       allowed = !!target && !target.closest(nativeSelector);
       if (allowed && target) mode = target.closest('button,a[href],[role="button"],summary,label,.cursor-pointer') ? "pointer" : "normal";
-      return allowed;
+      return allowed && !overScrollbar();
     };
     const draw = (now: number) => {
       const active = eligible();
@@ -127,13 +167,13 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
       if (event.pointerType !== "mouse") { inside = false; hide(); mask(false); return; }
       x = event.clientX; y = event.clientY; inside = true; moved = true;
       if (ready && !dragging) {
-        if (event.target !== checkedTarget || dirty || !root.hasAttribute("data-bc-cursor-active")) draw(performance.now());
+        if (scrollbars.length || event.target !== checkedTarget || dirty || !root.hasAttribute("data-bc-cursor-active")) draw(performance.now());
         else if (canvas.style.display === "block") position();
       }
     };
     const leave = () => { inside = false; hide(); mask(false); }, press = (event: PointerEvent) => move(event), release = () => { dirty = true; };
     const drag = () => { dragging = true; hide(); mask(false); }, endDrag = () => { dragging = false; dirty = true; }, blur = () => { dragging = false; leave(); };
-    const invalidate = () => { dirty = true; };
+    const invalidate = () => { dirty = true; geometryVersion++; };
     window.addEventListener("scroll", invalidate, { signal: abort.signal, capture: true, passive: true });
     window.addEventListener("resize", invalidate, { signal: abort.signal });
     const options = { signal: abort.signal, capture: true };
@@ -143,7 +183,7 @@ export function CursorEffect({ selected }: { selected: CursorKey }) {
     // Element blur must not be treated as leaving the browser window.
     window.addEventListener("blur", blur, { signal: abort.signal }); media.addEventListener("change", leave, { signal: abort.signal });
     const observer = new MutationObserver(records => {
-      if (records.some(record => record.target !== canvas && record.target !== root)) dirty = true;
+      if (records.some(record => record.target !== canvas && record.target !== root)) invalidate();
     });
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style", "disabled", "contenteditable", "draggable"] });
     frame = requestAnimationFrame(render);
