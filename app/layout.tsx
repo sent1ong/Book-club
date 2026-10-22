@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { BackgroundActivity } from './BackgroundActivity';
-import { DesktopThemeProvider } from './DesktopTheme';
+import { BackgroundActivity } from './desktop/BackgroundActivity';
+import { DesktopThemeProvider } from './desktop/DesktopTheme';
 import { DesktopEffectsProvider } from './desktop/Effects';
 
 export const metadata: Metadata = {

@@ -1,35 +1,39 @@
 "use client";
-import { plainReview, reviewTags } from "./reviewMarkup";
-import { StartMenuKeys } from "./StartMenuKeys";
+import { useCareTimes } from "./pets/useCareTimes";
+import { PetSprite, PET_COLOR_ORDER, type PetGeneration } from "./pets/PetSprite";
+import { useSupabaseBingo } from "./bingo/useSupabaseBingo";
+import { DuplicateReviewNotice } from "./reviews/DuplicateReviewNotice";
+import { plainReview, reviewTags } from "./reviews/reviewMarkup";
+import { StartMenuKeys } from "./desktop/StartMenuKeys";
 
 
 import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { renderReviewText, SpoilerReviewText } from "./ReviewFormatting";
-const ReviewEditor = dynamic(() => import("./ReviewEditor"), { loading: () => <div className="h-[66px] text-xs" role="status">한줄평 입력창을 준비하는 중…</div> });
+import { renderReviewText, SpoilerReviewText } from "./reviews/ReviewFormatting";
+const ReviewEditor = dynamic(() => import("./reviews/ReviewEditor"), { loading: () => <div className="h-[66px] text-xs" role="status">한줄평 입력창을 준비하는 중…</div> });
 const ReviewQuizWindow = dynamic(() => import("./games/ReviewQuiz"));
 const VendingWindow = dynamic(() => import("./games/Vending"));
 import AndroidGroupInstall from "./AndroidGroupInstall";
-import { reuseRows } from "./reuseRows";
-import { listKey, peekList, readList, clearGroupLists } from "./listCache";
-import { useDraftClose } from "./DraftClose";
-import { useWindowEscape } from "./windowEscape";
-import { SaveNotice, savedNotice } from "./SaveNotice";
-import { buildReviewRelations, summarizeWorks, yearHighlights } from "./reviewRelations";
-import { RelatedReviews, RelatedReviewsProvider } from "./RelatedReviews";
+import { reuseRows } from "./data/reuseRows";
+import { listKey, peekList, readList, clearGroupLists } from "./data/listCache";
+import { useDraftClose } from "./ui/DraftClose";
+import { useWindowEscape } from "./ui/windowEscape";
+import { SaveNotice, savedNotice } from "./ui/SaveNotice";
+import { buildReviewRelations, summarizeWorks, yearHighlights } from "./reviews/reviewRelations";
+import { RelatedReviews, RelatedReviewsProvider } from "./reviews/RelatedReviews";
 import { getJukeboxVideoId } from "./jukeboxVideo";
-import { ReviewText, Highlight } from "./ReviewText";
-import { ReviewCreatedDate } from "./ReviewCreatedDate";
+import { ReviewText, Highlight } from "./reviews/ReviewText";
+import { ReviewCreatedDate } from "./reviews/ReviewCreatedDate";
 import { useSearchParams } from "next/navigation";
 import { secureClient as supabase } from "./security/client";
 import AccessGate from "./security/AccessGate";
 import { isRegisteredGroup } from "./security/groups";
-import { StartMenuBand } from "./StartMenuBand";
+import { StartMenuBand } from "./desktop/StartMenuBand";
 import { usePetSnacks } from "./pets/snack";
 import { useExplorerTitle } from "./explorerTitle";
 import { usePetFarewells } from "./pets/farewell";
-import { DesktopThemeWindow } from "./DesktopTheme";
+import { DesktopThemeWindow } from "./desktop/DesktopTheme";
 import { usePetPersonalities } from "./pets/personality";
 import { AwardsHub } from "./awards/Awards";
 import { ObjectionCounts, ReviewObjections } from "./community/Objections";
@@ -69,22 +73,6 @@ interface BookReview {
   ost_youtube_url?: string | null;
   ost_title?: string | null;
   ost_artist?: string | null;
-}
-
-interface PetGeneration {
-  id: number;
-  group_name: string;
-  generation_number: number;
-  species: string;
-  pet_name: string | null;
-  named_by: string | null;
-  xp: number;
-  stage: "egg" | "baby" | "teen" | "adult" | "dead";
-  color_variant: string | null;
-  decoration: string | null;
-  born_at: string;
-  adult_at: string | null;
-  died_at: string | null;
 }
 
 // Mini dialogue uses the existing PNG; timestamps must come from persisted rows.
@@ -135,120 +123,6 @@ const PET_SPECIES_NAMES: Record<string, string> = {
   dungdungi: "둥둥이",
   kongmongi: "콩몽이",
 };
-
-// 🎨 세대별 펫 색상 변형
-const PET_COLOR_FILTERS: Record<string, string> = {
-  original: "none",
-  lavender: "hue-rotate(25deg) saturate(1.1)",
-  mint: "hue-rotate(115deg) saturate(1.05)",
-  peach: "hue-rotate(315deg) saturate(1.1)",
-  sky: "hue-rotate(175deg) saturate(1.05)",
-  butter: "hue-rotate(55deg) saturate(1.1)",
-};
-
-// 세대 번호만으로 표시 색상을 순환하며 저장된 데이터는 변경하지 않습니다.
-const PET_COLOR_ORDER = [
-  "original",
-  "lavender",
-  "mint",
-  "peach",
-  "sky",
-  "butter",
-] as const;
-function getPetColorFilter(pet: PetGeneration): string {
-  const generation = pet.generation_number;
-  const variant =
-    Number.isInteger(generation) && generation > 0
-      ? PET_COLOR_ORDER[(generation - 1) % PET_COLOR_ORDER.length]
-      : pet.color_variant || "original";
-  return PET_COLOR_FILTERS[variant] || "none";
-}
-
-// 🎀 세대별 펫 장식
-const PET_DECORATIONS: Record<string, string> = {
-  star_mark: "/pets/deco/star_mark.png",
-  patch_heart: "/pets/deco/patch_heart.png",
-  patch_dot: "/pets/deco/patch_dot.png",
-  sparkle: "/pets/deco/sparkle.png",
-};
-
-const PetSprite = React.memo(function PetSprite({
-  pet,
-  stage,
-  eating = false,
-  happy = false,
-  sleeping = false,
-  size = 150,
-  className = "",
-}: {
-  pet: PetGeneration;
-  stage?: "egg" | "baby" | "teen" | "adult";
-  eating?: boolean;
-  happy?: boolean;
-  sleeping?: boolean;
-  size?: number;
-  className?: string;
-}) {
-  const visibleStage = stage || (pet.stage === "dead" ? "adult" : pet.stage);
-
-  // 🐾 우물우물: 일반 이미지와 먹는 이미지 교차
-  const [chewFrame, setChewFrame] = useState(false);
-
-  useEffect(() => {
-    if (!eating || visibleStage === "egg") {
-      setChewFrame(false);
-      return;
-    }
-
-    setChewFrame(true);
-
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") setChewFrame((previous) => !previous);
-    }, 180);
-
-    return () => window.clearInterval(timer);
-  }, [eating, visibleStage]);
-
-  // 먹는 동안의 일반 프레임에도 happy/sleep이 끼어들지 않습니다.
-  const fileName =
-    visibleStage === "egg" || pet.stage === "dead"
-      ? visibleStage
-      : eating
-        ? chewFrame
-          ? `${visibleStage}_eat`
-          : visibleStage
-        : happy
-          ? `${visibleStage}_happy`
-          : sleeping
-            ? `${visibleStage}_sleep`
-            : visibleStage;
-
-  const colorFilter = getPetColorFilter(pet);
-
-  return (
-    <span
-      className={`relative inline-block shrink-0 ${className}`}
-      style={{
-        width: size,
-        height: size,
-      }}
-    >
-      <Image
-        src={`/pets/${pet.species}/${fileName}.png`}
-        alt={pet.pet_name || "우리 펫"}
-        width={size}
-        height={size}
-        unoptimized
-        className="block object-contain"
-        style={{
-          width: size,
-          height: size,
-          filter: colorFilter,
-        }}
-      />
-    </span>
-  );
-});
 
 interface UserGoal {
   id?: number;
@@ -354,15 +228,6 @@ const APP_LIST: AppItem[] = [
 ];
 
 // 🎵 JUKEBOX.exe: 유튜브 주소에서 영상 ID 추출
-function DuplicateReviewNotice({ title, author, view }: { title: string; author: string; view: () => void }) {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
-  return <div className="text-xs bg-[#fff9dd] win-inset p-2" role="status">
-    <p>⚠️ 이미 이 작품을 기록한 적이 있는 것 같아요.</p><p>기존 리뷰: {title} — {author}</p>
-    <div className="flex gap-2 mt-1"><button type="button" className="win-btn px-2 py-1" onClick={view}>기존 리뷰 보기</button><button type="button" className="win-btn px-2 py-1" onClick={() => setDismissed(true)}>계속 기록하기</button></div>
-  </div>;
-}
-
 function serializeReview(text: string, spoiler: boolean): string {
   const clean = text.replace(/^\s*(?:\(스포일러\)\s*)+/, "");
   return spoiler ? "(스포일러) " + clean : clean;
@@ -409,164 +274,6 @@ function isValidGroup(name: string | null) {
 const playRetroDing = () => { systemSound("notice"); };
 
 const playCelebrationSound = () => { systemSound("celebrate"); };
-
-function useSupabaseBingo(groupName: string) {
-  const [snapshot, setSnapshot] = useState<{
-    group: string;
-    data: Record<string, number[]>;
-  }>({ group: "", data: {} });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [reload, setReload] = useState(0);
-  const activeGroup = React.useRef(groupName);
-  const busy = React.useRef(false);
-  const version = React.useRef(0);
-  const refreshRef = React.useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let reading = false;
-    activeGroup.current = groupName;
-    busy.current = false;
-    version.current += 1;
-    setSaving(false);
-    setLoading(true);
-    setErrorMessage("");
-    const load = async () => {
-      if (cancelled || reading || busy.current || !isValidGroup(groupName))
-        return;
-      reading = true;
-      const requestVersion = version.current;
-      try {
-        const { data, error } = await supabase
-          .from("bingo_states")
-          .select("user_name,cell_id,checked")
-          .eq("group_name", groupName)
-          .order("user_name")
-          .order("cell_id");
-        if (cancelled || busy.current || requestVersion !== version.current)
-          return;
-        if (error) throw error;
-        const next: Record<string, number[]> = Object.create(null);
-        (data || []).forEach((row) => {
-          if (!row.checked) return;
-          if (!next[row.user_name]) next[row.user_name] = [];
-          next[row.user_name].push(row.cell_id);
-        });
-        setSnapshot({ group: groupName, data: next });
-        setErrorMessage("");
-      } catch {
-        if (!cancelled && requestVersion === version.current) {
-          setErrorMessage(
-            "빙고를 불러오지 못했어요. Supabase 테이블·권한과 연결 상태를 확인해 주세요.",
-          );
-        }
-      } finally {
-        reading = false;
-        if (!cancelled && requestVersion === version.current) setLoading(false);
-      }
-    };
-    refreshRef.current = () => {
-      void load();
-    };
-    void load();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, 5000);
-    const onFocus = () => {
-      void load();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      refreshRef.current = null;
-    };
-  }, [groupName, reload]);
-
-  const data = snapshot.group === groupName ? snapshot.data : {};
-  const ready = snapshot.group === groupName && !loading;
-  const save = async (user: string, cellId: number | null) => {
-    if (!ready || busy.current || !user.trim()) return;
-    const checked = !(data[user] || []).includes(cellId ?? 0);
-    const rows =
-      cellId === null
-        ? Array.from({ length: 9 }, (_, index) => ({
-            group_name: groupName,
-            user_name: user,
-            cell_id: index + 1,
-            checked: false,
-          }))
-        : [
-            {
-              group_name: groupName,
-              user_name: user,
-              cell_id: cellId,
-              checked,
-            },
-          ];
-    busy.current = true;
-    version.current += 1;
-    const saveVersion = version.current;
-    setSaving(true);
-    setErrorMessage("");
-    let saved = false;
-    try {
-      const { error } = await supabase
-        .from("bingo_states")
-        .upsert(rows, { onConflict: "group_name,user_name,cell_id" });
-      if (error) throw error;
-      if (activeGroup.current !== groupName || version.current !== saveVersion)
-        return;
-      saved = true;
-      setSnapshot((previous) => {
-        if (previous.group !== groupName) return previous;
-        const current = previous.data[user] || [];
-        const next =
-          cellId === null
-            ? []
-            : checked
-              ? Array.from(new Set([...current, cellId]))
-              : current.filter((id) => id !== cellId);
-        return { group: groupName, data: { ...previous.data, [user]: next } };
-      });
-    } catch {
-      if (
-        activeGroup.current === groupName &&
-        version.current === saveVersion
-      ) {
-        setErrorMessage(
-          "빙고 저장에 실패했어요. 체크는 변경하지 않았습니다. 연결을 확인하고 다시 눌러 주세요.",
-        );
-      }
-    } finally {
-      if (
-        activeGroup.current === groupName &&
-        version.current === saveVersion
-      ) {
-        busy.current = false;
-        setSaving(false);
-        if (saved) refreshRef.current?.();
-      }
-    }
-  };
-  return {
-    data,
-    loading,
-    saving,
-    ready,
-    errorMessage,
-    toggle: (user: string, id: number) => {
-      void save(user, id);
-    },
-    reset: (user: string) => {
-      void save(user, null);
-    },
-    retry: () => setReload((previous) => previous + 1),
-  };
-}
 
 function BookClubContent() {
   const searchParams = useSearchParams();
@@ -995,12 +702,11 @@ function BookClubContent() {
   );
   const miniChatTimer = React.useRef<number | null>(null);
   const miniChatPriorityUntil = React.useRef(0);
-  const [careTimes, setCareTimes] = useState<
-    Record<number, { feed: string | null; pet: string | null }>
-  >({});
+  const { times: careTimes, error: careTimesError } = useCareTimes(
+    groupName, miniPet?.id, currentPet?.group_name === groupName ? currentPet.id : undefined, petReload,
+  );
   const careTimesRef = React.useRef(careTimes);
   careTimesRef.current = careTimes;
-  const [careTimesError, setCareTimesError] = useState("");
   const [planCelebration, setPlanCelebration] = useState<{
     group: string;
     user: string;
@@ -1053,84 +759,6 @@ function BookClubContent() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
-  // All members' care, scoped to the actual generation. A date alone is not a time.
-  useEffect(() => {
-    const ids = Array.from(
-      new Set(
-        [
-          miniPet?.id,
-          currentPet?.group_name === groupName ? currentPet.id : undefined,
-        ].filter((id): id is number => id !== undefined),
-      ),
-    );
-    if (!isValidGroup(groupName) || !ids.length) return;
-    setCareTimes({});
-    let cancelled = false;
-    let inFlight = false;
-    const load = async () => {
-      if (inFlight || document.visibilityState === "hidden") return;
-      inFlight = true;
-      try {
-        const results = await Promise.all(
-          ids.map(async (id) => {
-            const times: { feed: string | null; pet: string | null } = {
-              feed: null,
-              pet: null,
-            };
-            for (let offset = 0; ; offset += 200) {
-              const { data, error } = await supabase
-                .from("pet_care_actions")
-                .select("*")
-                .eq("generation_id", id)
-                .order("id", { ascending: false })
-                .range(offset, offset + 199);
-              if (error) throw error;
-              for (const row of data || []) {
-                // created_at is optional: never substitute action_date or client time.
-                const stamp = row.created_at;
-                if (
-                  (row.action_type === "feed" || row.action_type === "pet") &&
-                  typeof stamp === "string" &&
-                  /T|\d{2}:\d{2}/.test(stamp) &&
-                  /(Z|[+-]\d{2}:?\d{2})$/.test(stamp) &&
-                  Number.isFinite(Date.parse(stamp))
-                ) {
-                  const kind = row.action_type as "feed" | "pet";
-                  if (
-                    !times[kind] ||
-                    Date.parse(stamp) > Date.parse(times[kind]!)
-                  )
-                    times[kind] = stamp;
-                }
-              }
-              if (!data || data.length < 200) break;
-            }
-            return [id, times] as const;
-          }),
-        );
-        if (!cancelled) {
-          setCareTimes(Object.fromEntries(results));
-          setCareTimesError("");
-        }
-      } catch {
-        if (!cancelled) {
-          setCareTimes({});
-          setCareTimesError("돌봄 시각을 확인하지 못했어요.");
-        }
-      } finally {
-        inFlight = false;
-      }
-    };
-    void load();
-    const timer = window.setInterval(() => void load(), 30000);
-    const onVisible = () => void load();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [groupName, miniPet?.id, currentPet?.id, petReload]);
   const miniPetIsHappy = miniPet != null && happyPetId === miniPet.id;
   const miniPetIsEating =
     miniPet != null &&
