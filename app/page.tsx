@@ -3140,7 +3140,7 @@ function BookClubContent() {
 
             {/* 필터 탭 */}
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap" aria-label="장르 필터">
+              <div className="flex flex-wrap items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap [&>button]:font-bold" aria-label="장르 필터">
                 {[
                   "전체",
                   ...BOOK_GENRES.filter((genre) =>
@@ -3171,7 +3171,7 @@ function BookClubContent() {
                 })}
               </div>
 
-              <div className="flex flex-nowrap overflow-x-auto items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap pb-1" aria-label="독서 필터 및 공동책장">
+              <div className="flex flex-nowrap overflow-x-auto items-center gap-1 w-full min-w-0 [&>button]:shrink-0 [&>button]:whitespace-nowrap [&>button]:font-bold pb-1" aria-label="독서 필터 및 공동책장">
                 <button
                   type="button"
                   onClick={() =>
