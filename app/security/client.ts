@@ -127,6 +127,7 @@ class Query implements PromiseLike<Result> {
 }
 
 export const secureClient = {
+  careTimes: (group: string, ids: number[]) => send({ kind: "care-times", group, ids }),
   planReview: (args: { group: string; plan_id: string; submission: string; review: Record<string, unknown> }) => send({ ...args, kind: "plan-review" }),
   from: (table: string) => new Query(table),
   rpc: (name: string, args: Record<string, unknown>) =>
