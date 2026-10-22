@@ -126,7 +126,7 @@ export const ReviewObjections = React.memo(function ReviewObjections({ group, bo
   };
   return <section className="my-2 border-t border-dashed border-gray-200 pt-1" onClick={e => e.stopPropagation()}>
     <div className="flex items-start gap-2 min-w-0">
-      <button ref={trigger} data-objection-open type="button" className="win-btn px-2 py-0.5 text-xs shrink-0" style={{ backgroundColor: "#FFFFFF" }} aria-haspopup="dialog" onClick={() => { initialMember.current = member; setAction(null); setError(""); setNotice(""); setOpen(true); }}>⚖️ 이의 있음!</button>
+      <button ref={trigger} data-objection-open type="button" className="win-btn bc-review-button px-2 py-0.5 text-xs shrink-0" aria-haspopup="dialog" onClick={() => { initialMember.current = member; setAction(null); setError(""); setNotice(""); setOpen(true); }}>⚖️ 이의 있음!</button>
       <div className="flex-1 min-w-0 space-y-2" aria-label="이의 제기 목록">
         {rows.map(row => <article key={row.id} className="min-w-0 text-xs">
           <p className="break-words whitespace-pre-wrap [overflow-wrap:anywhere] text-[#9f3038]"><strong>{row.user_name}</strong>: {row.content}{row.updated_at && <span className="ml-1 text-gray-500">(수정됨)</span>}

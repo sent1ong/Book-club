@@ -192,3 +192,9 @@ html[data-bc-background="true"] *, html[data-bc-background="true"] *::before, ht
 .bc-ost-active { background-color: color-mix(in srgb, var(--desktop-title) 14%, white); border-color: var(--desktop-accent); }
 .bc-start-item:focus-visible { background-color: var(--desktop-accent); color: white; outline: 1px dotted white; outline-offset: -3px; }
 .bc-ost-row:hover { background-color: color-mix(in srgb, var(--desktop-title) 9%, white); }
+
+/* Only the related-review bar and objection trigger inside review cards. */
+.win-btn.bc-review-button { background-color: #f9fafb; color: #000000; }
+@media (hover: hover) {
+  .win-btn.bc-review-button:hover { background-color: #f3f4f6; }
+}
