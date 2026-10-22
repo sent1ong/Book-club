@@ -110,19 +110,20 @@ body {
 /* 🎵 JUKEBOX.exe — 작업 표시줄 재생 이퀄라이저 */
 .jukebox-equalizer {
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   gap: 2px;
   width: 17px;
   height: 24px;
+  margin-right: 2px;
 }
 
 .jukebox-equalizer span {
   display: block;
   width: 3px;
-  height: 9px;
-  background: #000080;
-  transform-origin: bottom;
+  height: 7.2px;
+  background: var(--desktop-title, #000080);
+  transform-origin: center;
   animation: jukebox-equalizer-bounce 650ms ease-in-out infinite alternate;
   animation-play-state: paused;
 }
