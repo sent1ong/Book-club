@@ -194,7 +194,7 @@ html[data-bc-background="true"] *, html[data-bc-background="true"] *::before, ht
 .bc-ost-row:hover { background-color: color-mix(in srgb, var(--desktop-title) 9%, white); }
 
 /* Only the related-review bar and objection trigger inside review cards. */
-.win-btn.bc-review-button { background-color: #f9fafb; color: #000000; }
+.win-btn.bc-review-button { background-color: #f3f4f6; color: #000000; }
 @media (hover: hover) {
-  .win-btn.bc-review-button:hover { background-color: #f3f4f6; }
+  .win-btn.bc-review-button:hover { background-color: #eceef1; }
 }
