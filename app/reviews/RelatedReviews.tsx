@@ -28,6 +28,7 @@ export const RelatedReviews = memo(function RelatedReviews({ bookId, sameBookRev
                               toggle()
                             }
                             className="win-btn w-full px-3 py-2 text-xs font-bold text-left flex items-center justify-between gap-2"
+                            style={{ backgroundColor: "#FFFFFF" }}
                             aria-expanded={isSameBookExpanded}
                           >
                             <span className="min-w-0 inline-flex items-center gap-1">
