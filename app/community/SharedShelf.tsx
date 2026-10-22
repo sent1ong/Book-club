@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { useDraftClose } from "../DraftClose";
+import { useDraftClose } from "../ui/DraftClose";
 import { PetPopup } from "../pets/PetDiary";
 import { community, readShelf, invalidateShelf, type Shelf } from "./client";
 import { ShelfReason } from "./ShelfReason";

@@ -1,6 +1,6 @@
 "use client";
 import { DefenseButton } from "./Defense";
-import { useDraftClose } from "../DraftClose";
+import { useDraftClose } from "../ui/DraftClose";
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { community, type Objection, type Objections } from "./client";
 import { PetPopup } from "../pets/PetDiary";

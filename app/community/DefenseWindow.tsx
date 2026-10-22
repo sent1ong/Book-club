@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { PetPopup } from "../pets/PetDiary";
-import { useDraftClose } from "../DraftClose";
+import { useDraftClose } from "../ui/DraftClose";
 import { community, type Objection } from "./client";
 type Defense = { objection_id: string; user_name: string; content: string; created_at: string };
 const cache = new Map<string, { rows: Defense[]; at: number }>();

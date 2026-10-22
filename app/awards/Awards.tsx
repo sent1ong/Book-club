@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinalShelf } from "../community/SharedShelf";
-import { useWindowEscape } from "../windowEscape";
+import { useWindowEscape } from "../ui/windowEscape";
 import { autoModal } from "../community/autoModal";
 
 export type Award = { id: string; recipient: string; giver: string; title: string; reason: string; given_at: string };
@@ -68,7 +68,7 @@ function Schedule({ data }: { data: Snapshot }) {
   return <p className="leading-relaxed text-[#000080]">{data.can_issue ? <>🏆 연말 상장 수여 기간이에요!<br />12월 30일까지 모임원에게 특별한 상을 선물해 보세요. ♡</> : data.auto_ceremony_day ? <>🎉 오늘은 BOOK CLUB 98 연말 시상식 날이에요!<br />상장 수여는 마감되었어요.</> : <>🏆 상장은 {data.operating_year}년 12월 1일~30일에만 수여할 수 있어요.<br />받은 상장은 언제든 다시 볼 수 있답니다. ♡</>}</p>;
 }
 
-export function AwardsHub({ group, member, author, ready, blocked, onReview, records }: { group: string; member: string; author: string; ready: boolean; blocked: boolean; onReview?: (id: string) => void; records?: () => import("../reviewRelations").YearSummary | null }) {
+export function AwardsHub({ group, member, author, ready, blocked, onReview, records }: { group: string; member: string; author: string; ready: boolean; blocked: boolean; onReview?: (id: string) => void; records?: () => import("../reviews/reviewRelations").YearSummary | null }) {
   const [meta, setMeta] = useState<Snapshot | null>(null);
   const [data, setData] = useState<Snapshot | null>(null);
   const autoToken = useRef({});

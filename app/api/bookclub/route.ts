@@ -9,6 +9,7 @@ import {
 } from "../../security/server";
 import { planQuery, positiveId, text } from "../../security/query-policy";
 import { isRegisteredGroup } from "../../security/groups";
+import { readCareTimes } from "../../pets/careTimes.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
     ]);
     const group = found.group_name;
     const db = admin();
+
+    if (body.kind === "care-times") {
+      if (!Array.isArray(body.ids) || body.ids.length < 1 || body.ids.length > 2 ||
+          body.ids.some(id => !positiveId(id)) || new Set(body.ids.map(String)).size !== body.ids.length)
+        throw new ApiError("조회할 펫 번호를 확인해 주세요.");
+      return ok(await readCareTimes(db, group, body.ids));
+    }
 
     if (body.kind === "comment") {
       if (
