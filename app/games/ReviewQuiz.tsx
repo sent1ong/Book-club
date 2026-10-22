@@ -1,8 +1,8 @@
 "use client";
-import { plainReview } from "../reviewMarkup";
+import { plainReview } from "../reviews/reviewMarkup";
 import React, { useState } from "react";
-import { useWindowEscape } from "../windowEscape";
-import { renderReviewText } from "../ReviewFormatting";
+import { useWindowEscape } from "../ui/windowEscape";
+import { renderReviewText } from "../reviews/ReviewFormatting";
 type BookReview = { id: number; group_name: string; user_name: string; title: string; review: string; author?: string; genre?: string; rating?: string };
 type ReviewQuizQuestion = {
   id: number;

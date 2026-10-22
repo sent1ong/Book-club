@@ -19,6 +19,7 @@ export function DesktopEffectsProvider({ children }: { children: React.ReactNode
   const restore = useCallback(() => { configureSound(saved.current); setValue(saved.current); }, []);
   const apply = useCallback((next: Effects) => { localStorage.setItem(EFFECTS_KEY, JSON.stringify(next)); saved.current = next; configureSound(next); setValue(next); }, []);
   useEffect(() => {
+    if (!value.sound) return;
     let clickTimer: ReturnType<typeof setTimeout> | undefined;
     const gesture = () => unlockSound();
     const click = (event: MouseEvent) => {
@@ -33,8 +34,9 @@ export function DesktopEffectsProvider({ children }: { children: React.ReactNode
     });
     document.addEventListener("pointerdown", gesture, true); document.addEventListener("keydown", gesture, true); document.addEventListener("click", click, true);
     observer.observe(document.body, { subtree: true, childList: true });
-    return () => { clearTimeout(clickTimer); observer.disconnect(); document.removeEventListener("pointerdown", gesture, true); document.removeEventListener("keydown", gesture, true); document.removeEventListener("click", click, true); disposeSound(); };
-  }, []);
+    return () => { clearTimeout(clickTimer); observer.disconnect(); document.removeEventListener("pointerdown", gesture, true); document.removeEventListener("keydown", gesture, true); document.removeEventListener("click", click, true); };
+  }, [value.sound]);
+  useEffect(() => () => disposeSound(), []);
   return <Settings.Provider value={{ value, preview, restore, apply }}><CursorEffect selected={value.cursor} />{children}</Settings.Provider>;
 }
 export function EffectsEditor({ kind, back, close }: { kind: "sound" | "cursor"; back: () => void; close: () => void }) {

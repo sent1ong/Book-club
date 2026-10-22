@@ -1,8 +1,8 @@
 "use client";
-import { plainReview, reviewTags } from "../reviewMarkup";
+import { plainReview, reviewTags } from "../reviews/reviewMarkup";
 import React, { useState } from "react";
-import { useWindowEscape } from "../windowEscape";
-import { SpoilerReviewText } from "../ReviewFormatting";
+import { useWindowEscape } from "../ui/windowEscape";
+import { SpoilerReviewText } from "../reviews/ReviewFormatting";
 type BookReview = { id: number; group_name: string; user_name: string; title: string; review: string; author?: string; genre?: string; rating?: string };
 export default function VendingWindow({ active, reviews, tagCounts, onClose }: { active: boolean; reviews: BookReview[]; tagCounts: [string, number][]; onClose: () => void }) {
   const box = React.useRef<HTMLDivElement>(null);

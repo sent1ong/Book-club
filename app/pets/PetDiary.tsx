@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 const DiaryWindow = dynamic(() => import("./DiaryWindow"));
 import { createPortal } from "react-dom";
-import { useWindowEscape } from "../windowEscape";
+import { useWindowEscape } from "../ui/windowEscape";
 
 export function PetPopup({ title, close, children, front = false }: {
   title: string; close: () => void; children: React.ReactNode; front?: boolean;
