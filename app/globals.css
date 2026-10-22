@@ -110,11 +110,13 @@ body {
 /* 🎵 JUKEBOX.exe — 작업 표시줄 재생 이퀄라이저 */
 .jukebox-equalizer {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   gap: 2px;
   width: 17px;
   height: 24px;
+  padding-bottom: 2.64px;
+  box-sizing: border-box;
   margin-right: 2px;
 }
 
@@ -123,7 +125,7 @@ body {
   width: 3px;
   height: 7.2px;
   background: var(--desktop-title, #000080);
-  transform-origin: center;
+  transform-origin: bottom;
   animation: jukebox-equalizer-bounce 650ms ease-in-out infinite alternate;
   animation-play-state: paused;
 }
