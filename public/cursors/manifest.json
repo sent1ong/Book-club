@@ -99,21 +99,21 @@
         ],
         [
           {
-            "src": "/cursors/frames/Chiikawa-normal-4-32x32.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-32x32.png",
             "width": 32,
             "height": 32,
             "hotspotX": 3,
             "hotspotY": 2
           },
           {
-            "src": "/cursors/frames/Chiikawa-normal-4-48x48.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-48x48.png",
             "width": 48,
             "height": 48,
             "hotspotX": 4,
             "hotspotY": 3
           },
           {
-            "src": "/cursors/frames/Chiikawa-normal-4-64x64.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-64x64.png",
             "width": 64,
             "height": 64,
             "hotspotX": 6,
@@ -122,21 +122,21 @@
         ],
         [
           {
-            "src": "/cursors/frames/Chiikawa-normal-5-32x32.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-32x32.png",
             "width": 32,
             "height": 32,
             "hotspotX": 3,
             "hotspotY": 2
           },
           {
-            "src": "/cursors/frames/Chiikawa-normal-5-48x48.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-48x48.png",
             "width": 48,
             "height": 48,
             "hotspotX": 4,
             "hotspotY": 3
           },
           {
-            "src": "/cursors/frames/Chiikawa-normal-5-64x64.png",
+            "src": "/cursors/frames/Chiikawa-normal-3-64x64.png",
             "width": 64,
             "height": 64,
             "hotspotX": 6,
