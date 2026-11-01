@@ -7059,7 +7059,7 @@ function BookClubContent() {
                   title="PET.exe 열기"
                   aria-label="펫 돌보기 열기"
                   className={`absolute left-1/2 -translate-x-1/2 pointer-events-auto ${
-                          miniPet.species === "bosongi" ? "bottom-0" : "-bottom-2"
+                          miniPet.species === "bosongi" ? "-bottom-[4px]" : "-bottom-2"
                       }`}
                 >
               
