@@ -4979,7 +4979,7 @@ function BookClubContent() {
                       <div
                         role="status"
                         aria-live="polite"
-                        className="absolute bottom-2 left-2 right-2 z-30 bg-white border-2 border-[#9b477e] px-2 py-2 text-center text-xs font-bold text-[#9b477e] shadow-md"
+                        className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap z-30 bg-white border-2 border-[#9b477e] px-3 py-1.5 text-center text-xs font-bold text-[#9b477e] shadow-md"
                       >
                         {petCareAction === "feed"
                           ? currentPet.stage === "egg"
@@ -7050,15 +7050,19 @@ function BookClubContent() {
               </span>
             </button>
           )}
+          
 
           {miniPet.stage === "egg" && !miniPetPreview ? (
             <button
-              type="button"
-              onClick={() => setOpenWindow("pets")}
-              title="PET.exe 열기"
-              aria-label="펫 돌보기 열기"
-              className="absolute -bottom-2 left-1/2 -translate-x-1/2 pointer-events-auto"
-            >
+                  type="button"
+                  onClick={() => setOpenWindow("pets")}
+                  title="PET.exe 열기"
+                  aria-label="펫 돌보기 열기"
+                  className={`absolute left-1/2 -translate-x-1/2 pointer-events-auto ${
+                          miniPet.species === "bosongi" ? "bottom-0" : "-bottom-2"
+                      }`}
+                >
+              
               <Image
                 src={`/pets/${miniPet.species}/egg.png`}
                 alt="우리 모임의 알"
