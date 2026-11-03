@@ -7101,13 +7101,13 @@ function BookClubContent() {
                     : "running",
               }}
               className={`absolute left-0 mini-pet-walk ${
-                miniPet.species === "bogli" &&
-                miniPet.stage === "teen" &&
-                !miniPetPreview
+                  miniPet.species === "bogli" && miniPet.stage === "teen" && !miniPetPreview
                   ? "-bottom-[14px]"
                   : miniPet.species === "bogli" && miniPet.stage === "adult" && !miniPetPreview
-                    ? "-bottom-[8px]"
-                    : "-bottom-4"
+                  ? "-bottom-[8px]"
+                  : miniPet.species === "bosongi" && miniPet.stage === "baby"
+                  ? "-bottom-[11px]"
+                  : "-bottom-4"
               }`}
             >
               <button
