@@ -7108,6 +7108,9 @@ function BookClubContent() {
                   : miniPet.species === "bosongi" && miniPet.stage === "baby"
                   ? "-bottom-[11px]"
                   : "-bottom-4"
+                : miniPet.species === "bosongi" && miniPet.stage === "teen"
+                ? "-bottom-[8px]"
+                : "-bottom-4"
               }`}
             >
               <button
