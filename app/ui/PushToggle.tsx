@@ -50,10 +50,15 @@ export default function PushToggle({
     setSupported(ok);
     if (!ok) return;
 
+    if (localStorage.getItem(PUSH_ENDPOINT_STORAGE_KEY)) {
+      setSubscribed(true);
+    }
+
     let active = true;
     void (async () => {
       try {
-        const reg = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.register("/sw.js");
+        const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (!active) return;
         setSubscribed(!!sub);
@@ -104,8 +109,8 @@ export default function PushToggle({
 
     setBusy(true);
     try {
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      await navigator.serviceWorker.register("/sw.js");
+      const reg = await navigator.serviceWorker.ready;
       const existing = await reg.pushManager.getSubscription();
 
       if (existing) {
@@ -159,8 +164,8 @@ export default function PushToggle({
       localStorage.setItem(PUSH_ENDPOINT_STORAGE_KEY, sub.endpoint);
       setSubscribed(true);
       onDone?.();
-    } catch {
-      alert("알림 설정 중 오류가 났어요. 잠시 후 다시 시도해 주세요.");
+    } catch (err) {
+      alert("알림 설정 중 오류가 났어요: " + (err instanceof Error ? err.message : ""));
     } finally {
       setBusy(false);
     }
@@ -181,7 +186,7 @@ export default function PushToggle({
           {busy
             ? "처리 중..."
             : subscribed
-              ? "새 리뷰 폰 알림 켜짐"
+              ? "새 리뷰 폰 알림 끄기"
               : "새 리뷰 폰 알림 켜기"}
         </span>
       </button>
@@ -198,7 +203,7 @@ export default function PushToggle({
       {busy
         ? "처리 중..."
         : subscribed
-          ? "🔔 폰 알림 켜짐"
+          ? "🔔 폰 알림 끄기"
           : "🔕 폰 알림 켜기"}
     </button>
   );
