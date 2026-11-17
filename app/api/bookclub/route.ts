@@ -10,6 +10,7 @@ import {
 import { planQuery, positiveId, text } from "../../security/query-policy";
 import { isRegisteredGroup } from "../../security/groups";
 import { readCareTimes } from "../../pets/careTimes.server";
+import { sendNewReviewPush } from "../../security/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,6 +142,11 @@ export async function POST(request: NextRequest) {
         };
         throw new ApiError(messages[result.error.message] || "예고 이행 기록을 저장하지 못했습니다. 입력을 유지했으니 다시 시도해 주세요.");
       }
+      await sendNewReviewPush(group, {
+        title: review.title,
+        author: review.author,
+        userName: review.user_name,
+      });
       return ok(result.data);
     }
 
@@ -170,6 +176,13 @@ export async function POST(request: NextRequest) {
       const { group_name: ignored, ...payload } = plan.rows[0];
       const result = await db.rpc("bc_insert_record_once", { p_group: group, p_table: plan.table, p_submission_id: body.submission, p_payload: payload });
       if (result.error) throw new ApiError(result.error.message === "Submission content changed" ? "이전 제출 내용으로 결과를 확인해 주세요. 중복 등록하지 않았습니다." : result.error.message === "Submitted record deleted" ? "이미 저장한 뒤 삭제된 기록입니다. 목록을 확인해 주세요." : "등록을 완료하지 못했습니다. 입력 내용과 연결 상태를 확인해 주세요.");
+      if (plan.table === "books") {
+        await sendNewReviewPush(group, {
+          title: payload.title,
+          author: payload.author,
+          userName: payload.user_name,
+        });
+      }
       return ok(result.data);
     }
     let query: any = db.from(plan.table);
@@ -210,6 +223,13 @@ export async function POST(request: NextRequest) {
         "데이터를 처리하지 못했습니다. 입력 내용을 확인해 주세요.",
         400,
       );
+    if (plan.table === "books" && plan.action === "insert" && plan.rows[0]) {
+      await sendNewReviewPush(group, {
+        title: plan.rows[0].title,
+        author: plan.rows[0].author,
+        userName: plan.rows[0].user_name,
+      });
+    }
     return ok(result.data, plan.count ? result.count : undefined);
   } catch (error) {
     return fail(error);
