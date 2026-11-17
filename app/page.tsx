@@ -15,6 +15,7 @@ const ReviewEditor = dynamic(() => import("./reviews/ReviewEditor"), { loading: 
 const ReviewQuizWindow = dynamic(() => import("./games/ReviewQuiz"));
 const VendingWindow = dynamic(() => import("./games/Vending"));
 import AndroidGroupInstall from "./AndroidGroupInstall";
+import PushToggle from "./ui/PushToggle";
 import { reuseRows } from "./data/reuseRows";
 import { listKey, peekList, readList, clearGroupLists } from "./data/listCache";
 import { useDraftClose } from "./ui/DraftClose";
@@ -6991,6 +6992,12 @@ function BookClubContent() {
               <div className="relative w-5 h-5 flex-shrink-0"><Image src="/icons/theme.png" alt="" fill sizes="20px" className="object-contain" /></div>
               <span className="truncate">화면 꾸미기</span>
             </button>
+            <PushToggle
+              groupName={groupName}
+              userName={selectedUser !== "전체" ? selectedUser : undefined}
+              variant="menu"
+              onDone={() => setStartMenuOpen(false)}
+            />
             <AndroidGroupInstall groupName={groupName} />
           </div>
         </StartMenuKeys>
