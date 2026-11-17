@@ -7116,6 +7116,8 @@ function BookClubContent() {
                   ? "-bottom-[11px]"
                   : miniPet.species === "bosongi" && miniPet.stage === "teen"
                   ? "-bottom-[8px]"
+                  : miniPet.species === "bosongi" && miniPet.stage === "adult" && !miniPetPreview
+                  ? "-bottom-[7px]"
                   : "-bottom-4"
               }`}
             >
