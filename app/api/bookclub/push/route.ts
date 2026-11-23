@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           user_name: userName,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "endpoint" },
+        { onConflict: "group_name,endpoint" },
       );
 
       if (error) throw new ApiError("알림 설정을 저장하지 못했습니다.", 503);
