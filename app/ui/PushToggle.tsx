@@ -3,6 +3,33 @@
 import { useEffect, useState } from "react";
 
 export const PUSH_ENDPOINT_STORAGE_KEY = "bc98_push_endpoint";
+const PUSH_GROUPS_STORAGE_KEY = "bc98_push_groups";
+
+function getSubscribedGroups(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PUSH_GROUPS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setSubscribedGroup(groupName: string, endpoint: string | null) {
+  const map = getSubscribedGroups();
+  if (endpoint) {
+    map[groupName] = endpoint;
+    localStorage.setItem(PUSH_ENDPOINT_STORAGE_KEY, endpoint);
+  } else {
+    delete map[groupName];
+    const remaining = Object.values(map);
+    if (remaining.length > 0) {
+      localStorage.setItem(PUSH_ENDPOINT_STORAGE_KEY, remaining[0]);
+    } else {
+      localStorage.removeItem(PUSH_ENDPOINT_STORAGE_KEY);
+    }
+  }
+  localStorage.setItem(PUSH_GROUPS_STORAGE_KEY, JSON.stringify(map));
+}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -50,9 +77,8 @@ export default function PushToggle({
     setSupported(ok);
     if (!ok) return;
 
-    if (localStorage.getItem(PUSH_ENDPOINT_STORAGE_KEY)) {
-      setSubscribed(true);
-    }
+    const savedMap = getSubscribedGroups();
+    setSubscribed(Boolean(savedMap[groupName]));
 
     let active = true;
     void (async () => {
@@ -61,11 +87,15 @@ export default function PushToggle({
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (!active) return;
-        setSubscribed(!!sub);
-        if (sub?.endpoint) {
-          localStorage.setItem(PUSH_ENDPOINT_STORAGE_KEY, sub.endpoint);
-        } else {
+
+        if (!sub) {
+          localStorage.removeItem(PUSH_GROUPS_STORAGE_KEY);
           localStorage.removeItem(PUSH_ENDPOINT_STORAGE_KEY);
+          setSubscribed(false);
+        } else {
+          const currentMap = getSubscribedGroups();
+          const isGroupOn = currentMap[groupName] === sub.endpoint;
+          setSubscribed(isGroupOn);
         }
       } catch {
         // 무시
@@ -111,21 +141,27 @@ export default function PushToggle({
     try {
       await navigator.serviceWorker.register("/sw.js");
       const reg = await navigator.serviceWorker.ready;
-      const existing = await reg.pushManager.getSubscription();
+      let sub = await reg.pushManager.getSubscription();
 
-      if (existing) {
-        await fetch("/api/bookclub/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            group: groupName,
-            action: "unsubscribe",
-            endpoint: existing.endpoint,
-          }),
-        });
-        await existing.unsubscribe();
-        localStorage.removeItem(PUSH_ENDPOINT_STORAGE_KEY);
+      if (subscribed) {
+        if (sub) {
+          await fetch("/api/bookclub/push", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              group: groupName,
+              action: "unsubscribe",
+              endpoint: sub.endpoint,
+            }),
+          });
+        }
+        setSubscribedGroup(groupName, null);
         setSubscribed(false);
+
+        const remaining = Object.keys(getSubscribedGroups());
+        if (remaining.length === 0 && sub) {
+          await sub.unsubscribe().catch(() => {});
+        }
         onDone?.();
         return;
       }
@@ -138,10 +174,12 @@ export default function PushToggle({
         return;
       }
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      }
 
       const res = await fetch("/api/bookclub/push", {
         method: "POST",
@@ -155,17 +193,19 @@ export default function PushToggle({
       });
 
       if (!res.ok) {
-        await sub.unsubscribe();
         const json = await res.json().catch(() => null);
         alert(json?.error?.message || "알림을 켜지 못했어요.");
         return;
       }
 
-      localStorage.setItem(PUSH_ENDPOINT_STORAGE_KEY, sub.endpoint);
+      setSubscribedGroup(groupName, sub.endpoint);
       setSubscribed(true);
       onDone?.();
     } catch (err) {
-      alert("알림 설정 중 오류가 났어요: " + (err instanceof Error ? err.message : ""));
+      alert(
+        "알림 설정 중 오류가 났어요: " +
+          (err instanceof Error ? err.message : ""),
+      );
     } finally {
       setBusy(false);
     }
